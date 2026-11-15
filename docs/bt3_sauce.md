@@ -23,37 +23,52 @@ unconfirmed, probably ~10 units per metre).
 
 ## The short version
 
-BT3's melee is not built on combos. It is built on **long, soft
-advantage**: a hit gives the attacker a lot of time, but almost never takes
-the defender's hands off the pad. Everything else (charge speed, guard
-poses, priorities, ki prices, recoveries) is tuned around that one choice.
-Our game made the opposite choice (short, hard hitstun), which is why the
-same reference mechanics, added one by one, did not add up to the same game.
+BT3's light hits are **not** special: a jab stuns for about as long as ours
+does, and a string is a true combo only while you keep chaining it. What
+BT3 does differently is everything *around* that: slower starts, very long
+recoveries that only success cancels, trades decided by priority, a guard
+that is free against jabs and expensive against charged hits, a counter
+that only works on committed hits, charge speed that grows as you land
+hits, and a tenfold gap between how a light and a heavy hit move the
+victim.
 
-## 1. Soft hitstun: the defender keeps playing
+(The first version of this file claimed the opposite about hitstun, from
+reading the code. Playing scripted fights in the port proved it wrong; see
+"Measured in the port" below.)
 
-- A light hit puts the victim in a **48-frame stagger** [D] (Goku's jab
-  staggers are 24 frames `@30`; second-half rush hits use a 60-frame one).
-  The attacker's jab hits on frame 8, can chain from frame 12 and ends at
-  22. So a landed jab is worth about **+34** if you let it finish and +44
-  from the chain point. Ours: hitstun 20, jab 20 long, about +5.
-- But a light stagger **can be left by guarding** [V/I]: its handler keeps
-  reading guard, the vanish-behind and the skill inputs every frame, and a
-  staggered fighter holding guard also gets an instant "timed guard"
-  against any hit flagged for it. That flag is on the **first hit of a rush
-  string** and on **uncharged** smashes and finishers, on all 161
-  characters [D]. Continuing an already-running string, or a smash charged
-  past 30%, is not instant-guardable.
-- Heavy reactions are the real stun: heavy stagger and ground bounce only
-  accept the emergency escape and skills (mash speeds the animation up),
-  stun is 30/60/90 frames with −6 per press, launches and blow-aways only
-  allow recovery after 18 frames.
+## 1. What a landed jab is worth (measured)
 
-What this produces: every landed jab starts a **second guessing game**
-instead of a movie. The attacker has a big window to choose (keep the
-string, charge a smash, throw, step behind), the defender has an answer to
-each. The interesting decisions happen *after* the first hit, which is
-where ours has none (the defender's only out is a 2-bar vanish escape).
+Measured with `tools/reference/bt3_script.py`, Goku (Early) against Goku
+(Early), frames at 60 Hz:
+
+- **Effective light hitstun is about 20–30 frames**, not the 48 of the
+  stagger animation. A victim who mashes rush after one jab lands their own
+  jab 30 frames after being hit (so they were free 16–22 frames after the
+  hit). A victim holding guard is still hit by a follow-up arriving 22
+  frames after the first hit, and blocks one arriving at 32. The stagger
+  animation has an early exit; its tail is only cosmetic.
+- The attacker is free 14 frames after their jab connects, or can chain
+  from 4. So a lone jab is somewhere between **+2 and +16**: the same order as
+  ours (hitstun 20, about +5).
+- **A chained string is a true combo against a held guard.** With guard
+  held from 6 frames after the first hit, all five hits still land (300,
+  300, 300, 410, 580 at intervals of 10, 16, 16 and 14 frames).
+- **A restarted string is not.** Leave the chain and press again: the new
+  first hit is blocked by a victim who is holding guard, and a victim who
+  attacks instead gets their jab out first.
+
+So the jab game is the ordinary one: confirm the first hit, finish the
+string, and choose **inside the string** how to end it (the finisher on the
+second button, a charged smash, a throw, a step). BT3's depth after a hit
+is in those branch points and in the heavy reactions (heavy stagger and
+ground bounce that only mashing shortens, stun of 30/60/90 frames, launches
+and blow-aways with recovery from frame 18), not in the jab's stun.
+
+The code also has an "instant guard" for a staggered fighter holding guard
+against hits flagged for it (the first rush hit and uncharged smashes and
+finishers, on all 161 characters [D]). In the measurements above the
+victim is simply free by then, so I could not tell the two apart; treat it
+as a detail, not a pillar.
 
 ## 2. Every answer has a counter-answer
 
@@ -63,9 +78,9 @@ Read from the attack records of all 161 characters [D] plus the hit code
 | Attacker does | It beats | It loses to |
 |---|---|---|
 | Rush string (priority 1, enders 5) | anyone pressing buttons, steps, charging | plain guard (free, no ki); an opponent mid-rush auto-guards it |
-| Smash, uncharged (priority 20) | rush (wins trades) | any guard pose (plain), instant guard, Z-counter |
-| Up / down smash charged ≥30% | instant guard; **unblockable** against one of the two directional guard poses | the other two poses (plain), Z-counter |
-| Side / neutral smash charged ≥30% | instant guard; the directional poses pay **1 ki bar** (ki guard) | mid guard (plain), Z-counter |
+| Smash, uncharged (priority 20) | rush (wins trades) | any guard pose (plain), Z-counter |
+| Up / down smash charged ≥30% | **unblockable** against one of the two directional guard poses | the other two poses (plain), Z-counter |
+| Side / neutral smash charged ≥30% | the directional poses pay **1 ki bar** (ki guard) | mid guard (plain), Z-counter |
 | Full-charge smash (priority 25) | up / down: unblockable in one pose, 1 bar in mid. Side: unblockable in both directional poses, 1 bar in mid | up / down: the opposite pose gets a **push-off** (attacker recoils, defender +0.5 blast stock). Z-counter |
 | Dash smash (priority 30, 40 at full) [I] | everything in a trade | Z-counter, side step |
 | Throw | all guards | guard press in a 10f window, anything that hits first |
@@ -227,29 +242,52 @@ how hot the momentum is, where the wall and floor are, who is behind whom.
 
 ## What to take, in order of leverage
 
-1. **Soft light hitstun + real heavy reactions** (§1). The single biggest
-   structural difference between BT3 and us.
+1. **Commitment by recovery, forgiveness by on-hit cancels** (§3), starting
+   from BT3's real frame data instead of our picks: slower jabs, enders and
+   smashes that are stuck for most of a second unless they land.
 2. **The counter table** (§2): Z-counter against smashes only, ki guard at
-   a real price, instant guard against string restarts.
-3. **Commitment by recovery, forgiveness by on-hit cancels** (§3), starting
-   from BT3's real frame data instead of our picks.
-4. **Momentum** (§4).
-5. **Priority trades and rush auto-guard** (§5).
-6. **Dynamic range of impact** (§6): per-move shake, approach speed, push;
-   no hitstop on lights; crash reactions.
-7. Ki prices and regeneration limit (§7).
+   a real price, guard free against jabs.
+3. **Dynamic range of impact** (§6): per-move shake, approach speed, push;
+   no hitstop on lights; crash reactions; small damage per hit.
+4. **Priority trades and rush auto-guard** (§5).
+5. **Momentum** (§4).
+6. Ki prices and regeneration limit (§7).
+
+Not on the list any more: changing how light hitstun works. Ours is
+already close to BT3's (§1).
 
 How these become a plan, and which of our earlier decisions they reverse:
 [gameplay_roadmap.md](gameplay_roadmap.md).
 
+## Measured in the port
+
+The PC port has test switches that play a recorded pad file with no window
+and log both fighters' health and position every frame.
+`tools/reference/bt3_script.py` writes the pad file from a small script
+(its built-in prelude walks the menus to a 1P vs 2P duel), runs the game
+for 25 seconds and prints every health change. Results of 2026-11-15:
+
+| Test | Result |
+|---|---|
+| P1 walks in and mashes rush, P2 idle | 300, 300, 300, 410, 580 at +10, +16, +16, +14 frames; then the automatic follow-up (380) and more. Both start at **40000** health. Fighters in contact are 10.5 units apart. |
+| P2 holds guard before the first hit | no damage at all (guard damage of rush hits is 0) |
+| P2 holds guard from 2, 8 or 14 frames after the first hit, P1 keeps mashing | all five hits land |
+| P1: one jab, second press 16 or 24 frames later (still chains), P2 guarding from 6 frames after the hit | second hit lands (14 and 22 frames after the first) |
+| Same, second press 32 frames later (a new string) | lands on an idle P2, **blocked** by a guarding P2 |
+| P1: one jab, then nothing. P2 mashes rush from 6 frames after being hit | P2's jab hits P1 30 frames after P2 was hit |
+
+Caveats: one matchup, one distance, ground only; the fight's start moves
+by a few frames between runs, so every test lets P1 arrive first and
+times its presses from there.
+
 ## Not verified
 
-- Health pools (the 16-byte base record in the common data was not read):
-  "~40000" is from memory of the game.
 - World scale. Speeds are comparable to each other, not to our metres.
-- Exactly how guarding out of a light stagger feels in play (the code path
-  is clear; the timing of the guard pose coming up is not measured). Worth
-  ten minutes in the PC port before we copy it.
 - Which animation event bit is the "next input" point: taken to be bit 3
   (it sits between the hit window opening and closing on every attack).
 - Finisher and follow-up tables (in the common data file, not read).
+- Everything in §2 to §5 about smashes, guard poses, priorities, momentum
+  and the Z-counter is from data and code, **not yet played**. §1 shows
+  what that is worth: the same script tool can test each of them (charge a
+  smash into each guard pose, trade a jab with a smash, Z-counter a jab
+  and a smash, time a charge before and after a long string).

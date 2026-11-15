@@ -16,8 +16,8 @@ per-move tables, and what follows for us are in
 [bt3_sauce.md](bt3_sauce.md), [god_hand_sauce.md](god_hand_sauce.md) and
 [gameplay_roadmap.md](gameplay_roadmap.md). Where they disagree with this
 file, they are newer: BT3's Z-counter only works against smashes and
-finishers (never rush punches), its light hitstun can be guarded out of,
-and its ki charge is fast (full gauge in ~4 s for most characters).
+finishers (never rush punches), a restarted string is blockable while a
+chained one is not (measured), and its ki charge is fast (full gauge in ~4 s for most characters).
 
 Only *mechanics and numbers* are recorded here, in our own words. Never copy
 code from either repo into this project (game code belongs to the rights

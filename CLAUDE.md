@@ -351,8 +351,10 @@ numbers from the two games' decompilations (converted to 60 Hz), with ideas
 for steering toward each; `docs/reference_mechanics.md` compares them with
 ours. `docs/bt3_sauce.md` / `docs/god_hand_sauce.md` explain why they feel
 good (BT3 per-move tables read from your own disc data with
-`tools/reference/bt3_data.py`); `docs/gameplay_roadmap.md` is the proposed
-fighter rebuild (not approved yet). Describe mechanics in our own words; never copy decomp code.
+`tools/reference/bt3_data.py`; `tools/reference/bt3_script.py` plays a
+scripted two-pad fight in the BT3 port headless and prints health per frame:
+test a BT3 rule there before copying it, code reading alone was wrong once);
+`docs/gameplay_roadmap.md` is the staged plan that follows (proposal). Describe mechanics in our own words; never copy decomp code.
 
 ## Known gaps
 

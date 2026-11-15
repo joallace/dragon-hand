@@ -75,7 +75,7 @@ agrees (median jab hits on frame 12, [bt3_sauce.md](bt3_sauce.md) §3).
 | Enemy state | How it starts | Best answer |
 |---|---|---|
 | Attacking | their turn | dodge that keeps you in range, then hit |
-| **Guarding** | they start blocking after eating a few hits of a string | a **guard break** move: slow, loses to a jab, but leaves them wide open |
+| **Guarding** | they start blocking after eating one to four hits of a string (varies; confirmed by play) | a **guard break** move: slow, loses to a jab, but leaves them wide open |
 | Guard broken / staggered | guard break, counter hit | your heaviest move or a launcher |
 | Launched | launcher; **gravity is lower on the way down** (11.7 up, 7.0 down) [V] | juggle; send them into a wall or into other enemies |
 | Dizzy | accumulated hits; 300f for the player, −10 per press [V] | context action: a mash **pummel** where mash rate sets the speed (×0.7–×2.0) [V] |
@@ -89,11 +89,14 @@ agrees (median jab hits on frame 12, [bt3_sauce.md](bt3_sauce.md) §3).
 - Counter hits (hitting an enemy during its attack) stagger harder [K]:
   aggression timed against a tell is the best damage in the game.
 
-For us: BT3's "soft hitstun, guard comes up" (§1 there) and God Hand's
-"enemies guard after a few hits, break it" are **the same idea** from two
-directions. Both make the second half of a string a question instead of a
-formality. It is the strongest point of agreement between the two games,
-and the one our game is missing.
+For us: this is the clearest thing God Hand has that neither BT3 nor our
+game has. In BT3 a chained string simply lands (measured,
+[bt3_sauce.md](bt3_sauce.md) §1) and the choice is how to end it; in God
+Hand the string itself stops working after one to four hits (you confirmed
+the number varies) and the fight moves to the guard break. For a versus
+game that would mean a defender who can **earn a guard mid-string** at a
+price, or CPU opponents who do; it is a design option, not something to
+copy blindly.
 
 ## 4. You build your own string
 
@@ -167,8 +170,8 @@ Both games agree that **personality is authored per type**.
 ## What to take, in order of leverage
 
 1. **States that demand different answers** (§3): guard → guard break,
-   launch → juggle, dizzy → pummel, downed → stomp or wait. Together with
-   BT3's soft hitstun this is the cure for "same plan always wins".
+   launch → juggle, dizzy → pummel, downed → stomp or wait. This is the
+   strongest candidate cure for "same plan always wins".
 2. **Tells** (§2): slower, readable startups on everything but the fastest
    jab, long level-scaled recoveries on CPU attacks.
 3. **Dodge as the aggressive defence** (§1), clearly separated from guard.

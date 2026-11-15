@@ -11,6 +11,14 @@ Full per-game notes, with "steer toward this game" idea lists:
 [bt3_reference.md](bt3_reference.md) and
 [god_hand_reference.md](god_hand_reference.md).
 
+**Second pass (2026-11-15):** why the two games stay fun, BT3's real
+per-move tables, and what follows for us are in
+[bt3_sauce.md](bt3_sauce.md), [god_hand_sauce.md](god_hand_sauce.md) and
+[gameplay_roadmap.md](gameplay_roadmap.md). Where they disagree with this
+file, they are newer: BT3's Z-counter only works against smashes and
+finishers (never rush punches), its light hitstun can be guarded out of,
+and its ki charge is fast (full gauge in ~4 s for most characters).
+
 Only *mechanics and numbers* are recorded here, in our own words. Never copy
 code from either repo into this project (game code belongs to the rights
 holders; the BT3 port code is AGPL).

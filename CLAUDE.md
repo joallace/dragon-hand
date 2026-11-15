@@ -334,7 +334,10 @@ Online in the browser: `docs/web_online.md`; servers: `server/README.md`.
 `docs/bt3_reference.md` and `docs/god_hand_reference.md` hold mechanics and
 numbers from the two games' decompilations (converted to 60 Hz), with ideas
 for steering toward each; `docs/reference_mechanics.md` compares them with
-ours. Describe mechanics in our own words; never copy decomp code.
+ours. `docs/bt3_sauce.md` / `docs/god_hand_sauce.md` explain why they feel
+good (BT3 per-move tables read from your own disc data with
+`tools/reference/bt3_data.py`); `docs/gameplay_roadmap.md` is the proposed
+fighter rebuild (not approved yet). Describe mechanics in our own words; never copy decomp code.
 
 ## Known gaps
 

@@ -265,6 +265,10 @@ is forced into a triple-speed auto rush and pays 0.1 bar.
 
 ## Unknown from the decomp
 
+*(2026-11-15: most of this is now readable from the unpacked disc data
+with `tools/reference/bt3_data.py`; results in
+[bt3_sauce.md](bt3_sauce.md).)*
+
 Per-character / per-attack data (charge rates, regen limits, speeds,
 damage, push, launch angles, guard results, cancel frames, which animations
 allow dodging/regen), the real-world size of a unit, and exactly which

@@ -11,6 +11,9 @@ const DEFAULT_SECONDS := 4.0
 const LOAD_TIMEOUT_SEC := 30.0
 const AUDIBLE_RMS := 0.02
 const SILENT_PEAK := 1e-3
+## After a swap to a silent song, the old song's delay/reverb tails still
+## decay for a while: "replaced" means this much quieter than it was.
+const REPLACED_PEAK := 0.05
 const FRAME_RATE := 60.0
 ## How long the autoload's stream is watched for the audio output pulling it.
 const OUTPUT_WAIT_SEC := 2.0
@@ -53,6 +56,21 @@ func _ready() -> void:
 	_check(not loaded[0], "a song that never finishes is stopped after %.0f ms: %s" % [loaded[2], loaded[1]])
 	stats = await _play(1.0)
 	_check(stats.rms > AUDIBLE_RMS, "and the match track is still playing (rms %.3f)" % stats.rms)
+
+	# A silent song: the level drops only if it really took over.
+	loaded = await _load("$: note(\"c3\").gain(0)")
+	_check(loaded[0], "a silent song loads %s" % [loaded.slice(0, 2)])
+	await _play(1.0)  # what was already queued ahead plays out
+	stats = await _play(1.0)
+	_check(stats.peak < REPLACED_PEAK, "and replaces the match track (peak %.5f)" % stats.peak)
+
+	if OS.has_feature("web"):
+		# A song that loads, then crashes while playing (a worker error):
+		# the playing song stops, but that is not a failed load.
+		loaded = await _load("setTimeout(() => { throw new Error('late') }, 300)\n$: s(\"bd*2\")")
+		_check(loaded[0], "a song that crashes later loads %s" % [loaded.slice(0, 2)])
+		await _play(1.0)
+		_check(_results.size() == 1, "and its crash is not reported as a load %s" % [_results])
 
 	loaded = await _load("setcpm(120)\n$: s(\"bd*2\")\n$: n(\"0 4 7\").scale(\"A:minor\").s(\"sawtooth\").lpf(900)")
 	_check(loaded[0] and loaded[1] == "", "a second song replaces it %s" % [loaded.slice(0, 2)])

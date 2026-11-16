@@ -25,6 +25,10 @@
 
   const MAX_BATCHES_PER_REPLY = 4; // of the synth's event buffer
   const BAD_SONG = 'the song stopped responding';
+  // A worker's messages are untrusted: what is passed on is bounded.
+  const MAX_WARNINGS = 16;
+  const MAX_MESSAGE_CHARS = 500;
+  const clip = (text) => String(text ?? '').slice(0, MAX_MESSAGE_CHARS);
   // Taken away from a song's worker once the bundle is imported.
   const WORKER_BLOCKED = [
     'fetch', 'XMLHttpRequest', 'WebSocket', 'WebTransport', 'EventSource', 'importScripts',
@@ -73,10 +77,16 @@
   let synthModule = null;
   let synthBase64 = null;
 
+  let bundleUrl = '';
+
   function workerUrlFor(bundleText) {
     if (bundleText !== workerBundle) {
+      // Running workers keep what they already imported.
+      if (workerUrl) URL.revokeObjectURL(workerUrl);
+      if (bundleUrl) URL.revokeObjectURL(bundleUrl);
       const blob = (text) => URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
-      workerUrl = blob(workerSource(blob(bundleText)));
+      bundleUrl = blob(bundleText);
+      workerUrl = blob(workerSource(bundleUrl));
       workerBundle = bundleText;
     }
     return workerUrl;
@@ -84,9 +94,14 @@
 
   function synthModuleFor(wasmBase64) {
     if (wasmBase64 !== synthBase64) {
-      const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
-      synthModule = WebAssembly.compile(bytes);
       synthBase64 = wasmBase64;
+      synthModule = Promise.resolve()
+        .then(() => WebAssembly.compile(Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0))))
+        .catch((error) => {
+          // Not cached: the next engine tries again.
+          if (synthBase64 === wasmBase64) synthBase64 = null;
+          throw error;
+        });
     }
     return synthModule;
   }
@@ -98,6 +113,7 @@
       this.synth = null; // WebAssembly exports
       this.fields = 0;
       this.ready = false;
+      this.broken = ''; // why the synth could not start
       this.closed = false;
       this.waitingCode = null; // load() before the synth was ready
       this.active = null; // the song being played
@@ -122,11 +138,17 @@
           if (this.waitingCode !== null) this.startLoad(this.waitingCode);
           this.waitingCode = null;
         })
-        .catch((error) => this.report(false, 'music synth failed to start: ' + error));
+        .catch((error) => {
+          this.broken = clip('music synth failed to start: ' + error);
+          if (this.waitingCode !== null) this.report(false, this.broken);
+          this.waitingCode = null;
+        });
     }
 
-    report(ok, message) {
-      this.results.push({ ok, message: String(message ?? '') });
+    // The outcome of a load (song_loaded), or with `loaded` false a note
+    // about the playing song (a warning only, as on desktop).
+    report(ok, message, loaded = true) {
+      this.results.push({ ok, loaded, message: clip(message) });
     }
 
     dispose(song) {
@@ -141,20 +163,25 @@
       }
     }
 
+    // A song still loading fails its load; the playing one is just stopped
+    // (silence until the next song, like a desktop song whose queries fail).
     fail(song, message) {
+      const loaded = song.stage !== 'play';
       this.dispose(song);
-      this.report(false, message);
+      this.report(false, loaded ? message : 'the playing song was stopped: ' + clip(message), loaded);
     }
 
     load(code) {
       if (this.closed) return;
-      if (!this.ready) this.waitingCode = code;
+      if (this.broken) this.report(false, this.broken);
+      else if (!this.ready) this.waitingCode = code;
       else this.startLoad(code);
     }
 
     startLoad(code) {
       if (this.loading) this.dispose(this.loading); // a newer song supersedes one still loading
-      const song = { worker: new Worker(this.workerUrl, { type: 'module' }), stage: 'boot', code, outstanding: 0, framesWaiting: 0, timer: 0 };
+      // `queries`: unanswered queries, oldest first ({ epoch, begin, seconds }).
+      const song = { worker: new Worker(this.workerUrl, { type: 'module' }), stage: 'boot', code, queries: [], framesWaiting: 0, timer: 0 };
       song.timer = setTimeout(() => this.fail(song, 'the music engine took too long to start'), this.config.boot_time_limit_msec);
       song.worker.onmessage = (event) => this.onMessage(song, event.data);
       song.worker.onerror = (event) => {
@@ -176,15 +203,26 @@
         clearTimeout(song.timer);
         if (m.ok !== true) return this.fail(song, m.error);
         song.stage = 'play';
-        if (this.active) this.dispose(this.active);
+        const previous = this.active;
+        if (previous) {
+          // What the old song was still asked for is lost with it: the new
+          // one is asked for that stretch again, so the change has no gap.
+          const first = previous.queries.find((q) => q.epoch === this.epoch);
+          if (first) {
+            this.cycle = first.begin;
+            this.scheduledUntil = first.seconds;
+          }
+          this.dispose(previous);
+        }
         this.loading = null;
         this.active = song;
         const c = this.config;
         this.cps = Number.isFinite(m.cps) && m.cps > 0 ? Math.min(Math.max(m.cps, c.min_cps), c.max_cps) : c.default_cps;
         this.playing = true;
-        this.report(true, Array.isArray(m.warnings) ? m.warnings.map(String).join('\n') : '');
-      } else if (m.type === 'events' && song.stage === 'play' && song.outstanding > 0) {
-        song.outstanding--;
+        const warnings = Array.isArray(m.warnings) ? m.warnings.slice(0, MAX_WARNINGS).map(clip) : [];
+        this.report(true, warnings.join('\n'));
+      } else if (m.type === 'events' && song.stage === 'play' && song.queries.length > 0) {
+        song.queries.shift();
         song.framesWaiting = 0;
         if (m.epoch === this.epoch && song === this.active) this.schedule(m.records);
       } else {
@@ -210,7 +248,7 @@
       const song = this.active;
       const c = this.config;
       if (!this.ready || !song || !this.playing) return;
-      if (song.outstanding > 0 && ++song.framesWaiting > c.reply_timeout_frames) {
+      if (song.queries.length > 0 && ++song.framesWaiting > c.reply_timeout_frames) {
         return this.fail(song, BAD_SONG);
       }
       const now = this.synth.music_time();
@@ -220,12 +258,12 @@
       while (1 / (steps * this.cps) > c.lookahead * 0.5 && steps < c.max_steps_per_cycle) steps *= 2;
       const slice = 1 / steps;
       const target = now + c.lookahead;
-      while (this.scheduledUntil < target && song.outstanding < c.max_steps_per_pump) {
+      while (this.scheduledUntil < target && song.queries.length < c.max_steps_per_pump) {
         song.worker.postMessage({
           type: 'query', epoch: this.epoch, begin: this.cycle, end: this.cycle + slice,
           seconds: this.scheduledUntil, cps: this.cps,
         });
-        song.outstanding++;
+        song.queries.push({ epoch: this.epoch, begin: this.cycle, seconds: this.scheduledUntil });
         this.cycle += slice;
         this.scheduledUntil += slice / this.cps;
       }
@@ -269,7 +307,7 @@
       return this.output;
     }
 
-    // Schedules, then the state as JSON: { time, voices, results: [{ ok, message }] }.
+    // Schedules, then the state as JSON: { time, voices, results: [{ ok, loaded, message }] }.
     tick() {
       this.pump();
       const state = JSON.stringify({

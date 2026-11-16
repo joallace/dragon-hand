@@ -115,8 +115,12 @@ func pump() -> void:
 	_time = float((state as Dictionary).get("time", _time))
 	_voices = int((state as Dictionary).get("voices", _voices))
 	for result: Variant in (state as Dictionary).get("results", []):
-		if result is Dictionary:
+		if not result is Dictionary:
+			continue
+		if bool(result.get("loaded", true)):
 			song_loaded.emit(bool(result.get("ok", false)), str(result.get("message", "")))
+		else:
+			push_warning("Music: " + str(result.get("message", "")))
 
 
 func render(frames: int) -> PackedVector2Array:

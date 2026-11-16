@@ -5,11 +5,12 @@
 // the events of a time window into flat records for the synth
 // (native/strudel/src/synth.h: the F and SRC tables below mirror its enums).
 //
-// Globals for the host:
-//   music_load(code)  -> { cps, warnings } ; throws on a bad song and keeps
-//                        the previous one
-//   music_query(begin_cycle, end_cycle, begin_seconds)
-//                     -> flat array, FIELDS numbers per event
+// Globals for the host (one runtime per song: the game boots a fresh one
+// for every load, so a song can only ever damage itself):
+//   music_load(code)  -> { cps, warnings } ; throws on a bad song
+//   music_query(begin_cycle, end_cycle, begin_seconds, cps)
+//                     -> flat array, FIELDS numbers per event; the game owns
+//                        the tempo (it clamps the song's cps)
 //   music_fields()    -> FIELDS
 import './shim.mjs';
 import * as core from '@strudel/core';
@@ -48,26 +49,29 @@ const DEFAULT_PAN = 0.5;
 const DEFAULT_VIBMOD = 0.5;
 const ROOM_SIZE_FULL = 8; // Strudel room sizes run in seconds; the synth takes 0..1
 const KEEP = -1; // "leave the global effect setting alone"
+const MAX_WARNINGS = 16;
 
 let pattern = core.silence;
-let cps = DEFAULT_CPS;
-let unknownSources = new Set();
+const warnings = new Set();
+const warn = (text) => { if (warnings.size < MAX_WARNINGS) warnings.add(text); };
 
 const number = (value, fallback) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 
 // Envelope defaults the way Strudel fills them in: all unset -> the preset;
 // otherwise a missing sustain is full unless a decay was given.
 function envelope(a, d, s, r, preset) {
+  [a, d, s, r] = [a, d, s, r].map((x) => (x == null ? null : number(x, 0)));
   if (a == null && d == null && s == null && r == null) return preset;
   const sustain = s != null ? s : (a != null && d == null) || (a == null && d == null) ? 1 : ENVELOPE_MIN;
   return [Math.max(a ?? 0, ENVELOPE_MIN), Math.max(d ?? 0, ENVELOPE_MIN), Math.min(sustain, 1), Math.max(r ?? 0, RELEASE_MIN)];
 }
 
+// Hz, or 0 (which the synth skips) when the note makes no sense.
 function frequency(value) {
-  if (typeof value.freq === 'number') return value.freq;
+  if (typeof value.freq === 'number') return number(value.freq, 0);
   let note = value.note ?? value.n ?? DEFAULT_NOTE;
-  if (typeof note === 'string') note = core.noteToMidi(note);
-  return typeof note === 'number' ? core.midiToFreq(note) : 0;
+  if (typeof note === 'string') note = core.noteToMidi(note); // throws on a name it cannot read
+  return typeof note === 'number' ? number(core.midiToFreq(note), 0) : 0;
 }
 
 const decibels = (db) => Math.pow(10, db / 20);
@@ -76,11 +80,11 @@ function record(out, hap, start, duration) {
   const value = hap.value;
   if (value == null || typeof value !== 'object') return;
   const name = String(value.s ?? DEFAULT_SOURCE).split(':')[0].toLowerCase();
-  const source = SRC[name];
-  if (source === undefined) {
-    unknownSources.add(name);
+  if (!Object.hasOwn(SRC, name)) {
+    warn(`unknown sound "${name}"`);
     return;
   }
+  const source = SRC[name];
   const drum = source >= FIRST_DRUM;
   const base = out.length;
   for (let i = 0; i < FIELDS; i++) out.push(0);
@@ -140,6 +144,26 @@ await core.evalScope(core, mini, tonal, {
 
 globalThis.music_fields = () => FIELDS;
 
+// Events of [beginCycle, endCycle) as synth records. An event that cannot
+// be converted (e.g. a note name Strudel cannot read) is left out with a
+// warning instead of taking the rest of the window with it.
+function collect(source, beginCycle, endCycle, beginSeconds, cps) {
+  const out = [];
+  for (const hap of source.queryArc(beginCycle, endCycle)) {
+    if (!hap.hasOnset()) continue;
+    const begin = hap.whole.begin.valueOf();
+    const duration = (hap.whole.end.valueOf() - begin) / cps;
+    const length = out.length;
+    try {
+      record(out, hap, beginSeconds + (begin - beginCycle) / cps, duration);
+    } catch (error) {
+      out.length = length;
+      warn(String(error?.message ?? error));
+    }
+  }
+  return out;
+}
+
 globalThis.music_load = async (code) => {
   evalError = null;
   strudel.setCps(DEFAULT_CPS); // each song starts from Strudel's default tempo
@@ -148,22 +172,16 @@ globalThis.music_load = async (code) => {
   if (!evaluated || typeof evaluated.queryArc !== 'function') {
     throw new Error('the song did not evaluate to a pattern');
   }
-  evaluated.queryArc(0, 1); // a song that cannot be queried fails here, before it replaces the old one
-  const songCps = strudel.scheduler.cps;
+  // Try the first cycle before accepting the song: a pattern that cannot be
+  // queried throws here, and what it uses that the synth lacks is listed.
+  warnings.clear();
+  const first = collect(evaluated, 0, 1, 0, DEFAULT_CPS);
+  if (first.length === 0 && warnings.size > 0) {
+    throw new Error([...warnings][0]);
+  }
   pattern = evaluated;
-  cps = songCps > 0 && Number.isFinite(songCps) ? songCps : DEFAULT_CPS;
-  unknownSources = new Set();
-  music_query(0, 1, 0); // collects unknown sound names from the first cycle
-  return { cps, warnings: [...unknownSources].map((name) => `unknown sound "${name}"`) };
+  return { cps: Number(strudel.scheduler.cps), warnings: [...warnings] };
 };
 
-globalThis.music_query = (beginCycle, endCycle, beginSeconds) => {
-  const out = [];
-  for (const hap of pattern.queryArc(beginCycle, endCycle)) {
-    if (!hap.hasOnset()) continue;
-    const begin = hap.whole.begin.valueOf();
-    const duration = (hap.whole.end.valueOf() - begin) / cps;
-    record(out, hap, beginSeconds + (begin - beginCycle) / cps, duration);
-  }
-  return out;
-};
+globalThis.music_query = (beginCycle, endCycle, beginSeconds, cps) =>
+  collect(pattern, beginCycle, endCycle, beginSeconds, cps);

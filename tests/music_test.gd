@@ -22,6 +22,7 @@ $: kick
 _$: s("hh*16")
 """
 const AUDIO_SETTLE_FRAMES := 10
+const STOP_SETTLE_FRAMES := 30
 
 var _failures := 0
 var _events: Array = []  # [ok, message] from the engine / autoload under test
@@ -36,6 +37,7 @@ func _ready() -> void:
 	_test_synth_sources()
 	_test_synth_shaping()
 	_test_synth_robustness()
+	_test_runtime_limits()
 	await _test_engine()
 	await _test_autoload()
 	print("music_test: %s" % ("FAIL" if _failures > 0 else "PASS"))
@@ -238,6 +240,35 @@ func _test_synth_robustness() -> void:
 	_check(d.get_active_voices() <= 64, "voice count capped (%d)" % d.get_active_voices())
 	_check(d.render(0).is_empty() and d.render(-5).is_empty(), "render(<= 0) is empty")
 
+	# Values a song can produce must not poison the delay / reverb lines.
+	var poisons := {
+		"huge gain": {F.GAIN: 1e40, F.ROOM: 0.5},
+		"infinite frequency": {F.FREQ: INF, F.DELAY: 0.5},
+		"NaN sustain": {F.SUSTAIN: NAN, F.ROOM: 0.2},
+		"huge filter envelope": {F.CUTOFF: 500.0, F.LPENV: 1e300, F.DELAY: 0.3},
+		"NaN everywhere": {F.DURATION: NAN, F.ATTACK: NAN, F.CUTOFF: NAN, F.PAN: NAN, F.DELAY: NAN,
+				F.DELAYTIME: NAN, F.ROOM: NAN, F.FMI: NAN, F.VIB: NAN, F.SHAPE: NAN, F.CRUSH: NAN},
+	}
+	for label: String in poisons:
+		var p := _synth()
+		p.schedule(_event(0.0, Src.SAWTOOTH, poisons[label]))
+		p.render(_seconds(4.0))
+		p.schedule(_event(4.0, Src.SINE))
+		var after: PackedVector2Array = p.render(_seconds(0.4))
+		var clean := true
+		for f in after:
+			clean = clean and is_finite(f.x) and is_finite(f.y)
+		_check(clean and _peak(after, _seconds(0.1)) > 0.2, "%s does not poison later notes" % label)
+
+	var clog := PackedFloat64Array()
+	for i in 3000:
+		clog.append_array(_event(1e8, Src.SINE))
+	var e := _synth()
+	e.schedule(clog)
+	_check(e.get_pending_events() == 0, "events far in the future are refused (%d queued)" % e.get_pending_events())
+	e.schedule(_event(0.0, Src.SINE))
+	_check(_peak(e.render(_seconds(0.2))) > 0.2, "the queue still takes notes after a far-future flood")
+
 
 func _on_loaded(ok: bool, message: String) -> void:
 	_events.append([ok, message])
@@ -307,10 +338,80 @@ func _test_engine() -> void:
 	result = await _load(engine, "x".repeat(Tuning.music.max_song_bytes + 1))
 	_check(not result[0] and result[1].contains("larger"), "oversized song rejected")
 
+	await _test_hostile_songs(engine)
+
 	engine.restart()
 	engine.pump()
 	_check(engine.synth_time() == 0.0 and _peak(engine.render(_seconds(0.5))) < SILENCE, "restart rewinds to silence")
 	engine.stop()
+
+
+## Songs a player could type that must not break the engine for the next one.
+func _test_hostile_songs(engine: StrudelEngine) -> void:
+	var good := "s(\"bd*4\")"
+	var result: Array = await _load(engine, good)
+	_check(result[0], "good song loads before the hostile ones")
+
+	result = await _load(engine, "note(\"zz\").s(\"sine\")")
+	_check(not result[0], "a song whose notes cannot be read is rejected: %s" % result[1])
+	_check(_rms(_play(engine, 1.0)) > 0.02, "and the previous song keeps playing")
+
+	result = await _load(engine, "(globalThis.music_query = () => [], globalThis.music_load = () => "
+			+ "({ cps: 0.5, warnings: ['owned'] }), s(\"bd*4\"))")
+	result = await _load(engine, good)
+	_check(result[0] and result[1] == "", "a song cannot replace the host for the next song %s" % [result])
+	_check(_rms(_play(engine, 1.0)) > 0.02, "next song still sounds")
+
+	result = await _load(engine, "(Promise.resolve().then(function f() { Promise.resolve().then(f); "
+			+ "Promise.resolve().then(f); }), s(\"bd\"))")
+	_check(not result[0], "a song that floods the job queue fails: %s" % result[1])
+	var start := Time.get_ticks_msec()
+	result = await _load(engine, good)
+	_check(result[0] and Time.get_ticks_msec() - start < Tuning.music.load_time_limit_msec,
+			"the engine recovers right after it")
+	_check(_rms(_play(engine, 1.0)) > 0.02, "and plays")
+
+	for tempo: String in ["1e300", "1e5", "1e-9", "NaN", "-3"]:
+		result = await _load(engine, "setcps(%s)\n$: s(\"bd*4\")" % tempo)
+		start = Time.get_ticks_msec()
+		var out := _play(engine, 1.0)
+		var elapsed := Time.get_ticks_msec() - start
+		var finite := true
+		for f in out:
+			finite = finite and is_finite(f.x)
+		_check(finite and elapsed < 3000, "setcps(%s) cannot stall the scheduler (%d ms for 1 s)" % [tempo, elapsed])
+	result = await _load(engine, good)
+	_check(result[0] and _rms(_play(engine, 1.0)) > 0.02, "normal tempo plays after the extreme ones")
+
+	result = await _load(engine, "s(\"bd constructor toString hasOwnProperty\")")
+	_check(result[0] and result[1].contains("constructor") and result[1].contains("tostring"),
+			"inherited property names are unknown sounds: %s" % result[1])
+	result = await _load(engine, "note(\"<c3 zz>\").s(\"sine\")")
+	_check(_rms(_play(engine, 4.0)) > 0.005, "one unreadable note does not silence the rest")
+	result = await _load(engine, "s(\"sawtooth\").gain(1e40).room(.5).freq(Infinity).sustain(NaN)")
+	_play(engine, 2.0)
+	result = await _load(engine, good)
+	var later := _play(engine, 1.0)
+	var ok := _rms(later) > 0.02
+	for f in later:
+		ok = ok and is_finite(f.x) and is_finite(f.y)
+	_check(ok, "extreme event values do not poison the next song")
+
+
+func _test_runtime_limits() -> void:
+	var js: RefCounted = ClassDB.instantiate(&"JsRuntime")
+	js.set_time_limit_msec(200)
+	var start := Time.get_ticks_msec()
+	var sparse: Variant = js.eval("var a = []; a.length = 40000000; a")
+	_check(js.has_error() and Time.get_ticks_msec() - start < 1000,
+			"a huge sparse array is refused, not converted (%d ms)" % (Time.get_ticks_msec() - start))
+	start = Time.get_ticks_msec()
+	js.eval("var b = {}; b.a = b; b.b = b; b")
+	_check(js.has_error() and Time.get_ticks_msec() - start < 1000,
+			"a self-referencing object is refused (%d ms)" % (Time.get_ticks_msec() - start))
+	_check(js.eval("[1, [2, 3], { k: 'v' }]") == [1, [2, 3], {"k": "v"}] and not js.has_error(),
+			"ordinary values still convert")
+	_check(sparse == null, "nothing returned for the refused value")
 
 
 func _test_autoload() -> void:
@@ -333,6 +434,13 @@ func _test_autoload() -> void:
 	_check(not _events.is_empty() and not _events[0][0], "song_failed for a missing file")
 	Music.stop()
 	_check(not Music.is_playing(), "stopped")
+	# A song queued just before stop() must not start afterwards.
+	_events.clear()
+	Music.play_file(DEMO)
+	Music.stop()
+	for i in STOP_SETTLE_FRAMES:
+		await get_tree().process_frame
+	_check(_events.is_empty(), "stop() drops a song that was still loading %s" % [_events])
 	# The audio server releases a stopped playback on its next mixes.
 	for i in AUDIO_SETTLE_FRAMES:
 		await get_tree().process_frame

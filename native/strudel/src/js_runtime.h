@@ -60,6 +60,7 @@ private:
 	int time_limit_msec = 0;
 	std::chrono::steady_clock::time_point deadline;
 	bool has_deadline = false;
+	int64_t convert_budget = 0; // values left for the result being converted
 
 	void begin_call();
 	// Consumes p_value: awaits promises, records exceptions, converts.

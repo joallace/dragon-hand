@@ -26909,31 +26909,35 @@ var DEFAULT_PAN = 0.5;
 var DEFAULT_VIBMOD = 0.5;
 var ROOM_SIZE_FULL = 8;
 var KEEP = -1;
+var MAX_WARNINGS = 16;
 var pattern = q2;
-var cps = DEFAULT_CPS;
-var unknownSources = /* @__PURE__ */ new Set();
+var warnings = /* @__PURE__ */ new Set();
+var warn = (text) => {
+  if (warnings.size < MAX_WARNINGS) warnings.add(text);
+};
 var number = (value2, fallback) => typeof value2 === "number" && Number.isFinite(value2) ? value2 : fallback;
 function envelope(a2, d2, s2, r, preset) {
+  [a2, d2, s2, r] = [a2, d2, s2, r].map((x2) => x2 == null ? null : number(x2, 0));
   if (a2 == null && d2 == null && s2 == null && r == null) return preset;
   const sustain = s2 != null ? s2 : a2 != null && d2 == null || a2 == null && d2 == null ? 1 : ENVELOPE_MIN;
   return [Math.max(a2 ?? 0, ENVELOPE_MIN), Math.max(d2 ?? 0, ENVELOPE_MIN), Math.min(sustain, 1), Math.max(r ?? 0, RELEASE_MIN)];
 }
 function frequency(value2) {
-  if (typeof value2.freq === "number") return value2.freq;
+  if (typeof value2.freq === "number") return number(value2.freq, 0);
   let note3 = value2.note ?? value2.n ?? DEFAULT_NOTE;
   if (typeof note3 === "string") note3 = gt2(note3);
-  return typeof note3 === "number" ? it2(note3) : 0;
+  return typeof note3 === "number" ? number(it2(note3), 0) : 0;
 }
 var decibels = (db) => Math.pow(10, db / 20);
 function record(out, hap, start, duration) {
   const value2 = hap.value;
   if (value2 == null || typeof value2 !== "object") return;
   const name3 = String(value2.s ?? DEFAULT_SOURCE).split(":")[0].toLowerCase();
-  const source = SRC[name3];
-  if (source === void 0) {
-    unknownSources.add(name3);
+  if (!Object.hasOwn(SRC, name3)) {
+    warn(`unknown sound "${name3}"`);
     return;
   }
+  const source = SRC[name3];
   const drum = source >= FIRST_DRUM;
   const base = out.length;
   for (let i2 = 0; i2 < FIELDS; i2++) out.push(0);
@@ -26991,6 +26995,22 @@ await xn(dist_exports, dist_exports2, dist_exports6, {
   // synths only: sample packs are ignored
 });
 globalThis.music_fields = () => FIELDS;
+function collect(source, beginCycle, endCycle, beginSeconds, cps) {
+  const out = [];
+  for (const hap of source.queryArc(beginCycle, endCycle)) {
+    if (!hap.hasOnset()) continue;
+    const begin = hap.whole.begin.valueOf();
+    const duration = (hap.whole.end.valueOf() - begin) / cps;
+    const length = out.length;
+    try {
+      record(out, hap, beginSeconds + (begin - beginCycle) / cps, duration);
+    } catch (error) {
+      out.length = length;
+      warn(String(error?.message ?? error));
+    }
+  }
+  return out;
+}
 globalThis.music_load = async (code) => {
   evalError = null;
   strudel.setCps(DEFAULT_CPS);
@@ -26999,21 +27019,12 @@ globalThis.music_load = async (code) => {
   if (!evaluated || typeof evaluated.queryArc !== "function") {
     throw new Error("the song did not evaluate to a pattern");
   }
-  evaluated.queryArc(0, 1);
-  const songCps = strudel.scheduler.cps;
-  pattern = evaluated;
-  cps = songCps > 0 && Number.isFinite(songCps) ? songCps : DEFAULT_CPS;
-  unknownSources = /* @__PURE__ */ new Set();
-  music_query(0, 1, 0);
-  return { cps, warnings: [...unknownSources].map((name3) => `unknown sound "${name3}"`) };
-};
-globalThis.music_query = (beginCycle, endCycle, beginSeconds) => {
-  const out = [];
-  for (const hap of pattern.queryArc(beginCycle, endCycle)) {
-    if (!hap.hasOnset()) continue;
-    const begin = hap.whole.begin.valueOf();
-    const duration = (hap.whole.end.valueOf() - begin) / cps;
-    record(out, hap, beginSeconds + (begin - beginCycle) / cps, duration);
+  warnings.clear();
+  const first = collect(evaluated, 0, 1, 0, DEFAULT_CPS);
+  if (first.length === 0 && warnings.size > 0) {
+    throw new Error([...warnings][0]);
   }
-  return out;
+  pattern = evaluated;
+  return { cps: Number(strudel.scheduler.cps), warnings: [...warnings] };
 };
+globalThis.music_query = (beginCycle, endCycle, beginSeconds, cps) => collect(pattern, beginCycle, endCycle, beginSeconds, cps);

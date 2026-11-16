@@ -94,7 +94,7 @@ func _test_strudel() -> void:
 	var info: Variant = js.call_global("music_load", ["note(\"c3 [e3 g3]\").s(\"sawtooth\").lpf(800)"])
 	_check(info is Dictionary and info["cps"] == 0.5 and info["warnings"] == [],
 			"simple pattern evaluates %s %s" % [info, js.get_error()])
-	var events: Array = js.call_global("music_query", [0.0, 1.0, 10.0])
+	var events: Array = js.call_global("music_query", [0.0, 1.0, 10.0, 0.5])
 	_check(events.size() == 3 * fields, "3 events in cycle 0")
 	if events.size() == 3 * fields:
 		# start (s), duration (s), source (1 = sawtooth), frequency: c3 for half a 2 s cycle.
@@ -108,12 +108,12 @@ func _test_strudel() -> void:
 	start = Time.get_ticks_usec()
 	var total := 0
 	for cycle in BENCH_CYCLES:
-		total += (js.call_global("music_query", [float(cycle), float(cycle + 1), 0.0]) as Array).size() / fields
+		total += (js.call_global("music_query", [float(cycle), float(cycle + 1), 0.0, 1.5]) as Array).size() / fields
 	var per_cycle := float(Time.get_ticks_usec() - start) / 1000.0 / BENCH_CYCLES
 	_check(total == BENCH_CYCLES * SONG_EVENTS_PER_CYCLE, "song events (%d), muted _$: line left out" % total)
 	print("INFO query cost: %.2f ms per cycle (%d events/cycle, into Godot Arrays)" % [per_cycle, total / BENCH_CYCLES])
 
 	js.call_global("music_load", ["note(\"c3\").nope()"])
 	_check(js.has_error(), "bad song reports an error: " + js.get_error().get_slice("\n", 0))
-	_check((js.call_global("music_query", [0.0, 1.0, 0.0]) as Array).size() == SONG_EVENTS_PER_CYCLE * fields,
+	_check((js.call_global("music_query", [0.0, 1.0, 0.0, 1.5]) as Array).size() == SONG_EVENTS_PER_CYCLE * fields,
 			"previous song kept after a bad one")

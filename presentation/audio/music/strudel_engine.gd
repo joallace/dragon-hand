@@ -10,6 +10,11 @@ extends RefCounted
 ##
 ## Song changes keep the cycle position, so a new section comes in on the
 ## grid; restart() rewinds to cycle 0.
+##
+## Song code is untrusted (players may type it). Every song gets its own
+## fresh JsRuntime, swapped in only if the song loads, so a song that fails,
+## times out or tampers with the host cannot affect the one playing or the
+## next; the tempo it asks for is clamped; one scheduling pass is bounded.
 
 ## (ok, message): message is the error, or warnings joined by newlines.
 signal song_loaded(ok: bool, message: String)
@@ -18,6 +23,8 @@ signal song_loaded(ok: bool, message: String)
 const BUNDLE := "res://presentation/audio/music/strudel_bundle.mjs"
 const BUNDLE_MODULE := "music/bundle.mjs"
 const BOOT := "import '%s';" % BUNDLE_MODULE
+## Finest query slice (a power of two), reached only at the slowest tempos.
+const MAX_STEPS_PER_CYCLE := 1 << 16
 
 var _js: RefCounted  # JsRuntime
 var _synth: RefCounted  # StrudelSynth
@@ -30,10 +37,9 @@ var _has_pending := false
 var _restart := false
 var _playing := false
 # Worker-only state.
-var _cps := 0.5
-var _step := 0  # scheduled through cycle _step / query_steps_per_cycle
+var _cps := 1.0
+var _cycle := 0.0  # scheduled through this cycle (a dyadic fraction, so sums stay exact)
 var _scheduled_until := 0.0  # synth seconds
-var _booted := false
 
 
 static func available() -> bool:
@@ -84,6 +90,15 @@ func restart() -> void:
 	_lock.unlock()
 
 
+## restart(), and a song still waiting to be loaded is dropped.
+func halt() -> void:
+	_lock.lock()
+	_restart = true
+	_has_pending = false
+	_pending_song = ""
+	_lock.unlock()
+
+
 ## Stereo frames at the sample rate given to _init (silence when unavailable).
 func render(frames: int) -> PackedVector2Array:
 	if _synth == null:
@@ -117,7 +132,7 @@ func pump() -> void:
 
 	if rewind:
 		_synth.reset()
-		_step = 0
+		_cycle = 0.0
 		_scheduled_until = 0.0
 		_playing = false
 	if has_song:
@@ -137,54 +152,79 @@ func _worker() -> void:
 		OS.delay_msec(Tuning.music.worker_idle_msec)
 
 
-func _boot() -> String:
-	_js = ClassDB.instantiate(&"JsRuntime")
-	_js.set_memory_limit(Tuning.music.memory_limit_bytes)
-	_js.set_time_limit_msec(Tuning.music.load_time_limit_msec)
-	_js.add_module(BUNDLE_MODULE, FileAccess.get_file_as_string(BUNDLE))
-	if not _js.run_module(BOOT, "music/boot.mjs"):
-		return "music engine failed to start: " + _js.get_error()
-	if int(_js.call_global("music_fields", [])) != _fields:
-		return "music host and synth disagree on the event layout"
-	_booted = true
-	return ""
+func _is_running() -> bool:
+	_lock.lock()
+	var running := _running
+	_lock.unlock()
+	return running
+
+
+## A booted runtime, or null with `error[0]` set.
+func _new_runtime(error: Array[String]) -> RefCounted:
+	var js: RefCounted = ClassDB.instantiate(&"JsRuntime")
+	js.set_memory_limit(Tuning.music.memory_limit_bytes)
+	js.set_time_limit_msec(Tuning.music.load_time_limit_msec)
+	js.add_module(BUNDLE_MODULE, FileAccess.get_file_as_string(BUNDLE))
+	if not js.run_module(BOOT, "music/boot.mjs"):
+		error.append("music engine failed to start: " + js.get_error())
+		return null
+	if js.call_global("music_fields", []) != _fields:
+		error.append("music host and synth disagree on the event layout")
+		return null
+	return js
 
 
 func _load(code: String) -> void:
-	var error := ""
-	if not _booted:
-		error = _boot()
-	if error.is_empty() and code.to_utf8_buffer().size() > Tuning.music.max_song_bytes:
-		error = "song is larger than %d bytes" % Tuning.music.max_song_bytes
-	if not error.is_empty():
-		_report(false, error)
+	if code.to_utf8_buffer().size() > Tuning.music.max_song_bytes:
+		_report(false, "song is larger than %d bytes" % Tuning.music.max_song_bytes)
 		return
-	_js.set_time_limit_msec(Tuning.music.load_time_limit_msec)
-	var result: Variant = _js.call_global("music_load", [code])
-	if _js.has_error() or not result is Dictionary:
-		# The host keeps the previous song, so playback carries on.
-		_report(false, _js.get_error().get_slice("\n", 0))
+	var error: Array[String] = []
+	var js := _new_runtime(error)
+	if js == null:
+		_report(false, error[0])
+		return
+	js.set_time_limit_msec(Tuning.music.load_time_limit_msec)
+	var result: Variant = js.call_global("music_load", [code])
+	if js.has_error() or not result is Dictionary:
+		# `js` is dropped; the current song and its runtime are untouched.
+		_report(false, js.get_error().get_slice("\n", 0))
 		return
 	var info: Dictionary = result
-	_cps = maxf(float(info.get("cps", _cps)), 0.001)
+	var cps: Variant = info.get("cps")
+	_cps = Tuning.music.default_cps
+	if (cps is float or cps is int) and is_finite(cps) and cps > 0.0:
+		_cps = clampf(cps, Tuning.music.min_cps, Tuning.music.max_cps)
+	_js = js
 	_playing = true
-	_report(true, "\n".join(PackedStringArray(info.get("warnings", []))))
+	var warnings := PackedStringArray()
+	for warning: Variant in info.get("warnings", []):
+		warnings.append(str(warning))
+	_report(true, "\n".join(warnings))
 
 
 func _schedule_ahead() -> void:
-	var steps := maxi(Tuning.music.query_steps_per_cycle, 1)
 	var target: float = _synth.get_time() + Tuning.music.lookahead
 	# After a stall (or the first song), don't burst through the missed time.
 	_scheduled_until = maxf(_scheduled_until, _synth.get_time())
+	# Slices are halved (boundaries stay exact floats) until one lasts at
+	# most half the lookahead, so even a very slow song is queued only a
+	# moment ahead and a song change is heard within the lookahead.
+	var steps := maxi(Tuning.music.query_steps_per_cycle, 1)
+	while 1.0 / (steps * _cps) > Tuning.music.lookahead * 0.5 and steps < MAX_STEPS_PER_CYCLE:
+		steps *= 2
+	var slice := 1.0 / steps
 	_js.set_time_limit_msec(Tuning.music.query_time_limit_msec)
-	while _scheduled_until < target:
-		var begin := float(_step) / steps
-		var end := float(_step + 1) / steps
-		var records: Variant = _js.call_global("music_query", [begin, end, _scheduled_until])
-		if records is Array and not (records as Array).is_empty():
+	var passes := 0
+	# Bounded: a fast tempo takes several pumps to catch up instead of
+	# holding the thread (and stop() waiting on it).
+	while _scheduled_until < target and passes < Tuning.music.max_steps_per_pump and _is_running():
+		var records: Variant = _js.call_global("music_query", [_cycle, _cycle + slice, _scheduled_until, _cps])
+		if not _js.has_error() and records is Array and (records as Array).size() % _fields == 0 \
+				and not (records as Array).is_empty():
 			_synth.schedule(PackedFloat64Array(records as Array))
-		_step += 1
-		_scheduled_until += 1.0 / (steps * _cps)
+		_cycle += slice
+		_scheduled_until += slice / _cps
+		passes += 1
 
 
 func _report(ok: bool, message: String) -> void:

@@ -24,6 +24,7 @@ Settings="*res://core/settings/settings.gd"
 Bindings="*res://core/input/bindings_store.gd"
 Game="*res://core/game.gd"
 Sfx="*res://presentation/audio/sfx.gd"
+Music="*res://presentation/audio/music.gd"
 Net="*res://core/net/net.gd"
 
 [display]

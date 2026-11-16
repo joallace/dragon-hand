@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds the JsRuntime GDExtension into native/js_runtime/bin/.
-#   native/js_runtime/build.sh            # Linux x86_64 (cmake, a C/C++ compiler)
-#   native/js_runtime/build.sh windows    # cross-build, needs mingw-w64
+# Builds the Strudel GDExtension (JsRuntime + StrudelSynth) into native/strudel/bin/.
+#   native/strudel/build.sh            # Linux x86_64 (cmake, a C/C++ compiler)
+#   native/strudel/build.sh windows    # cross-build, needs mingw-w64
 #                                         # (Arch: pacman -S mingw-w64-gcc)
 # Dependencies are cloned at pinned commits into .deps/ (gitignored; Godot
 # skips dot-directories).

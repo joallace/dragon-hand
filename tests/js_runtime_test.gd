@@ -1,5 +1,5 @@
 extends Node
-## Headless test for the JsRuntime GDExtension (native/js_runtime) and for
+## Headless test for the JsRuntime GDExtension (native/strudel) and for
 ## Strudel's unmodified pattern engine (third_party/strudel) running in it:
 ##   godot --headless res://tests/js_runtime_test.tscn
 ## Skips (PASS) when the extension library isn't built for this platform.

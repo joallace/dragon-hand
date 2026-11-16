@@ -20,6 +20,7 @@ func _init() -> void:
 func _ready() -> void:
 	var names := {
 		AudioSettings.MASTER: ["Master volume", "Overall volume."],
+		Tuning.music.bus: ["Music volume", "Background music."],
 		Tuning.sfx.bus: ["Effects volume", "Hits, ki, movement and other match sounds."],
 		Tuning.sfx.ui_bus: ["Menu volume", "Menu navigation and confirmation sounds."],
 	}

@@ -5,5 +5,5 @@ builds/
 build/
 
 # JsRuntime GDExtension: fetched deps and build trees (bin/ is committed)
-native/js_runtime/.deps/
-native/js_runtime/.build/
+native/strudel/.deps/
+native/strudel/.build/

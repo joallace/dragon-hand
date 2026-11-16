@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "strudel_library_init"
+compatibility_minimum = "4.3"
+reloadable = false
+
+[libraries]
+
+linux.x86_64 = "res://native/strudel/bin/libstrudel.linux.x86_64.so"

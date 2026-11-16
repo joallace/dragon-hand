@@ -1,10 +1,11 @@
-# JsRuntime GDExtension: quickjs-ng behind a small Godot class.
-#   cmake -S native/js_runtime -B <build> -DCMAKE_BUILD_TYPE=Release \
+# Strudel GDExtension: JsRuntime (quickjs-ng) + StrudelSynth (src/synth.c).
+# Use build.sh, which fetches the pinned dependencies; by hand:
+#   cmake -S native/strudel -B <build> -DCMAKE_BUILD_TYPE=Release \
 #     -DGODOT_CPP_DIR=<godot-cpp checkout> -DQUICKJS_DIR=<quickjs-ng checkout>
 #   cmake --build <build> -j
-# The library lands in native/js_runtime/bin/.
+# The library lands in native/strudel/bin/.
 cmake_minimum_required(VERSION 3.17)
-project(js_runtime C CXX)
+project(strudel C CXX)
 
 set(GODOT_CPP_DIR "" CACHE PATH "godot-cpp checkout (10.x)")
 set(QUICKJS_DIR "" CACHE PATH "quickjs-ng checkout")
@@ -13,7 +14,7 @@ if(NOT GODOT_CPP_DIR OR NOT QUICKJS_DIR)
 endif()
 
 set(GODOTCPP_TARGET "template_release" CACHE STRING "")
-# Oldest API with everything JsRuntime uses; newer engines load it as is.
+# Oldest API with everything the classes use; newer engines load it as is.
 set(GODOTCPP_API_VERSION "4.3" CACHE STRING "")
 add_subdirectory(${GODOT_CPP_DIR} godot-cpp EXCLUDE_FROM_ALL)
 
@@ -34,23 +35,27 @@ if(NOT MSVC)
     target_compile_options(quickjs PRIVATE -w)
 endif()
 
-add_library(js_runtime SHARED
+add_library(strudel SHARED
     src/js_runtime.cpp
+    src/strudel_synth.cpp
+    src/synth.c
     src/register_types.cpp
 )
-target_link_libraries(js_runtime PRIVATE godot-cpp quickjs)
+set_source_files_properties(src/synth.c PROPERTIES COMPILE_OPTIONS "-O3;-Wall;-Wextra")
+target_link_libraries(strudel PRIVATE godot-cpp quickjs)
 if(UNIX AND NOT APPLE)
-    target_link_libraries(js_runtime PRIVATE m)
-    target_link_options(js_runtime PRIVATE -Wl,--gc-sections -s)
+    target_link_libraries(strudel PRIVATE m)
+    target_link_options(strudel PRIVATE -Wl,--gc-sections -s)
 endif()
 if(WIN32)
-    target_link_options(js_runtime PRIVATE -static -s)
+    target_link_options(strudel PRIVATE -static -s)
 endif()
 
-string(TOLOWER "${CMAKE_SYSTEM_NAME}" JS_RUNTIME_PLATFORM)
-set_target_properties(js_runtime PROPERTIES
+string(TOLOWER "${CMAKE_SYSTEM_NAME}" STRUDEL_PLATFORM)
+set_target_properties(strudel PROPERTIES
+    C_STANDARD 11
     PREFIX "lib"
-    OUTPUT_NAME "js_runtime.${JS_RUNTIME_PLATFORM}.x86_64"
+    OUTPUT_NAME "strudel.${STRUDEL_PLATFORM}.x86_64"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
 )

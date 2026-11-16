@@ -28,7 +28,7 @@ static func load_from(p: String = DEFAULT_PATH) -> AudioSettings:
 
 ## The buses the player controls, in menu order.
 static func buses() -> Array[StringName]:
-	return [MASTER, Tuning.sfx.bus, Tuning.sfx.ui_bus]
+	return [MASTER, Tuning.music.bus, Tuning.sfx.bus, Tuning.sfx.ui_bus]
 
 
 func reset_defaults() -> void:

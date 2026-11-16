@@ -1,0 +1,10 @@
+// Engine demo: bass, lead and drums. Not the game's theme.
+stack(
+  note("<c2 c2 ab1 bb1>*2").s("sawtooth").lpf(sine.range(400, 1600).slow(8)).resonance(6)
+    .decay(.15).sustain(.3).release(.05).gain(.9),
+  note("<[c4 eb4 g4 eb4] [c4 eb4 g4 bb4] [ab3 c4 eb4 c4] [bb3 d4 f4 d4]>")
+    .s("square").lpf(2200).decay(.12).sustain(0).delay(.3).delaytime(.1875).pan(sine.range(.3, .7)).gain(.6),
+  note("<g4 ~ bb4 [c5 g4]>/2").s("triangle").attack(.02).release(.3).vib(5).vibmod(.2).room(.6).gain(.7)
+    .every(4, x => x.add(note(12))),
+  s("bd*4, ~ sd ~ sd, hh*8, ~ ~ ~ [~ oh]").gain(".9 .7")
+).cpm(140 / 4)

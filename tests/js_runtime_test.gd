@@ -4,36 +4,20 @@ extends Node
 ##   godot --headless res://tests/js_runtime_test.tscn
 ## Skips (PASS) when the extension library isn't built for this platform.
 
-const STRUDEL_DIR := "res://third_party/strudel"
-const FRACTION_FILE := "res://third_party/fraction.js/fraction.mjs"
+const BUNDLE := "res://presentation/audio/music/strudel_bundle.mjs"
 const LOOP_LIMIT_MSEC := 200
 const BENCH_CYCLES := 200
 ## SONG: 2 bass + 6 lead (3 euclid + 1 + 2) + 14 drums (4 bd + 2 sd + 8 hh).
 const SONG_EVENTS_PER_CYCLE := 22
 
-## What Strudel's core expects outside a browser, then the engine itself.
-const BOOT := """
-globalThis.console = { log: print, warn: print, error: print, info: print, debug: print };
-globalThis.performance = { now: () => Date.now() };
-const core = await import('strudel/core/index.mjs');
-const mini = await import('strudel/mini/index.mjs');
-mini.miniAllStrings();
-await core.evalScope(core, mini);
-let current = core.silence;
-globalThis.strudel_load = async (code) => {
-  current = (await core.evaluate(code)).pattern;
-  return true;
-};
-globalThis.strudel_query = (begin, end) => current.queryArc(begin, end)
-  .filter((hap) => hap.hasOnset())
-  .map((hap) => ({ begin: hap.whole.begin.valueOf(), end: hap.whole.end.valueOf(), value: hap.value }));
+## A strudel.cc-style song: several statements, a variable, `$:` lines.
+const SONG := """setcpm(90)
+const bass = note("<c2 a1 f1 g1>*2").s("square").lpf(sine.range(300, 1800).slow(4)).decay(.1).sustain(0)
+$: bass
+$: n("0(3,8) 2 [4 3]").scale("C:minor").s("triangle").delay(.25).every(4, x => x.rev())
+$: s("bd*4, ~ sd ~ sd, hh*8").gain(".8 .5")
+_$: s("cp*16")
 """
-
-const SONG := """stack(
-  note("<c2 a1 f1 g1>*2").s("square").lpf(sine.range(300, 1800).slow(4)).decay(.1).sustain(0),
-  note("e4(3,8) g4 [b4 a4]").s("triangle").delay(.25).every(4, x => x.rev()),
-  s("bd*4, ~ sd ~ sd, hh*8").gain(".8 .5")
-)"""
 
 var _failures := 0
 
@@ -97,50 +81,39 @@ func _test_errors_and_limits() -> void:
 	_check(js.eval("b") == 22, "module result")
 
 
-func _add_dir(js: RefCounted, dir: String, prefix: String) -> int:
-	var count := 0
-	for file in DirAccess.get_files_at(dir):
-		if file.get_extension() in ["mjs", "js"]:
-			js.add_module(prefix + file, FileAccess.get_file_as_string(dir.path_join(file)))
-			count += 1
-	return count
-
-
 func _test_strudel() -> void:
 	var js: RefCounted = ClassDB.instantiate(&"JsRuntime")
-	var files := _add_dir(js, STRUDEL_DIR + "/core", "strudel/core/")
-	files += _add_dir(js, STRUDEL_DIR + "/mini", "strudel/mini/")
-	js.add_module("fraction.mjs", FileAccess.get_file_as_string(FRACTION_FILE))
-	js.add_alias("fraction.js", "fraction.mjs")
-	js.add_alias("@strudel/core", "strudel/core/index.mjs")
-	js.add_alias("@strudel/core/fraction.mjs", "strudel/core/fraction.mjs")
-	js.add_alias("@strudel/mini", "strudel/mini/index.mjs")
-	_check(files > 20, "strudel sources found (%d files)" % files)
-
+	js.add_module("music/bundle.mjs", FileAccess.get_file_as_string(BUNDLE))
 	var start := Time.get_ticks_usec()
-	var booted: bool = js.run_module(BOOT, "boot")
-	_check(booted, "strudel boots in %d ms %s" % [(Time.get_ticks_usec() - start) / 1000, js.get_error()])
+	var booted: bool = js.run_module("import 'music/bundle.mjs';", "boot")
+	_check(booted, "strudel bundle boots in %d ms %s" % [(Time.get_ticks_usec() - start) / 1000, js.get_error()])
 	if not booted:
 		return
+	var fields: int = js.call_global("music_fields", [])
 
-	_check(js.call_global("strudel_load", ["note(\"c3 [e3 g3]\").s(\"sawtooth\").lpf(800)"]) == true,
-			"simple pattern evaluates " + js.get_error())
-	var events: Array = js.call_global("strudel_query", [0.0, 1.0])
-	_check(events.size() == 3, "3 events in cycle 0")
-	if events.size() == 3:
-		_check(events[0] == {"begin": 0, "end": 0.5, "value": {"note": "c3", "s": "sawtooth", "cutoff": 800}},
-				"first event %s" % [events[0]])
-		_check(is_equal_approx(events[2]["begin"], 0.75) and events[2]["value"]["note"] == "g3", "last event")
+	var info: Variant = js.call_global("music_load", ["note(\"c3 [e3 g3]\").s(\"sawtooth\").lpf(800)"])
+	_check(info is Dictionary and info["cps"] == 0.5 and info["warnings"] == [],
+			"simple pattern evaluates %s %s" % [info, js.get_error()])
+	var events: Array = js.call_global("music_query", [0.0, 1.0, 10.0])
+	_check(events.size() == 3 * fields, "3 events in cycle 0")
+	if events.size() == 3 * fields:
+		# start (s), duration (s), source (1 = sawtooth), frequency: c3 for half a 2 s cycle.
+		_check(events[0] == 10.0 and events[1] == 1.0 and events[2] == 1 and absf(events[3] - 130.81) < 0.01,
+				"first event %s" % [events.slice(0, 4)])
+		_check(events[2 * fields] == 11.5 and absf(events[2 * fields + 3] - 196.0) < 0.01, "last event is g3 at 1.5 s")
 
-	_check(js.call_global("strudel_load", [SONG]) == true, "song with arrow function and signals " + js.get_error())
+	info = js.call_global("music_load", [SONG])
+	_check(info is Dictionary and info["cps"] == 1.5, "song with $: lines, a variable, scale() and setcpm %s %s"
+			% [info, js.get_error()])
 	start = Time.get_ticks_usec()
 	var total := 0
 	for cycle in BENCH_CYCLES:
-		total += (js.call_global("strudel_query", [float(cycle), float(cycle + 1)]) as Array).size()
+		total += (js.call_global("music_query", [float(cycle), float(cycle + 1), 0.0]) as Array).size() / fields
 	var per_cycle := float(Time.get_ticks_usec() - start) / 1000.0 / BENCH_CYCLES
-	_check(total == BENCH_CYCLES * SONG_EVENTS_PER_CYCLE, "song events (%d)" % total)
+	_check(total == BENCH_CYCLES * SONG_EVENTS_PER_CYCLE, "song events (%d), muted _$: line left out" % total)
 	print("INFO query cost: %.2f ms per cycle (%d events/cycle, into Godot Arrays)" % [per_cycle, total / BENCH_CYCLES])
 
-	js.call_global("strudel_load", ["note(\"c3\").nope()"])
+	js.call_global("music_load", ["note(\"c3\").nope()"])
 	_check(js.has_error(), "bad song reports an error: " + js.get_error().get_slice("\n", 0))
-	_check((js.call_global("strudel_query", [0.0, 1.0]) as Array).size() == SONG_EVENTS_PER_CYCLE, "previous song kept after a bad one")
+	_check((js.call_global("music_query", [0.0, 1.0, 0.0]) as Array).size() == SONG_EVENTS_PER_CYCLE * fields,
+			"previous song kept after a bad one")

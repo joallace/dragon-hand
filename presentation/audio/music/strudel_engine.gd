@@ -1,7 +1,7 @@
 class_name StrudelEngine
 extends RefCounted
-## Plays Strudel code: Strudel's own pattern engine (third_party/strudel,
-## run by the JsRuntime extension) feeds note events to StrudelSynth, a few
+## Plays Strudel code: Strudel's own pattern engine (strudel_bundle.mjs, run
+## by the JsRuntime extension) feeds note events to StrudelSynth, a few
 ## hundred ms ahead of the audio that render() hands out.
 ##
 ## Everything JavaScript runs on a worker thread (evaluating a song or
@@ -14,24 +14,10 @@ extends RefCounted
 ## (ok, message): message is the error, or warnings joined by newlines.
 signal song_loaded(ok: bool, message: String)
 
-const HOST_MODULE := "res://presentation/audio/music/strudel_host.mjs"
-## Module name prefix -> directory of .mjs/.js sources.
-const MODULE_DIRS: Dictionary[String, String] = {
-	"strudel/core/": "res://third_party/strudel/core",
-	"strudel/mini/": "res://third_party/strudel/mini",
-	"fraction.js/": "res://third_party/fraction.js",
-}
-## Bare import specifier -> module name.
-const ALIASES: Dictionary[String, String] = {
-	"fraction.js": "fraction.js/fraction.mjs",
-	"@strudel/core": "strudel/core/index.mjs",
-	"@strudel/core/fraction.mjs": "strudel/core/fraction.mjs",
-	"@strudel/mini": "strudel/mini/index.mjs",
-}
-## console.* for Strudel's core (it only logs through it).
-const PRELUDE := "globalThis.console = { log() {}, info() {}, debug() {}, warn() {}, error: print };" \
-		+ "globalThis.performance = { now: () => Date.now() };"
-const BOOT := "import 'music/host.mjs';"
+## Strudel's pattern engine + the host glue, built by native/strudel/js.
+const BUNDLE := "res://presentation/audio/music/strudel_bundle.mjs"
+const BUNDLE_MODULE := "music/bundle.mjs"
+const BOOT := "import '%s';" % BUNDLE_MODULE
 
 var _js: RefCounted  # JsRuntime
 var _synth: RefCounted  # StrudelSynth
@@ -155,15 +141,7 @@ func _boot() -> String:
 	_js = ClassDB.instantiate(&"JsRuntime")
 	_js.set_memory_limit(Tuning.music.memory_limit_bytes)
 	_js.set_time_limit_msec(Tuning.music.load_time_limit_msec)
-	for prefix in MODULE_DIRS:
-		var dir := MODULE_DIRS[prefix]
-		for file in DirAccess.get_files_at(dir):
-			if file.get_extension() in ["mjs", "js"]:
-				_js.add_module(prefix + file, FileAccess.get_file_as_string(dir.path_join(file)))
-	for specifier in ALIASES:
-		_js.add_alias(specifier, ALIASES[specifier])
-	_js.add_module("music/host.mjs", FileAccess.get_file_as_string(HOST_MODULE))
-	_js.eval(PRELUDE)
+	_js.add_module(BUNDLE_MODULE, FileAccess.get_file_as_string(BUNDLE))
 	if not _js.run_module(BOOT, "music/boot.mjs"):
 		return "music engine failed to start: " + _js.get_error()
 	if int(_js.call_global("music_fields", [])) != _fields:

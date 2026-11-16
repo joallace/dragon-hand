@@ -1,6 +1,8 @@
-// Music host glue: runs next to Strudel's pattern engine (in JsRuntime on
-// desktop, in the browser on web). It evaluates song code and turns the
-// events of a time window into flat records for the synth
+// Music host glue, bundled with Strudel's pattern engine into
+// presentation/audio/music/strudel_bundle.mjs (npm run build). The bundle
+// runs in JsRuntime on desktop and in the browser on web. It evaluates song
+// code the way strudel.cc does (Strudel's own repl and transpiler) and turns
+// the events of a time window into flat records for the synth
 // (native/strudel/src/synth.h: the F and SRC tables below mirror its enums).
 //
 // Globals for the host:
@@ -9,8 +11,11 @@
 //   music_query(begin_cycle, end_cycle, begin_seconds)
 //                     -> flat array, FIELDS numbers per event
 //   music_fields()    -> FIELDS
+import './shim.mjs';
 import * as core from '@strudel/core';
 import * as mini from '@strudel/mini';
+import * as tonal from '@strudel/tonal';
+import { transpiler } from '@strudel/transpiler';
 
 const F = {
   START: 0, DURATION: 1, SOURCE: 2, FREQ: 3, GAIN: 4, ATTACK: 5, DECAY: 6, SUSTAIN: 7, RELEASE: 8,
@@ -46,7 +51,6 @@ const KEEP = -1; // "leave the global effect setting alone"
 
 let pattern = core.silence;
 let cps = DEFAULT_CPS;
-let pendingCps = DEFAULT_CPS;
 let unknownSources = new Set();
 
 const number = (value, fallback) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -120,32 +124,35 @@ function record(out, hap, start, duration) {
   out[base + F.NOISE] = number(value.noise, 0);
 }
 
-// What Strudel's REPL adds to the scope and songs commonly call.
-const scope = {
-  setcps: (value) => { pendingCps = number(value, DEFAULT_CPS); },
-  setcpm: (value) => { pendingCps = number(value, DEFAULT_CPS * 60) / 60; },
-  hush: () => core.silence,
+// Strudel's REPL, used only to evaluate: it gives songs `$:` lines, all(),
+// hush(), setcpm() and friends. Its scheduler is never started; the game
+// schedules from music_query().
+let evalError = null;
+const strudel = core.repl({
+  defaultOutput: () => {},
+  getTime: () => 0,
+  transpiler,
+  onEvalError: (error) => { evalError = error; },
+});
+await core.evalScope(core, mini, tonal, {
   samples: () => {}, // synths only: sample packs are ignored
-};
-scope.setCps = scope.setcps;
-scope.setCpm = scope.setcpm;
-
-mini.miniAllStrings();
-await core.evalScope(core, mini, scope);
+});
 
 globalThis.music_fields = () => FIELDS;
 
 globalThis.music_load = async (code) => {
-  pendingCps = DEFAULT_CPS;
-  const transpiler = globalThis.strudel_transpiler; // set once the transpiler bundle is loaded
-  const { pattern: evaluated } = await core.evaluate(code, transpiler);
+  evalError = null;
+  strudel.setCps(DEFAULT_CPS); // each song starts from Strudel's default tempo
+  const evaluated = await strudel.evaluate(code, false);
+  if (evalError) throw evalError;
   if (!evaluated || typeof evaluated.queryArc !== 'function') {
     throw new Error('the song did not evaluate to a pattern');
   }
-  unknownSources = new Set();
   evaluated.queryArc(0, 1); // a song that cannot be queried fails here, before it replaces the old one
+  const songCps = strudel.scheduler.cps;
   pattern = evaluated;
-  cps = pendingCps > 0 ? pendingCps : DEFAULT_CPS;
+  cps = songCps > 0 && Number.isFinite(songCps) ? songCps : DEFAULT_CPS;
+  unknownSources = new Set();
   music_query(0, 1, 0); // collects unknown sound names from the first cycle
   return { cps, warnings: [...unknownSources].map((name) => `unknown sound "${name}"`) };
 };

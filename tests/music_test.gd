@@ -15,6 +15,12 @@ enum Src { SINE, SAWTOOTH, SQUARE, TRIANGLE, WHITE, PINK, BROWN, BD = 16, SD, HH
 const SILENCE := 1e-4
 const DEMO := "res://data/music/demo.strudel"
 const SIGNAL_TIMEOUT_MSEC := 5000
+## 120 cycles per minute, one kick per cycle; the `_$:` line is muted.
+const KICK_SONG := """setcpm(120)
+const kick = s("bd")
+$: kick
+_$: s("hh*16")
+"""
 const AUDIO_SETTLE_FRAMES := 10
 
 var _failures := 0
@@ -267,10 +273,9 @@ func _test_engine() -> void:
 	var freq := _frequency(out, _seconds(0.5), _seconds(1.5))
 	_check(absf(freq - 440.0) < 3.0, "a4 plays at 440 Hz (measured %.1f)" % freq)
 
-	result = await _load(engine, "(setcpm(120), s(\"bd\"))")
-	_check(result[0], "setcpm song loads %s" % [result])
 	engine.restart()
-	result = await _load(engine, "(setcpm(120), s(\"bd\"))")
+	result = await _load(engine, KICK_SONG)
+	_check(result[0], "song with setcpm, a variable and $: lines loads %s" % [result])
 	out = _play(engine, 2.0)
 	var hits := 0
 	for beat in 4:
@@ -287,8 +292,8 @@ func _test_engine() -> void:
 	result = await _load(engine, "note(\"c3\").nope()")
 	_check(not result[0] and result[1].contains("not a function"), "bad song reports its error: %s" % result[1])
 	_check(_rms(_play(engine, 1.0)) > 0.02, "the previous song keeps playing after a bad one")
-	result = await _load(engine, "42")
-	_check(not result[0], "a song that isn't a pattern is rejected: %s" % result[1])
+	result = await _load(engine, "n(\"0 2 4\").scale(\"C:minor\").s(\"sine\")")
+	_check(result[0] and result[1] == "", "scale() from Strudel's tonal package %s" % [result])
 	result = await _load(engine, "s(\"bd piano\")")
 	_check(result[0] and result[1].contains("piano"), "unknown sound is a warning: %s" % result[1])
 

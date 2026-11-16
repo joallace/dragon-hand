@@ -38,6 +38,9 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   rollback hot path also runs `net_bench`'s determinism check. Visual/feel
   changes the tests can't see: run the scene (or `frame_probe`) and say
   what was not verified.
+- **Check `git diff project.godot` after an import that adds or removes a
+  GDExtension:** Godot rewrites the file (reorders keys, drops
+  `rendering_method.web`); restore everything but your own change.
 - **Report with evidence:** commands run and their result (not just "tests
   pass"), worktree path, branch, commit hash, and follow-ups noticed but
   left out of scope.
@@ -169,6 +172,23 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     menu focus blip) and `MatchSfx` (fighter events/states + director
     signals -> sounds). Mix volumes in `data/tuning/sfx.tres`; menu sounds
     play on the UI bus, the rest on SFX.
+  - `audio/music.gd`: `Music` autoload, songs written in Strudel code as on
+    strudel.cc (`data/music/*.strudel`; `play(code)` / `play_file` / `stop`,
+    errors and warnings by signal) on the Music bus. `music/StrudelEngine`:
+    `strudel_bundle.mjs` (Strudel's real pattern engine, repl and transpiler,
+    AGPL-3.0, plus our host glue) runs in `JsRuntime` on a worker thread and
+    turns events into synth records, `StrudelSynth` renders them; events are
+    queued `Tuning.music.lookahead` ahead, a new song comes in on the cycle
+    grid. Never read by the sim.
+- `native/strudel/` — GDExtension (C/C++, `build.sh` fetches pinned
+  godot-cpp + quickjs-ng; the built library in `bin/` is committed):
+  `JsRuntime` (sandboxed quickjs-ng: scripts get `print` and registered
+  modules, nothing of the engine; time and memory limits) and
+  `StrudelSynth` (`src/synth.c`: libc-free C, also builds to WASM with
+  `web/build_wasm.sh`; event layout in `synth.h`, mirrored by `js/host.mjs`).
+  `js/`: the bundle's sources (`host.mjs` glue, pinned npm packages);
+  after editing, `npm ci --ignore-scripts && npm run build` there (needs
+  Node) and commit the regenerated `presentation/audio/music/strudel_bundle.*`.
 - `scenes/menus/`, `ui/` — main menu, unified lobby (`Lobby`, local and
   online; rules/data in `core/match/LobbyModel`), join-online screen (recent
   hosts), settings hub (`SettingsScreen`: LB/RB tabs Graphics / Audio /
@@ -254,6 +274,11 @@ match on it with `match=1` (needs a window; add `--rendering-method
 gl_compatibility` for the web renderer): `godot res://tools/arena_preview.tscn
 --resolution 1280x720 -- arena=beach_bar radius=18 out=<dir>`.
 
+`tools/music_render.tscn`: renders a Strudel song offline to a WAV (`-- song=
+res://data/music/demo.strudel seconds=30 out=<file.wav>`, prints peak/RMS/
+voices), or plays it through the `Music` autoload with `live=1` (no
+`--headless` to hear it). The tests check signals, not how it sounds.
+
 `tools/replay_hash.tscn`: `-- replay=<file>` plays a replay headless, prints
 `<tick> <hash>` per checkpoint, exits 1 on a mismatch (cross-OS determinism
 check); `-- record=<file> seed=<n> mode=versus|coop ticks=<n>` records a
@@ -297,6 +322,13 @@ for steering toward each; `docs/reference_mechanics.md` compares them with
 ours. Describe mechanics in our own words; never copy decomp code.
 
 ## Known gaps
+
+Music: Linux only so far (no Windows library; no web backend yet, `Music`
+is a no-op there: the bundle and the WASM synth were each checked in a
+browser but aren't wired to the web export). Synths and synthesized drums
+only (sample names warn; editor widgets like `slider()` aren't there);
+the synth approximates Strudel's sound, it is not its audio engine;
+nothing plays by default yet.
 
 Online 1v1, co-op and team versus / couch + online (milestones 2, 3, 5)
 are implemented and tested headless, but not yet play-tested

@@ -174,10 +174,16 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     play on the UI bus, the rest on SFX.
   - `audio/music.gd`: `Music` autoload, songs written in Strudel code as on
     strudel.cc (`data/music/*.strudel`; `play(code)` / `play_file` / `stop`,
-    errors and warnings by signal) on the Music bus. `music/StrudelEngine`:
-    `strudel_bundle.mjs` (Strudel's real pattern engine, repl and transpiler,
-    AGPL-3.0, plus our host glue) runs in `JsRuntime` on a worker thread and
-    turns events into synth records, `StrudelSynth` renders them; events are
+    errors and warnings by signal) on the Music bus, through a
+    `music/MusicEngine` (`create()` picks the platform's). Desktop
+    `StrudelEngine`: `strudel_bundle.mjs` (Strudel's real pattern engine,
+    repl and transpiler, AGPL-3.0, plus our host glue) runs in `JsRuntime` on
+    a worker thread and turns events into synth records, `StrudelSynth`
+    renders them. Web `WebMusicEngine`: `music_web.js` (eval'd through
+    JavaScriptBridge; an id-keyed engine table) runs each song's bundle in its
+    own module Worker and the synth as `synth.wasm` (committed, from
+    `native/strudel/web/build_wasm.sh`), scheduling/results ticked on
+    `process_frame` (audio stays suspended until the first click). Events are
     queued `Tuning.music.lookahead` ahead, a new song comes in on the cycle
     grid. Never read by the sim. Tracks: `Tuning.music.tracks` (`menu`,
     `match` -> `data/music/<name>.strudel`), started by scene folder
@@ -288,7 +294,12 @@ voices), or plays it through the `Music` autoload with `live=1` (no
 check); `-- record=<file> seed=<n> mode=versus|coop ticks=<n>` records a
 CPU-only match.
 
-`tools/web_tools.sh tool=replay|bench|net_peer ...` runs a tool in the WASM
+`tools/music_check.tscn`: the platform's music engine end to end in real
+time (loads, bad/hanging songs, halt, the autoload reaching the audio
+output); desktop headless, or in a browser via `tools/web_tools.sh
+tool=music` (`CHROME=chromium|firefox`).
+
+`tools/web_tools.sh tool=replay|bench|net_peer|music ...` runs a tool in the WASM
 build in headless Chrome and prints its console lines; `tools/crossplay_e2e.sh`
 plays desktop <-> browser WebRTC matches through the real signaling server and
 compares confirmed hashes (docs/web_online.md "Cross-play end-to-end check").
@@ -332,9 +343,9 @@ test a BT3 rule there before copying it, code reading alone was wrong once);
 
 ## Known gaps
 
-Music: Linux only so far (no Windows library; no web backend yet, `Music`
-is a no-op there: the bundle and the WASM synth were each checked in a
-browser but aren't wired to the web export). Synths and synthesized drums
+Music: Linux and web so far (no Windows library: `Music` is a no-op
+there). Web song workers lose network/storage APIs but are not a true
+sandbox like `JsRuntime` (dynamic `import()` still works). Synths and synthesized drums
 only (sample names warn; editor widgets like `slider()` aren't there);
 the synth approximates Strudel's sound, it is not its audio engine.
 The menu and match tracks were written without being listened to.

@@ -14,8 +14,9 @@ extends Node
 ##
 ## A song replaces the current one on the beat grid (after about
 ## Tuning.music.lookahead seconds) unless `from_start` is set. A song that
-## fails to evaluate leaves the current one playing. Does nothing where the
-## engine is unavailable (available() is false: web for now).
+## fails to evaluate leaves the current one playing. Engines: MusicEngine
+## (desktop extension or browser); where there is none available() is false
+## and every call does nothing.
 
 ## The song is now the one playing. `warnings` lists what it uses that the
 ## synth doesn't have (e.g. sample names).
@@ -32,7 +33,7 @@ var current_track: StringName = &""
 
 ## Built-in file to fall back to if the user's replacement fails to load.
 var _fallback_path := ""
-var _engine: StrudelEngine
+var _engine: MusicEngine
 var _player: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
 
@@ -52,7 +53,7 @@ func _ready() -> void:
 	_player.bus = Tuning.music.bus
 	_player.volume_db = Tuning.music.volume_db
 	add_child(_player)
-	_engine = StrudelEngine.new(rate)
+	_engine = MusicEngine.create(rate)
 	_engine.song_loaded.connect(_on_song_loaded)
 	_engine.start()
 	get_tree().scene_changed.connect(_on_scene_changed)
@@ -67,7 +68,7 @@ func _exit_tree() -> void:
 
 
 static func available() -> bool:
-	return Tuning.music.enabled and StrudelEngine.available()
+	return Tuning.music.enabled and MusicEngine.backend_available()
 
 
 ## The built-in file of a track ("" for an unknown track).
@@ -132,6 +133,13 @@ func stop() -> void:
 
 func is_playing() -> bool:
 	return _player != null and _player.playing
+
+
+## Seconds of music rendered into the audio stream so far (the synth clock;
+## restarts at 0 with a song started from the beginning). It only advances
+## while the audio output is actually pulling frames.
+func playback_time() -> float:
+	return _engine.synth_time() if _engine != null else 0.0
 
 
 func _process(_delta: float) -> void:

@@ -58,5 +58,10 @@ extends Resource
 @export var load_time_limit_msec: int = 2000
 @export var query_time_limit_msec: int = 250
 @export var memory_limit_bytes: int = 128 * 1024 * 1024
+## Web: a song's worker must import the Strudel bundle within this time, and
+## answer an event query within this many rendered frames, or it is
+## terminated (the frame count, not a clock, so a hidden tab doesn't trip it).
+@export var web_boot_time_limit_msec: int = 15000
+@export var web_reply_timeout_frames: int = 240
 ## Largest song text accepted.
 @export var max_song_bytes: int = 256 * 1024

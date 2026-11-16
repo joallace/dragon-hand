@@ -73,6 +73,10 @@ EXPORT(music_time) double music_time(void) {
 	return syn_time(&synth);
 }
 
+EXPORT(music_active_voices) int music_active_voices(void) {
+	return syn_active_voices(&synth);
+}
+
 EXPORT(music_set_master_gain) void music_set_master_gain(float gain) {
 	syn_set_master_gain(&synth, gain);
 }

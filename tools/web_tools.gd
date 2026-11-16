@@ -10,6 +10,8 @@ extends Node
 ##   ?tool=net_peer&role=guest&code=ABCDEF&signal=ws://...
 ##                                tools/net_peer: one peer of a WebRTC match
 ##                                (NET_PEER lines; tools/crossplay_e2e.sh)
+##   ?tool=music&seconds=4        tools/music_check: the web music engine end
+##                                to end (MUSIC_CHECK lines)
 ## Both read the rest of the query as their `key=value` args (ToolArgs).
 ## Each tool ends with its own `... DONE` line (REPLAY_HASH DONE, NET_BENCH
 ## DONE) before calling quit().
@@ -18,6 +20,7 @@ const TOOLS := {
 	"replay": "res://tools/replay_hash.tscn",
 	"bench": "res://tools/net_bench.tscn",
 	"net_peer": "res://tools/net_peer.tscn",
+	"music": "res://tools/music_check.tscn",
 }
 
 

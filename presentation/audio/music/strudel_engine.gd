@@ -1,12 +1,13 @@
 class_name StrudelEngine
-extends RefCounted
-## Plays Strudel code: Strudel's own pattern engine (strudel_bundle.mjs, run
-## by the JsRuntime extension) feeds note events to StrudelSynth, a few
-## hundred ms ahead of the audio that render() hands out.
+extends MusicEngine
+## The desktop music engine. Plays Strudel code: Strudel's own pattern engine
+## (strudel_bundle.mjs, run by the JsRuntime extension) feeds note events to
+## StrudelSynth, a few hundred ms ahead of the audio that render() hands out.
 ##
 ## Everything JavaScript runs on a worker thread (evaluating a song or
 ## querying a cycle takes milliseconds); the owner only calls render().
-## Without the extension library (web for now) available() is false.
+## Without the extension library available() is false (the browser has
+## WebMusicEngine instead).
 ##
 ## Song changes keep the cycle position, so a new section comes in on the
 ## grid; restart() rewinds to cycle 0.
@@ -15,9 +16,6 @@ extends RefCounted
 ## fresh JsRuntime, swapped in only if the song loads, so a song that fails,
 ## times out or tampers with the host cannot affect the one playing or the
 ## next; the tempo it asks for is clamped; one scheduling pass is bounded.
-
-## (ok, message): message is the error, or warnings joined by newlines.
-signal song_loaded(ok: bool, message: String)
 
 ## Strudel's pattern engine + the host glue, built by native/strudel/js.
 const BUNDLE := "res://presentation/audio/music/strudel_bundle.mjs"

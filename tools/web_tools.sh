@@ -8,7 +8,10 @@
 #   tools/web_tools.sh tool=net_peer role=guest code=ABCDEF signal=ws://127.0.0.1:18765
 #       one peer of a WebRTC match, NET_PEER lines (tools/crossplay_e2e.sh
 #       runs both peers and compares them)
+#   tools/web_tools.sh tool=music [seconds=4]
+#       tools/music_check: the web music engine end to end, MUSIC_CHECK lines
 #   NO_EXPORT=1 tools/web_tools.sh ...            # reuse builds/web-tools/
+#   CHROME=firefox tools/web_tools.sh ...         # headless Firefox instead
 # Exports the "Web Tools" preset (feature tag web_tools makes web_tools.tscn
 # the main scene; tools/ and tools/replays/*.ghr included) to
 # builds/web-tools/, serves it over HTTP on 127.0.0.1:$PORT (default 18000;
@@ -36,20 +39,34 @@ python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$OUT" >"$OUT/serve.
 SRV=$!
 trap 'kill "$SRV" 2>/dev/null; pkill -f "user-data-dir=$PROFILE" 2>/dev/null; sleep 1; rm -rf "$PROFILE"' EXIT
 sleep 1
-HEADLESS_ARGS=(--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader)
-[[ "${HEADLESS:-1}" == "0" ]] && HEADLESS_ARGS=()
-"$CHROME" "${HEADLESS_ARGS[@]}" --user-data-dir="$PROFILE" --no-first-run --no-default-browser-check \
-	--disable-background-timer-throttling --disable-renderer-backgrounding \
-	--enable-logging=stderr --v=0 --window-size=1280,720 \
-	"http://127.0.0.1:$PORT/index.html?$QUERY" >"$LOG" 2>&1 &
-DONE_RE='(REPLAY_HASH|NET_BENCH|NET_PEER) DONE|WEB_TOOLS unknown'
+if [[ "$(basename "$CHROME")" == firefox* ]]; then
+	# Firefox: page console to stdout, audio allowed without a click.
+	cat >"$PROFILE/user.js" <<'PREFS'
+user_pref("devtools.console.stdout.content", true);
+user_pref("media.autoplay.default", 0);
+user_pref("media.autoplay.blocking_policy", 0);
+PREFS
+	HEADLESS_ARGS=(--headless)
+	[[ "${HEADLESS:-1}" == "0" ]] && HEADLESS_ARGS=()
+	"$CHROME" "${HEADLESS_ARGS[@]}" --no-remote --profile "$PROFILE" \
+		"http://127.0.0.1:$PORT/index.html?$QUERY" >"$LOG" 2>&1 &
+	trap 'kill "$SRV" 2>/dev/null; pkill -f -- "--profile $PROFILE" 2>/dev/null; sleep 1; rm -rf "$PROFILE"' EXIT
+else
+	HEADLESS_ARGS=(--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --autoplay-policy=no-user-gesture-required)
+	[[ "${HEADLESS:-1}" == "0" ]] && HEADLESS_ARGS=()
+	"$CHROME" "${HEADLESS_ARGS[@]}" --user-data-dir="$PROFILE" --no-first-run --no-default-browser-check \
+		--disable-background-timer-throttling --disable-renderer-backgrounding \
+		--enable-logging=stderr --v=0 --window-size=1280,720 \
+		"http://127.0.0.1:$PORT/index.html?$QUERY" >"$LOG" 2>&1 &
+fi
+DONE_RE='(REPLAY_HASH|NET_BENCH|NET_PEER|MUSIC_CHECK) DONE|WEB_TOOLS unknown'
 for _ in $(seq "$LIMIT"); do
 	grep -qE "$DONE_RE" "$LOG" && break
 	sleep 1
 done
 # net_peer keeps feeding the far peer for a few seconds after DONE.
 [[ "$*" == *tool=net_peer* ]] && sleep 5
-grep -oE '(WEB_TOOLS|REPLAY_HASH|NET_BENCH|NET_PEER|SCRIPT ERROR|ERROR:).*' "$LOG" | sed 's/", source: .*//'
-grep -q "REPLAY_HASH DONE MISMATCH\|NET_BENCH DONE FAIL\|NET_PEER DONE FAIL" "$LOG" && exit 1
+grep -oE '(WEB_TOOLS|REPLAY_HASH|NET_BENCH|NET_PEER|MUSIC_CHECK|SCRIPT ERROR|ERROR:).*' "$LOG" | sed 's/", source: .*//; s/"$//'
+grep -q "REPLAY_HASH DONE MISMATCH\|NET_BENCH DONE FAIL\|NET_PEER DONE FAIL\|MUSIC_CHECK DONE FAIL" "$LOG" && exit 1
 grep -qE "$DONE_RE" "$LOG" || { echo "no DONE line within ${LIMIT}s, see $LOG"; exit 1; }
 exit 0

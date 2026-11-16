@@ -16,7 +16,9 @@ extends Node
 ## Tuning.music.lookahead seconds) unless `from_start` is set. A song that
 ## fails to evaluate leaves the current one playing. Engines: MusicEngine
 ## (desktop extension or browser); where there is none available() is false
-## and every call does nothing.
+## and every call does nothing. The desktop engine is pulled into an
+## AudioStreamGenerator on the bus; the browser one plays by itself (see
+## WebMusicEngine) and is given the bus's volume every frame instead.
 
 ## The song is now the one playing. `warnings` lists what it uses that the
 ## synth doesn't have (e.g. sample names).
@@ -34,6 +36,9 @@ var current_track: StringName = &""
 ## Built-in file to fall back to if the user's replacement fails to load.
 var _fallback_path := ""
 var _engine: MusicEngine
+## The engine plays by itself: no _player, `_playing` instead.
+var _direct := false
+var _playing := false
 var _player: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
 
@@ -44,16 +49,20 @@ func _ready() -> void:
 	if not available():
 		return
 	var rate := AudioServer.get_mix_rate()
-	var stream := AudioStreamGenerator.new()
-	stream.mix_rate = rate
-	stream.buffer_length = Tuning.music.buffer_length
-	_player = AudioStreamPlayer.new()
-	_player.name = "Player"
-	_player.stream = stream
-	_player.bus = Tuning.music.bus
-	_player.volume_db = Tuning.music.volume_db
-	add_child(_player)
 	_engine = MusicEngine.create(rate)
+	_direct = _engine.plays_itself()
+	if _direct:
+		_engine.set_output_gain(_bus_gain())
+	else:
+		var stream := AudioStreamGenerator.new()
+		stream.mix_rate = rate
+		stream.buffer_length = Tuning.music.buffer_length
+		_player = AudioStreamPlayer.new()
+		_player.name = "Player"
+		_player.stream = stream
+		_player.bus = Tuning.music.bus
+		_player.volume_db = Tuning.music.volume_db
+		add_child(_player)
 	_engine.song_loaded.connect(_on_song_loaded)
 	_engine.start()
 	get_tree().scene_changed.connect(_on_scene_changed)
@@ -63,7 +72,8 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if _engine != null:
 		_playback = null
-		_player.stop()
+		if _player != null:
+			_player.stop()
 		_engine.stop()
 
 
@@ -107,7 +117,10 @@ func play(code: String, from_start: bool = false) -> void:
 	if from_start:
 		_engine.restart()
 	_engine.load_song(code)
-	if not _player.playing:
+	if _direct:
+		_playing = true
+		set_process(true)
+	elif not _player.playing:
 		_player.play()
 		_playback = _player.get_stream_playback() as AudioStreamGeneratorPlayback
 		set_process(true)
@@ -126,13 +139,15 @@ func stop() -> void:
 	current_track = &""
 	_fallback_path = ""
 	_engine.halt()
-	_player.stop()
+	_playing = false
+	if _player != null:
+		_player.stop()
 	_playback = null
 	set_process(false)
 
 
 func is_playing() -> bool:
-	return _player != null and _player.playing
+	return _playing if _direct else (_player != null and _player.playing)
 
 
 ## Seconds of music rendered into the audio stream so far (the synth clock;
@@ -143,11 +158,29 @@ func playback_time() -> float:
 
 
 func _process(_delta: float) -> void:
+	if _direct:
+		_engine.set_output_gain(_bus_gain())
+		return
 	if _playback == null:
 		return
 	var frames := _playback.get_frames_available()
 	if frames > 0:
 		_playback.push_buffer(_engine.render(frames))
+
+
+## What the music bus would do to the player's volume (linear): the track
+## volume and every bus down to Master, for an engine that bypasses them.
+func _bus_gain() -> float:
+	var db := Tuning.music.volume_db
+	var bus := maxi(AudioServer.get_bus_index(Tuning.music.bus), 0)
+	for _hop in AudioServer.bus_count:
+		if AudioServer.is_bus_mute(bus):
+			return 0.0
+		db += AudioServer.get_bus_volume_db(bus)
+		if bus == 0:
+			break
+		bus = maxi(AudioServer.get_bus_index(AudioServer.get_bus_send(bus)), 0)
+	return db_to_linear(db)
 
 
 func _on_scene_changed() -> void:

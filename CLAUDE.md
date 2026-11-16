@@ -181,8 +181,12 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     a worker thread and turns events into synth records, `StrudelSynth`
     renders them. Web `WebMusicEngine`: `music_web.js` (eval'd through
     JavaScriptBridge; an id-keyed engine table) runs each song's bundle in its
-    own module Worker and the synth as `synth.wasm` (committed, from
-    `native/strudel/web/build_wasm.sh`), scheduling/results ticked on
+    own module Worker (a spare one is kept booted for the next song) and the
+    synth as `synth.wasm` (committed, from `native/strudel/web/build_wasm.sh`)
+    in an AudioWorklet on its own AudioContext, not through Godot's mixer
+    (main-thread fed in the no-threads build: chops up on slow frames), so
+    `Music` mirrors the bus volume into it (`set_output_gain`) and bus
+    effects don't apply; scheduling/results ticked on
     `process_frame` (audio stays suspended until the first click). Events are
     queued `Tuning.music.lookahead` ahead, a new song comes in on the cycle
     grid. Never read by the sim. Tracks: `Tuning.music.tracks` (`menu`,

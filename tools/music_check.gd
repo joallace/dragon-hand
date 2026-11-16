@@ -15,6 +15,11 @@ const SILENT_PEAK := 1e-3
 ## decay for a while: "replaced" means this much quieter than it was.
 const REPLACED_PEAK := 0.05
 const FRAME_RATE := 60.0
+## An engine that plays by itself, with frames this slow (a phone under
+## load), must still put out about a second of music per second.
+const SLOW_FRAME_MSEC := 80
+const SLOW_SECONDS := 3.0
+const SLOW_PLAYED_MIN := 0.9
 ## How long the autoload's stream is watched for the audio output pulling it.
 const OUTPUT_WAIT_SEC := 2.0
 
@@ -47,8 +52,15 @@ func _ready() -> void:
 	_check(stats.finite and stats.rms > AUDIBLE_RMS and stats.peak <= 1.0,
 			"match track sounds: rms %.3f peak %.3f, slowest render %.2f ms" % [stats.rms, stats.peak, stats.slowest_ms])
 
+	if _engine.plays_itself():
+		# The synth runs on the audio thread: slow frames must not starve it
+		# (the browser's audio output has to be running: autoplay allowed).
+		stats = await _play(SLOW_SECONDS, SLOW_FRAME_MSEC)
+		_check(_engine.output_running() and stats.rms > AUDIBLE_RMS and stats.played > SLOW_PLAYED_MIN,
+				"it plays through %d ms frames: rms %.3f, %.2f s of music per second" % [SLOW_FRAME_MSEC, stats.rms, stats.played])
+
 	loaded = await _load("note(\"c3\"")
-	_check(not loaded[0], "a song with a syntax error is refused: %s" % loaded[1])
+	_check(not loaded[0], "a song with a syntax error is refused (%.0f ms): %s" % [loaded[2], loaded[1]])
 	stats = await _play(1.0)
 	_check(stats.rms > AUDIBLE_RMS, "the match track keeps playing after it (rms %.3f)" % stats.rms)
 
@@ -62,7 +74,7 @@ func _ready() -> void:
 	_check(loaded[0], "a silent song loads %s" % [loaded.slice(0, 2)])
 	await _play(1.0)  # what was already queued ahead plays out
 	stats = await _play(1.0)
-	_check(stats.peak < REPLACED_PEAK, "and replaces the match track (peak %.5f)" % stats.peak)
+	_check(stats.frames > 0 and stats.peak < REPLACED_PEAK, "and replaces the match track (peak %.5f)" % stats.peak)
 
 	if OS.has_feature("web"):
 		# A song that loads, then crashes while playing (a worker error):
@@ -73,14 +85,14 @@ func _ready() -> void:
 		_check(_results.size() == 1, "and its crash is not reported as a load %s" % [_results])
 
 	loaded = await _load("setcpm(120)\n$: s(\"bd*2\")\n$: n(\"0 4 7\").scale(\"A:minor\").s(\"sawtooth\").lpf(900)")
-	_check(loaded[0] and loaded[1] == "", "a second song replaces it %s" % [loaded.slice(0, 2)])
+	_check(loaded[0] and loaded[1] == "", "a second song replaces it (%.0f ms) %s" % [loaded[2], loaded.slice(0, 2)])
 	stats = await _play(2.0)
 	_check(stats.finite and stats.rms > AUDIBLE_RMS, "and sounds (rms %.3f)" % stats.rms)
 
 	_engine.halt()
 	await _play(0.5)
 	stats = await _play(0.5)
-	_check(stats.peak < SILENT_PEAK, "halt() silences (peak %.5f)" % stats.peak)
+	_check(stats.frames > 0 and stats.peak < SILENT_PEAK, "halt() silences (peak %.5f)" % stats.peak)
 
 	# The autoload, on the same engine kind (on web they share the page's host).
 	_results.clear()
@@ -120,7 +132,8 @@ func _load(code: String) -> Array:
 	var start := Time.get_ticks_msec()
 	_engine.load_song(code)
 	while _results.is_empty() and Time.get_ticks_msec() - start < LOAD_TIMEOUT_SEC * 1000.0:
-		_engine.render(int(_rate / FRAME_RATE))
+		if not _engine.plays_itself():
+			_engine.render(int(_rate / FRAME_RATE))
 		await get_tree().process_frame
 	var elapsed := float(Time.get_ticks_msec() - start)
 	if _results.is_empty():
@@ -128,8 +141,24 @@ func _load(code: String) -> Array:
 	return [_results[0][0], _results[0][1], elapsed]
 
 
-## Renders `seconds` of audio, one frame's worth per frame.
-func _play(seconds: float) -> Dictionary:
+## Renders `seconds` of audio, one frame's worth per frame. An engine that
+## plays by itself is listened to for that long instead (what its synth put
+## out, as it reports it); `frame_msec` then makes every frame that slow.
+## `played`: seconds of synth clock per second of wall clock.
+func _play(seconds: float, frame_msec: int = 0) -> Dictionary:
+	if _engine.plays_itself():
+		_engine.take_output_stats()
+		var from_time := _engine.synth_time()
+		var from_msec := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - from_msec < seconds * 1000.0:
+			var frame_end := Time.get_ticks_msec() + frame_msec
+			while Time.get_ticks_msec() < frame_end:
+				pass
+			await get_tree().process_frame
+		var out := _engine.take_output_stats()
+		var elapsed := (Time.get_ticks_msec() - from_msec) / 1000.0
+		return {"peak": out.peak, "rms": sqrt(out.sum / maxf(out.frames * 2.0, 1.0)), "finite": out.finite,
+				"slowest_ms": 0.0, "frames": out.frames, "played": (_engine.synth_time() - from_time) / maxf(elapsed, 0.001)}
 	var per_frame := int(_rate / FRAME_RATE)
 	var total := int(seconds * _rate)
 	var done := 0
@@ -147,4 +176,5 @@ func _play(seconds: float) -> Dictionary:
 			sum += f.x * f.x + f.y * f.y
 		done += frames.size()
 		await get_tree().process_frame
-	return {"peak": peak, "rms": sqrt(sum / maxf(done * 2.0, 1.0)), "finite": finite, "slowest_ms": slowest / 1000.0}
+	return {"peak": peak, "rms": sqrt(sum / maxf(done * 2.0, 1.0)), "finite": finite, "slowest_ms": slowest / 1000.0,
+			"frames": done, "played": 1.0}

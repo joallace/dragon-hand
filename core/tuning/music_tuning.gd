@@ -12,6 +12,24 @@ extends Resource
 ## Synth output gain before its soft clipper.
 @export var master_gain: float = 0.7
 
+@export_group("Tracks")
+## Track name -> song file (Strudel code as plain text).
+@export var tracks: Dictionary[StringName, String] = {
+	&"menu": "res://data/music/menu.strudel",
+	&"match": "res://data/music/match.strudel",
+}
+## A file named <track>.strudel in this folder replaces the built-in track,
+## without rebuilding the game. If it fails to load, the built-in one plays.
+@export var user_dir: String = "user://music"
+## Scene path prefix -> track that plays while such a scene is current.
+## Scenes matching no prefix leave the music as it is.
+@export var scene_tracks: Dictionary[String, StringName] = {
+	"res://scenes/menus/": &"menu",
+	"res://scenes/match/": &"match",
+}
+## Follow scene_tracks automatically (never headless; see Music.auto_play).
+@export var auto_play: bool = true
+
 @export_group("Scheduling")
 ## How far ahead of the synth clock events are queued. Must cover the stream
 ## buffer plus a slow frame; it is also how long a song change takes to be

@@ -179,7 +179,11 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     AGPL-3.0, plus our host glue) runs in `JsRuntime` on a worker thread and
     turns events into synth records, `StrudelSynth` renders them; events are
     queued `Tuning.music.lookahead` ahead, a new song comes in on the cycle
-    grid. Never read by the sim.
+    grid. Never read by the sim. Tracks: `Tuning.music.tracks` (`menu`,
+    `match` -> `data/music/<name>.strudel`), started by scene folder
+    (`scene_tracks`; never headless, `Music.auto_play`); a file
+    `user://music/<name>.strudel` replaces a track without a rebuild and
+    falls back to the built-in one if it fails to load.
 - `native/strudel/` — GDExtension (C/C++, `build.sh` fetches pinned
   godot-cpp + quickjs-ng; the built library in `bin/` is committed):
   `JsRuntime` (sandboxed quickjs-ng: scripts get `print` and registered
@@ -332,8 +336,8 @@ Music: Linux only so far (no Windows library; no web backend yet, `Music`
 is a no-op there: the bundle and the WASM synth were each checked in a
 browser but aren't wired to the web export). Synths and synthesized drums
 only (sample names warn; editor widgets like `slider()` aren't there);
-the synth approximates Strudel's sound, it is not its audio engine;
-nothing plays by default yet.
+the synth approximates Strudel's sound, it is not its audio engine.
+The menu and match tracks were written without being listened to.
 
 Online 1v1, co-op and team versus / couch + online (milestones 2, 3, 5)
 are implemented and tested headless, but not yet play-tested

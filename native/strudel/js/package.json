@@ -1,0 +1,19 @@
+{
+  "name": "strudel-bundle",
+  "private": true,
+  "type": "module",
+  "description": "Builds presentation/audio/music/strudel_bundle.mjs: Strudel's pattern engine plus the game's host glue, as one ES module.",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@strudel/core": "1.2.6",
+    "@strudel/mini": "1.2.6",
+    "@strudel/tonal": "1.2.6",
+    "@strudel/transpiler": "1.2.6"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

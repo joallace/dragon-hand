@@ -7,3 +7,9 @@ build/
 # JsRuntime GDExtension: fetched deps and build trees (bin/ is committed)
 native/strudel/.deps/
 native/strudel/.build/
+
+# WebAssembly synth build output (not committed until the web backend uses it)
+native/strudel/web/*.wasm
+
+# Strudel bundle build dependencies (npm ci in native/strudel/js)
+native/strudel/js/node_modules/

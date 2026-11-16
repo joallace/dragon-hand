@@ -17,9 +17,18 @@ extends Resource
 ## buffer plus a slow frame; it is also how long a song change takes to be
 ## heard.
 @export var lookahead: float = 0.5
-## A cycle is queried in this many slices (power of two, so slice boundaries
-## are exact floats and no event is queried twice or skipped).
+## A cycle is queried in at least this many slices (power of two, so slice
+## boundaries are exact floats and no event is queried twice or skipped);
+## slow tempos use more, keeping a slice under half the lookahead.
 @export var query_steps_per_cycle: int = 8
+## Query slices per scheduling pass at most; a tempo too fast to keep up
+## with falls behind instead of holding the music thread.
+@export var max_steps_per_pump: int = 32
+## Tempo in cycles per second: Strudel's default, and the range a song's
+## setcps / setcpm is clamped to.
+@export var default_cps: float = 0.5
+@export var min_cps: float = 0.02
+@export var max_cps: float = 8.0
 ## Worker thread sleep between scheduling passes.
 @export var worker_idle_msec: int = 15
 ## AudioStreamGenerator buffer: latency vs. safety against frame hitches.

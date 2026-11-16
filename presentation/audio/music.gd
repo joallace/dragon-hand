@@ -74,7 +74,7 @@ func play_file(path: String, from_start: bool = false) -> void:
 func stop() -> void:
 	if _engine == null:
 		return
-	_engine.restart()
+	_engine.halt()
 	_player.stop()
 	_playback = null
 	set_process(false)

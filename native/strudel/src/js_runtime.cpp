@@ -12,7 +12,13 @@ namespace godot {
 namespace {
 
 const int MAX_DEPTH = 32;
-const int64_t DEFAULT_STACK_BYTES = 1024 * 1024;
+// Values converted per returned result (array items, object fields). A
+// script can build sparse or self-referencing structures that would take
+// unbounded time and memory to copy, where no JS runs to be interrupted.
+const int64_t MAX_CONVERTED_VALUES = 1 << 18;
+const char *TOO_LARGE = "returned value is too large to convert";
+// Below the smallest default thread stack of the supported platforms.
+const int64_t DEFAULT_STACK_BYTES = 256 * 1024;
 
 std::string utf8(const String &p_string) {
 	CharString cs = p_string.utf8();
@@ -180,6 +186,7 @@ void JsRuntime::take_exception() {
 
 Variant JsRuntime::finish(JSValue p_value) {
 	Variant out;
+	convert_budget = MAX_CONVERTED_VALUES;
 	if (JS_IsException(p_value)) {
 		take_exception();
 	} else if (drain_jobs()) {
@@ -201,10 +208,17 @@ Variant JsRuntime::finish(JSValue p_value) {
 	}
 	JS_FreeValue(ctx, p_value);
 	has_deadline = false;
+	if (convert_budget < 0) {
+		error = TOO_LARGE;
+		return Variant();
+	}
 	return out;
 }
 
 Variant JsRuntime::to_variant(JSValueConst p_value, int p_depth) {
+	if (--convert_budget < 0) {
+		return Variant();
+	}
 	if (JS_IsBool(p_value)) {
 		return (bool)JS_ToBool(ctx, p_value);
 	}
@@ -230,8 +244,15 @@ Variant JsRuntime::to_variant(JSValueConst p_value, int p_depth) {
 	if (JS_IsArray(p_value)) {
 		Array out;
 		int64_t length = 0;
-		JS_GetLength(ctx, p_value, &length);
-		for (int64_t i = 0; i < length; i++) {
+		if (JS_GetLength(ctx, p_value, &length) < 0) {
+			JS_FreeValue(ctx, JS_GetException(ctx));
+			return out;
+		}
+		if (length > convert_budget) {
+			convert_budget = -1;
+			return out;
+		}
+		for (int64_t i = 0; i < length && convert_budget >= 0; i++) {
 			JSValue item = JS_GetPropertyUint32(ctx, p_value, (uint32_t)i);
 			out.push_back(to_variant(item, p_depth + 1));
 			JS_FreeValue(ctx, item);
@@ -245,7 +266,7 @@ Variant JsRuntime::to_variant(JSValueConst p_value, int p_depth) {
 		JS_FreeValue(ctx, JS_GetException(ctx));
 		return out;
 	}
-	for (uint32_t i = 0; i < count; i++) {
+	for (uint32_t i = 0; i < count && convert_budget >= 0; i++) {
 		JSValue key = JS_AtomToString(ctx, props[i].atom);
 		JSValue item = JS_GetProperty(ctx, p_value, props[i].atom);
 		out[js_string(ctx, key)] = to_variant(item, p_depth + 1);

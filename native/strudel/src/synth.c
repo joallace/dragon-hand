@@ -23,6 +23,9 @@
 #define MAX_DELAY_FEEDBACK 0.95f
 #define DEFAULT_ROOM_SIZE 0.5f
 #define MIN_ENV_SECONDS 0.001f
+#define MAX_NOTE_SECONDS 60.0 /* longest hold / envelope stage */
+#define MAX_SCHEDULE_AHEAD_SECONDS 30.0 /* events later than this are refused */
+#define MAX_SAMPLE 8.0f /* anything louder (or not a number) is a broken voice */
 #define DRUM_ATTACK_SECONDS 0.001f
 #define DRUM_RELEASE_SECONDS 0.005f
 #define DECAY_TAUS_TO_SILENCE 6.9f /* e^-6.9 = -60 dB */
@@ -516,6 +519,10 @@ static void render_voice(Synth *s, Voice *v, float *dry, float *delay_bus, float
 			env = envelope(v->age, v->hold, v->attack, v->decay, v->sustain, (float)v->release);
 		}
 		x *= env * v->gain;
+		if (!(x > -MAX_SAMPLE && x < MAX_SAMPLE)) { /* also true for NaN */
+			v->active = 0;
+			return;
+		}
 		float l = x * v->pan_l;
 		float r = x * v->pan_r;
 		dry[2 * i] += l;
@@ -637,18 +644,71 @@ void syn_set_master_gain(Synth *s, float gain) {
 	s->master_gain = gain;
 }
 
+/* Allowed range per event field; anything outside is clamped and a value
+ * that is not a number becomes `fallback`. Event values come from song code,
+ * so this is where they stop being trusted. */
+typedef struct {
+	double lo, hi, fallback;
+} FieldRange;
+
+static const FieldRange FIELD_RANGES[SYN_EVENT_FIELDS] = {
+	[SYN_START] = { 0.0, 1e12, 0.0 }, /* checked against the clock below */
+	[SYN_DURATION] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_SOURCE] = { 0.0, 63.0, 63.0 }, /* 63 = no such source: silent */
+	[SYN_FREQ] = { 0.0, 20000.0, 0.0 },
+	[SYN_GAIN] = { 0.0, 4.0, 0.0 },
+	[SYN_ATTACK] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_DECAY] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_SUSTAIN] = { 0.0, 1.0, 0.0 },
+	[SYN_RELEASE] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_CUTOFF] = { 0.0, 30000.0, 0.0 },
+	[SYN_RESONANCE] = { 0.05, 50.0, 1.0 },
+	[SYN_HCUTOFF] = { 0.0, 30000.0, 0.0 },
+	[SYN_HRESONANCE] = { 0.05, 50.0, 1.0 },
+	[SYN_LPENV] = { -8.0, 8.0, 0.0 },
+	[SYN_LPATTACK] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_LPDECAY] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_LPSUSTAIN] = { 0.0, 1.0, 0.0 },
+	[SYN_LPRELEASE] = { 0.0, MAX_NOTE_SECONDS, 0.0 },
+	[SYN_PAN] = { 0.0, 1.0, 0.5 },
+	[SYN_DELAY] = { 0.0, 1.0, 0.0 },
+	[SYN_DELAYTIME] = { -1.0, DELAY_MAX_SECONDS, -1.0 },
+	[SYN_DELAYFEEDBACK] = { -1.0, MAX_DELAY_FEEDBACK, -1.0 },
+	[SYN_ROOM] = { 0.0, 1.0, 0.0 },
+	[SYN_ROOMSIZE] = { -1.0, 1.0, -1.0 },
+	[SYN_FMI] = { -64.0, 64.0, 0.0 },
+	[SYN_FMH] = { 0.0, 32.0, 1.0 },
+	[SYN_VIB] = { 0.0, 64.0, 0.0 },
+	[SYN_VIBMOD] = { -24.0, 24.0, 0.0 },
+	[SYN_SHAPE] = { 0.0, 0.99, 0.0 },
+	[SYN_CRUSH] = { 0.0, 16.0, 0.0 },
+	[SYN_NOISE] = { 0.0, 1.0, 0.0 },
+	[SYN_RESERVED] = { 0.0, 0.0, 0.0 },
+};
+
 void syn_schedule(Synth *s, const double *records, int count) {
+	double now = (double)s->now / (double)s->rate;
 	for (int n = 0; n < count; n++) {
 		const double *r = records + (long)n * SYN_EVENT_FIELDS;
-		float f[SYN_EVENT_FIELDS];
-		for (int i = 0; i < SYN_EVENT_FIELDS; i++) {
-			f[i] = (float)r[i];
-		}
-		f[SYN_RESERVED] = 0.0f;
-		if (f[SYN_SOURCE] == (float)SRC_CLAP_BURST) {
+		double start = r[SYN_START];
+		/* NaN fails every comparison, so it is dropped here too. */
+		if (!(start >= 0.0 && start <= now + MAX_SCHEDULE_AHEAD_SECONDS)) {
 			continue;
 		}
-		queue_event(s, (int64_t)(r[SYN_START] * (double)s->rate), f);
+		float f[SYN_EVENT_FIELDS];
+		for (int i = 0; i < SYN_EVENT_FIELDS; i++) {
+			const FieldRange *range = &FIELD_RANGES[i];
+			double value = r[i];
+			if (!(value == value)) {
+				value = range->fallback;
+			} else if (value < range->lo) {
+				value = range->lo;
+			} else if (value > range->hi) {
+				value = range->hi;
+			}
+			f[i] = (float)value;
+		}
+		queue_event(s, (int64_t)(start * (double)s->rate), f);
 	}
 }
 

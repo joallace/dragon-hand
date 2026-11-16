@@ -4,7 +4,6 @@
 builds/
 build/
 
-# JsRuntime GDExtension: fetched deps, build trees, built libraries
+# JsRuntime GDExtension: fetched deps and build trees (bin/ is committed)
 native/js_runtime/.deps/
 native/js_runtime/.build/
-native/js_runtime/bin/

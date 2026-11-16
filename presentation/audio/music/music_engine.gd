@@ -3,7 +3,8 @@ extends RefCounted
 ## What the Music autoload drives: something that takes Strudel code and
 ## hands out stereo frames. StrudelEngine (desktop: JsRuntime + StrudelSynth
 ## extension) and WebMusicEngine (browser: a Web Worker per song + the synth
-## as WebAssembly) implement it with the same behaviour: songs load in the
+## as WebAssembly in an AudioWorklet, which plays by itself instead of being
+## pulled with render()) implement it with the same behaviour: songs load in the
 ## background, a song that fails leaves the current one playing, song
 ## changes keep the cycle position, restart() rewinds to cycle 0.
 
@@ -60,6 +61,30 @@ func render(frames: int) -> PackedVector2Array:
 	var silence := PackedVector2Array()
 	silence.resize(maxi(frames, 0))
 	return silence
+
+
+## True where the engine sends its sound to the audio output itself (the
+## browser): render() only gives silence and the volume comes from
+## set_output_gain().
+func plays_itself() -> bool:
+	return false
+
+
+## Linear volume of an engine that plays by itself.
+func set_output_gain(_linear: float) -> void:
+	pass
+
+
+## Whether the audio output of an engine that plays by itself is running
+## (a browser holds it back until the first click or key press).
+func output_running() -> bool:
+	return false
+
+
+## What an engine that plays by itself has put out since the last call:
+## {peak, sum (of squares, both channels), frames, finite}.
+func take_output_stats() -> Dictionary:
+	return {"peak": 0.0, "sum": 0.0, "frames": 0, "finite": true}
 
 
 func synth_time() -> float:

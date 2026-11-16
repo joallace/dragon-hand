@@ -4,19 +4,24 @@ extends MusicEngine
 ## the work: every song runs Strudel's pattern engine (strudel_bundle.mjs)
 ## in its own Web Worker, so a song that hangs is terminated instead of
 ## freezing the page; events are queued ahead into the synth, which is
-## synth.c compiled to WebAssembly (synth.wasm). All three files are read
-## from the game's pack and handed to the page, so the export needs no
-## extra files. This script only passes calls and audio across.
+## synth.c compiled to WebAssembly (synth.wasm) running in an AudioWorklet,
+## on the browser's audio thread. All three files are read from the game's
+## pack and handed to the page, so the export needs no extra files.
+##
+## The sound goes straight to the page's audio output (plays_itself()), not
+## through Godot's mixer: the single-threaded web build mixes on the main
+## thread, and a stream fed from there breaks up when frames are slow (mobile
+## Chrome). So bus volumes don't reach it: the owner passes the volume with
+## set_output_gain(), and render() only gives silence.
 ##
 ## Scheduling and song results run once per game frame (SceneTree
-## process_frame, from start() on), not from render(): the page's audio is
-## suspended until the player first clicks or presses a key, and nothing
-## is rendered until then, but a song still loads and reports.
+## process_frame, from start() on) whether or not audio is running: the
+## page's audio is suspended until the player first clicks or presses a key,
+## but a song still loads and reports.
 
 const GLUE := "res://presentation/audio/music/music_web.js"
 const SYNTH_WASM := "res://presentation/audio/music/synth.wasm"
 const HOST := "GHMusic"
-const BYTES_PER_FRAME := 8  # two float32
 
 ## The page's engine table (null where it could not be set up).
 var _host: JavaScriptObject
@@ -24,6 +29,13 @@ var _id := 0
 var _ticking := false
 var _time := 0.0
 var _voices := 0
+var _running := false
+var _gain := 1.0
+## Output level since the last take_output_stats().
+var _peak := 0.0
+var _sum := 0.0
+var _frames := 0
+var _finite := true
 
 
 static func available() -> bool:
@@ -51,6 +63,7 @@ func _init(sample_rate: float) -> void:
 		"max_cps": t.max_cps,
 		"load_time_limit_msec": t.load_time_limit_msec,
 		"boot_time_limit_msec": t.web_boot_time_limit_msec,
+		"spare_delay_msec": t.web_spare_worker_delay_msec,
 		"reply_timeout_frames": t.web_reply_timeout_frames,
 	}
 	_id = int(_host.create(FileAccess.get_file_as_string(StrudelEngine.BUNDLE),
@@ -114,6 +127,13 @@ func pump() -> void:
 		return
 	_time = float((state as Dictionary).get("time", _time))
 	_voices = int((state as Dictionary).get("voices", _voices))
+	_running = bool((state as Dictionary).get("running", false))
+	var peak := float((state as Dictionary).get("peak", 0.0))
+	var sum := float((state as Dictionary).get("sum", 0.0))
+	_finite = _finite and peak >= 0.0 and sum >= 0.0
+	_peak = maxf(_peak, peak)
+	_sum += sum
+	_frames += int((state as Dictionary).get("frames", 0))
 	for result: Variant in (state as Dictionary).get("results", []):
 		if not result is Dictionary:
 			continue
@@ -123,15 +143,27 @@ func pump() -> void:
 			push_warning("Music: " + str(result.get("message", "")))
 
 
-func render(frames: int) -> PackedVector2Array:
-	if _host == null or frames <= 0:
-		return super(frames)
-	# eval() is what turns a typed array into a PackedByteArray (a method
-	# call through JavaScriptObject would hand back another JavaScriptObject).
-	var bytes: Variant = JavaScriptBridge.eval("%s.render(%d, %d)" % [HOST, _id, frames], true)
-	if bytes is PackedByteArray and (bytes as PackedByteArray).size() == frames * BYTES_PER_FRAME:
-		return (bytes as PackedByteArray).to_vector2_array()
-	return super(frames)
+func plays_itself() -> bool:
+	return true
+
+
+func set_output_gain(linear: float) -> void:
+	if _host != null and not is_equal_approx(linear, _gain):
+		_gain = linear
+		_host.gain(_id, linear)
+
+
+func output_running() -> bool:
+	return _running
+
+
+func take_output_stats() -> Dictionary:
+	var stats := {"peak": _peak, "sum": _sum, "frames": _frames, "finite": _finite}
+	_peak = 0.0
+	_sum = 0.0
+	_frames = 0
+	_finite = true
+	return stats
 
 
 func synth_time() -> float:

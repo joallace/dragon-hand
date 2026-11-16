@@ -63,5 +63,9 @@ extends Resource
 ## terminated (the frame count, not a clock, so a hidden tab doesn't trip it).
 @export var web_boot_time_limit_msec: int = 15000
 @export var web_reply_timeout_frames: int = 240
+## Web: a worker for the next song is booted this long after a song has
+## loaded (importing the bundle is the slow part of a song change, so it is
+## kept away from a song or a scene that is loading).
+@export var web_spare_worker_delay_msec: int = 3000
 ## Largest song text accepted.
 @export var max_song_bytes: int = 256 * 1024

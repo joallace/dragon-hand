@@ -67,6 +67,26 @@ after the wasm is up (about 8 s of a 10.6 s load at 6x CPU throttle).
   meshes and materials and animate in `_process`. A heavy hit went from
   3.2-6.7 ms to ~1.6 ms in Chrome; the rest is mostly the hit sound.
 - Vanish/reappear flashes share one sphere mesh (`FighterVisual._flash_mesh`).
+- **Music off Godot's mixer** (`presentation/audio/music/music_web.js`). The
+  no-threads build has no audio thread: Godot's worklet only plays chunks the
+  main thread mixes when it gets a "read" message, with a ring buffer of
+  about `audio/driver/output_latency.web` (50 ms). Once frames take longer
+  than that, anything played as a mixed stream (an `AudioStreamGenerator`,
+  which music was) is silence with a burst per frame: the 30 Hz pulsing
+  reported on mobile Chrome. Samples (the SFX) don't go through it. The
+  synth now runs inside its own AudioWorklet on a separate `AudioContext`
+  (`latencyHint: 'playback'`), fed with events half a second ahead, so a slow
+  or blocked main thread only delays new notes. Costs: the Music bus volume
+  is mirrored by hand (`Music._bus_gain`), bus effects don't reach music, and
+  a main-thread stall longer than `Tuning.music.lookahead` (a scene load)
+  thins the music out instead of freezing it. `tools/web_tools.sh tool=music`
+  checks it keeps playing through 80 ms frames. Not yet confirmed on a phone.
+- **Spare song worker**: every song runs in a fresh Worker, and importing the
+  910 KB Strudel bundle there was most of a song change (about 150-330 ms of
+  a desktop core in Firefox/Chromium, several times that on a phone, right
+  when the match scene loads). A worker for the next song is now booted
+  `web_spare_worker_delay_msec` after a song settles; with it a change costs
+  only the song's evaluation (12-15 ms on desktop).
 
 ## Open optimizations
 

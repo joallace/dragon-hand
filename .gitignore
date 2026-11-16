@@ -3,3 +3,8 @@
 /android/
 builds/
 build/
+
+# JsRuntime GDExtension: fetched deps, build trees, built libraries
+native/js_runtime/.deps/
+native/js_runtime/.build/
+native/js_runtime/bin/

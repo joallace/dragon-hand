@@ -441,9 +441,85 @@ func _test_autoload() -> void:
 	for i in STOP_SETTLE_FRAMES:
 		await get_tree().process_frame
 	_check(_events.is_empty(), "stop() drops a song that was still loading %s" % [_events])
+	await _test_tracks()
 	# The audio server releases a stopped playback on its next mixes.
 	for i in AUDIO_SETTLE_FRAMES:
 		await get_tree().process_frame
+
+
+## Named tracks, the user's replacement folder and the scene -> track map.
+func _test_tracks() -> void:
+	var engine := StrudelEngine.new(RATE)
+	engine.song_loaded.connect(_on_loaded)
+	engine.start(false)
+	for track: StringName in [&"menu", &"match"]:
+		var path := Music.track_path(track)
+		_check(FileAccess.file_exists(path), "%s track file exists (%s)" % [track, path])
+		engine.restart()
+		var result: Array = await _load(engine, FileAccess.get_file_as_string(path))
+		_check(result[0] and result[1] == "", "%s track loads without warnings %s" % [track, result])
+		var out := _play(engine, 8.0)
+		_check(_rms(out) > 0.03 and _peak(out) < 0.95, "%s track is audible and not clipping (rms %.3f, peak %.3f)"
+				% [track, _rms(out), _peak(out)])
+	engine.stop()
+
+	_events.clear()
+	Music.play_track(&"menu")
+	await _wait_for_event()
+	_check(not _events.is_empty() and _events[0][0] and Music.current_track == &"menu", "play_track starts the menu track")
+	_events.clear()
+	Music.play_track(&"menu")
+	for i in STOP_SETTLE_FRAMES:
+		await get_tree().process_frame
+	_check(_events.is_empty(), "asking for the playing track again does not restart it")
+	Music.play_track(&"nope")
+	_check(not _events.is_empty() and not _events[0][0] and Music.current_track == &"menu",
+			"unknown track fails and the current one stays")
+
+	# user:// is shared by every worktree: use a folder of our own.
+	var saved_dir := Tuning.music.user_dir
+	Tuning.music.user_dir = "user://music_test_%d" % OS.get_process_id()
+	DirAccess.make_dir_recursive_absolute(Tuning.music.user_dir)
+	var user_file := Music.user_track_path(&"match")
+	_check(user_file == Tuning.music.user_dir + "/match.strudel", "replacement path is <user_dir>/match.strudel")
+	FileAccess.open(user_file, FileAccess.WRITE).store_string("s(\"hh*4\")")
+	_events.clear()
+	Music.play_track(&"match")
+	await _wait_for_event()
+	_check(not _events.is_empty() and _events[0][0] and Music.current_track == &"match",
+			"a file in the user folder replaces the built-in track")
+	Music.stop()
+	FileAccess.open(user_file, FileAccess.WRITE).store_string("this is not a song(")
+	_events.clear()
+	Music.play_track(&"match")
+	var deadline := Time.get_ticks_msec() + SIGNAL_TIMEOUT_MSEC
+	while _events.size() < 2 and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_check(_events.size() == 2 and not _events[0][0] and _events[1][0] and Music.current_track == &"match",
+			"a broken replacement falls back to the built-in track %s" % [_events])
+	DirAccess.remove_absolute(user_file)
+	DirAccess.remove_absolute(Tuning.music.user_dir)
+	Tuning.music.user_dir = saved_dir
+
+	Music.stop()
+	var saved_scenes := Tuning.music.scene_tracks
+	Tuning.music.scene_tracks = {"res://tests/": &"menu"}
+	Music._on_scene_changed()
+	_check(not Music.is_playing(), "no automatic music headless")
+	Music.auto_play = true
+	Music._on_scene_changed()
+	_check(Music.is_playing() and Music.current_track == &"menu", "the scene's track starts on a scene change")
+	Tuning.music.scene_tracks = {"res://somewhere/else/": &"match"}
+	Music._on_scene_changed()
+	_check(Music.current_track == &"menu", "a scene with no track leaves the music alone")
+	Music.auto_play = false
+	Tuning.music.scene_tracks = saved_scenes
+	for prefix: String in saved_scenes:
+		_check(Music.track_path(saved_scenes[prefix]) != "" and DirAccess.dir_exists_absolute(prefix),
+				"scene folder %s maps to an existing track" % prefix)
+	_check(Game.SCENE_MATCH.begins_with("res://scenes/match/") and Game.SCENE_MAIN_MENU.begins_with("res://scenes/menus/"),
+			"the game's scenes fall under the mapped folders")
+	Music.stop()
 
 
 func _wait_for_event() -> void:

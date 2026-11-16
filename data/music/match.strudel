@@ -1,0 +1,38 @@
+// Match theme: fast synth battle music in D minor, 140 BPM, 16-bar loop.
+// Strudel code (https://strudel.cc). One cycle = one bar.
+// Chords, two bars each pass: Dm Dm Bb C | Dm Dm Bb A
+setcpm(140 / 4)
+
+// Bass: bouncing octaves that follow the chord roots.
+$: note("0 0 12 0 ~ 0 12 0").add(note("<38 38 34 36 38 38 34 33>"))
+  .s("sawtooth").lpf(500).lpenv(3).lpdecay(.12).resonance(8)
+  .decay(.18).sustain(.2).release(.04).gain(.95)
+
+// Lead: sits out bars 9-12 so the arpeggio gets a turn.
+$: note(`<
+  [d5 ~ a4 d5 ~ f5 e5 d5]
+  [c5 d5 ~ a4 ~ [a4 c5] d5 ~]
+  [f5 ~ d5 f5 ~ g5 f5 d5]
+  [e5 g5 ~ e5 ~ [d5 e5] c5 ~]
+  [d5 ~ a4 d5 ~ f5 e5 d5]
+  [a5 ~ g5 f5 ~ e5 f5 g5]
+  [f5 ~ d5 bb4 ~ d5 f5 a5]
+  [a5 ~ g5 e5 ~ [cs5 e5] a4 ~]
+>`).mask("<1!8 0!4 1!4>")
+  .s("square").lpf(3200).decay(.16).sustain(.35).release(.08)
+  .vib(6).vibmod(.12).delay(.28).delaytime(.214).delayfeedback(.35).gain(.62)
+
+// Arpeggio: quiet under the lead, opened up in bars 9-12.
+$: note(`<
+  [d4 f4 a4 d5]*4 [d4 f4 a4 d5]*4 [d4 f4 bb4 d5]*4 [c4 e4 g4 c5]*4
+  [d4 f4 a4 d5]*4 [d4 f4 a4 d5]*4 [d4 f4 bb4 d5]*4 [cs4 e4 a4 cs5]*4
+>`).s("triangle").decay(.07).sustain(0)
+  .lpf("<1400!8 3800!4 1400!4>").pan(sine.range(.25, .75).slow(2))
+  .room(.25).gain("<.45!8 .8!4 .45!4>")
+
+// Drums: a fill closes every eighth bar.
+$: s("bd ~ ~ bd ~ bd ~ ~").gain(.95)
+$: s("<[~ sd ~ sd]!7 [~ sd ~ [sd sd sd sd]]>").gain(.85)
+$: s("hh*8").gain("[.55 .3]*4")
+$: s("<~!3 [~ ~ ~ ~ ~ ~ ~ oh]>").gain(.5)
+$: s("<cr ~!7>").gain(.45)

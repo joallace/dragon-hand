@@ -144,11 +144,8 @@ func _test_room_code_menus() -> void:
 	var room_btn := lobby.get("_room_button") as Button
 	check(room_btn.visible and room_btn.text == "Open online" and not (lobby.get("_direct_button") as Button).visible,
 			"web+codes lobby: one room button (room code), no Direct IP")
-	var hint_has_room := false
-	for lab in lobby.find_children("*", "Label", true, false):
-		hint_has_room = hint_has_room or ((lab as Label).text.contains("TAB room")
-				and not (lab as Label).text.contains("by IP"))
-	check(hint_has_room, "web+codes lobby: hint has the room key, no direct IP")
+	check(lobby.option_items().has(Lobby.ACT_ROOM) and not lobby.option_items().has(Lobby.ACT_DIRECT),
+			"web+codes lobby: the options screen opens a room, not by direct IP")
 	lobby.queue_free()
 	await frames(2)
 
@@ -216,9 +213,7 @@ func _test_lobby() -> void:
 	l.room_action()
 	await frames(1)
 	check(not Net.is_online() and not l.is_online(), "web lobby: room action does nothing")
-	var hint_has_room := false
-	for lab in l.find_children("*", "Label", true, false):
-		hint_has_room = hint_has_room or (lab as Label).text.contains("TAB room")
-	check(not hint_has_room, "web lobby: hint has no room keys")
+	check(l.option_items() == l.model.rule_rows() + ([Lobby.ACT_DONE] as Array[int]),
+			"web lobby: the options screen has the rules and no room actions")
 	l.queue_free()
 	await frames(2)

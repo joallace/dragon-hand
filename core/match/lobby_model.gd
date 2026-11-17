@@ -2,36 +2,42 @@ class_name LobbyModel
 extends RefCounted
 ## The lobby's data and rules (SPEC_ONLINE.md §10.2), without UI or input
 ## devices: slots, the per-player rows, the shared match / co-op rules, the
-## start condition, and the MatchConfig they build. The Lobby screen drives
-## one directly offline; online the host's OnlineRoom owns the real one and
+## start condition, and the MatchConfig they build. Three kinds of rows:
+##   a player's own (`rows_for`: fighter, colour, team; `command` moves that
+##   player's cursor over them), the shared rules (`rule_rows`, changed with
+##   `change_rule`; the mode is Row.MODE) and the rows of another seat
+##   (`seat_rows`, changed with `change_seat`: a CPU in an empty slot, its
+##   fighter / level / team, the co-op ally). Rules and seats belong to
+##   whoever runs the lobby: anyone offline, the host online.
+## The Lobby screen drives one directly offline; online the host's OnlineRoom owns the real one and
 ## guests mirror it from `to_dict()` (apply_dict), sending their commands to
 ## the host instead of applying them.
 ##
 ## Modes: `mode` picks the slot layout (configure_for_mode):
 ##   LOCAL_VERSUS and ONLINE (versus over the network): Tuning.net.max_fighters
 ##   HUMAN slots (team versus, SPEC_ONLINE.md §15 milestone 5); VERSUS_CPU
-##   [HUMAN, CPU] (the CPU slot is pre-joined and ready; humans get
-##   "CPU fighter" / "CPU level" rows); COOP min(max_humans, max_fighters)
+##   [HUMAN, CPU] (the CPU slot is pre-joined and ready; its fighter and
+##   level are its seat rows); COOP min(max_humans, max_fighters)
 ##   optional HUMAN slots (SPEC.md §9 rows).
-## The MODE row switches between `modes()` (offline: the three local modes;
-## online: ONLINE and COOP).
+## `change_rule(Row.MODE, dir)` switches between `modes()` (offline: the three
+## local modes; online: ONLINE and COOP).
 ##
 ## Team versus (LOCAL_VERSUS / ONLINE, `team_mode()`): every slot has a team,
 ## TEAM_FFA (its own team) or a named team (TEAM_NAMES: A, B); each player
-## picks theirs on the TEAM row. The SEAT rows edit any slot (`seat`): turn
-## an empty slot into a CPU and back (SEAT_TYPE), set its team (SEAT_TEAM) and
-## a CPU's fighter / level. LOCK_TEAMS (online) keeps guests off their TEAM
-## row. A match needs every joined human ready, two fighters and two teams
+## picks theirs on the TEAM row. The seat rows edit another slot: turn an
+## empty slot into a CPU and back (SEAT_TYPE), set its team (SEAT_TEAM: CPUs,
+## and online the players) and a CPU's fighter / level. LOCK_TEAMS (online)
+## keeps guests off their TEAM row. A match needs every joined human ready, two fighters and two teams
 ## (`teams_ok`); build_config leaves empty slots out (slots keep their lobby
 ## index) and numbers the teams (`config_teams`).
 ##
 ## Online: a slot's `owner_peer` is the peer that joined it (0 = free).
-## Shared rows (rules) belong to the host: a guest's slot only has the
-## CHARACTER row, and a rule change by the host un-readies everyone else.
+## A rule or seat change un-readies everyone (offline too).
 ## Online co-op (SPEC_ONLINE.md §15 milestone 3) has
 ## min(Tuning.net.max_humans, max_fighters) optional HUMAN slots; the CPU
 ## ally takes one of the Tuning.net.max_fighters places (human_capacity), so
-## it can't be switched on with every place taken. Switching modes online
+## it can't be switched on with every place taken. The ally is shown in, and
+## edited through, the last empty slot (`ally_place`). Switching modes online
 ## packs the joined humans into the new layout's human slots in slot order
 ## (a peer whose slot no longer exists is left without one).
 
@@ -43,7 +49,7 @@ enum Row {
 	COOP_STRUCTURE, ENEMY_COUNT, WAVES, ENEMY_LEVEL, ENEMY_ROSTER,
 	ALLY, ALLY_LEVEL, ALLY_CHARACTER, FRIENDLY_FIRE, MODE,
 	TEAM, SEAT, SEAT_TYPE, SEAT_TEAM, LOCK_TEAMS, COLOR, STAGE
-}
+}  # SEAT is unused (it keeps the other rows' wire values)
 
 ## What a command did (the screen plays sounds / punches panels for it).
 const EV_NONE := &""
@@ -110,8 +116,6 @@ var coop_ally: bool = false
 var coop_ally_level: int = Tuning.cpu.clamp_level(-1)
 var coop_ally_char: int = 0
 var friendly_fire: bool = false
-## Team versus: the slot the SEAT rows edit.
-var seat: int = 0
 ## Online team versus: guests can't change their team.
 var lock_teams: bool = false
 
@@ -135,7 +139,13 @@ func set_mode(m: MatchConfig.Mode) -> void:
 	var old := slots.duplicate()
 	mode = m
 	configure_for_mode()
-	if online:
+	# Offline players keep their slot number where the new layout has it.
+	var keep_index := not online
+	for i in old.size():
+		if old[i].type == SlotType.HUMAN and old[i].state != SlotState.EMPTY \
+				and (i >= slots.size() or slots[i].type != SlotType.HUMAN):
+			keep_index = false
+	if not keep_index:
 		_pack_humans(old)
 	else:
 		for i in mini(old.size(), slots.size()):
@@ -162,7 +172,6 @@ func configure_for_mode() -> void:
 		_:
 			for i in Tuning.net.max_fighters:
 				types.append(SlotType.HUMAN)
-	seat = 0
 	slots.clear()
 	for t in types:
 		var s := Slot.new()
@@ -172,8 +181,8 @@ func configure_for_mode() -> void:
 		slots.append(s)
 
 
-## Online: joined humans keep their picks in the new layout's human slots,
-## in slot order, un-readied; picks of empty slots carry over by index.
+## Joined humans keep their picks in the new layout's human slots, in slot
+## order, un-readied; picks of empty slots carry over by index.
 func _pack_humans(old: Array) -> void:
 	var joined: Array = old.filter(func(s: Slot) -> bool:
 		return s.type == SlotType.HUMAN and s.state != SlotState.EMPTY)
@@ -189,6 +198,18 @@ func _pack_humans(old: Array) -> void:
 
 func modes() -> Array[MatchConfig.Mode]:
 	return ONLINE_MODES if online else LOCAL_MODES
+
+
+## Mode `m` has a human slot for everyone who joined (a switch to it drops
+## nobody).
+func mode_fits(m: MatchConfig.Mode) -> bool:
+	var places := Tuning.net.max_fighters
+	match m:
+		MatchConfig.Mode.VERSUS_CPU:
+			places = 1
+		MatchConfig.Mode.COOP:
+			places = mini(Tuning.net.max_humans, Tuning.net.max_fighters)
+	return joined_humans() <= places
 
 
 static func mode_name(m: MatchConfig.Mode) -> String:
@@ -211,16 +232,6 @@ func team_mode() -> bool:
 
 static func team_name(team: int) -> String:
 	return "Team %s" % TEAM_NAMES[team] if team >= 0 and team < TEAM_NAMES.size() else "Free for all"
-
-
-## The slot the CPU fighter / level rows edit: VERSUS_CPU's CPU slot, the
-## seat when it holds a CPU, else -1.
-func cpu_target() -> int:
-	if mode == MatchConfig.Mode.VERSUS_CPU:
-		return cpu_slot()
-	if team_mode() and seat >= 0 and seat < slots.size() and slots[seat].type == SlotType.CPU:
-		return seat
-	return -1
 
 
 func coop_endless() -> bool:
@@ -357,38 +368,21 @@ func command(idx: int, cmd: int) -> StringName:
 	return EV_NONE
 
 
-## Rows the player in slot `idx` can pick, top to bottom (online guests:
-## their character and colour, and their team unless the host locked teams; the rules
-## are the host's).
+## Rows of the player in slot `idx`, top to bottom: their fighter and
+## colour, and their team in team versus (not for guests once the host
+## locked the teams).
 func rows_for(idx: int) -> Array[int]:
-	if online and idx >= 0 and idx < slots.size() and slots[idx].owner_peer != Transport.HOST_PEER:
-		var r: Array[int] = [Row.CHARACTER, Row.COLOR]
-		if team_mode() and not lock_teams:
-			r.append(Row.TEAM)
-		return r
-	return rows()
-
-
-## Every row this mode shows, top to bottom.
-func rows() -> Array[int]:
 	var r: Array[int] = [Row.CHARACTER, Row.COLOR]
-	if team_mode():
+	var guest := online and idx >= 0 and idx < slots.size() and slots[idx].owner_peer != Transport.HOST_PEER
+	if team_mode() and not (guest and lock_teams):
 		r.append(Row.TEAM)
-	if modes().size() > 1:
-		r.append(Row.MODE)
-	if team_mode():
-		r.append(Row.SEAT)
-		var st := slots[seat]
-		if st.type == SlotType.CPU or st.state == SlotState.EMPTY:
-			r.append(Row.SEAT_TYPE)
-		if st.type == SlotType.CPU or st.state != SlotState.EMPTY:
-			r.append(Row.SEAT_TEAM)
-		if st.type == SlotType.CPU:
-			r.append_array([Row.CPU_CHARACTER, Row.CPU_LEVEL])
-		if online:
-			r.append(Row.LOCK_TEAMS)
-		r.append_array([Row.ROUNDS, Row.TIMER, Row.STAGE])
-		return r
+	return r
+
+
+## The shared rules this mode has, top to bottom (the mode itself, Row.MODE,
+## is not listed: change_rule takes it whenever modes() has a choice).
+func rule_rows() -> Array[int]:
+	var r: Array[int] = []
 	if is_coop():
 		r.append_array([Row.COOP_STRUCTURE, Row.ENEMY_COUNT])
 		if coop_structure == CoopConfig.Structure.WAVES:
@@ -398,10 +392,59 @@ func rows() -> Array[int]:
 			r.append_array([Row.ALLY_LEVEL, Row.ALLY_CHARACTER])
 		r.append_array([Row.FRIENDLY_FIRE, Row.TIMER, Row.STAGE])
 		return r
-	if cpu_slot() >= 0:
-		r.append_array([Row.CPU_CHARACTER, Row.CPU_LEVEL])
+	if team_mode() and online:
+		r.append(Row.LOCK_TEAMS)
 	r.append_array([Row.ROUNDS, Row.TIMER, Row.STAGE])
 	return r
+
+
+## Rows the lobby's owner can change on slot `idx`, top to bottom. Team
+## versus: an empty slot can become a CPU (SEAT_TYPE), a CPU has its fighter,
+## level and team, and online a joined player has their team. Versus CPU:
+## the CPU's fighter and level. Co-op: the ally's place (ally_place) switches
+## the ally on and off and picks its fighter and level.
+func seat_rows(idx: int) -> Array[int]:
+	var r: Array[int] = []
+	if idx < 0 or idx >= slots.size():
+		return r
+	var s := slots[idx]
+	if is_coop():
+		if idx == ally_place():
+			r.append(Row.ALLY)
+			if coop_ally:
+				r.append_array([Row.ALLY_CHARACTER, Row.ALLY_LEVEL])
+	elif s.type == SlotType.CPU:
+		if team_mode():
+			r.append(Row.SEAT_TYPE)
+		r.append_array([Row.CPU_CHARACTER, Row.CPU_LEVEL])
+		if team_mode():
+			r.append(Row.SEAT_TEAM)
+	elif team_mode():
+		if s.state == SlotState.EMPTY:
+			r.append(Row.SEAT_TYPE)
+		elif online:
+			r.append(Row.SEAT_TEAM)
+	return r
+
+
+## Slots with seat rows, in slot order.
+func seat_targets() -> Array[int]:
+	var out: Array[int] = []
+	for i in slots.size():
+		if not seat_rows(i).is_empty():
+			out.append(i)
+	return out
+
+
+## Co-op: the slot that stands for the CPU ally (the last empty one; -1 when
+## every slot has a player, or outside co-op). The ally is switched on there.
+func ally_place() -> int:
+	if not is_coop():
+		return -1
+	for i in range(slots.size() - 1, -1, -1):
+		if slots[i].type == SlotType.HUMAN and slots[i].state == SlotState.EMPTY:
+			return i
+	return -1
 
 
 func _move_cursor(idx: int, dir: int) -> void:
@@ -410,39 +453,46 @@ func _move_cursor(idx: int, dir: int) -> void:
 	s.cursor = r[posmod(maxi(r.find(s.cursor), 0) + dir, r.size())]
 
 
+## LEFT / RIGHT on the player's own row.
 func _change_row(idx: int, dir: int) -> void:
 	var s := slots[idx]
 	if not s.cursor in rows_for(idx):
 		s.cursor = Row.CHARACTER
-	var n := MenuHelpers.character_ids().size()
 	match s.cursor:
 		Row.CHARACTER:
-			s.char_index = posmod(s.char_index + dir, maxi(n, 1))
-			return
+			s.char_index = posmod(s.char_index + dir, maxi(MenuHelpers.character_ids().size(), 1))
 		Row.COLOR:
 			_step_color(idx, dir)
-			return
-		Row.SEAT:
-			seat = posmod(seat + dir, slots.size())
-			fix_cursors()
-			return
 		Row.TEAM:
 			s.team = _next_team(s.team, dir)
-		Row.SEAT_TEAM:
-			slots[seat].team = _next_team(slots[seat].team, dir)
-		Row.SEAT_TYPE:
-			_toggle_cpu_seat(seat)
+			# Teams decide who fights whom: online, the others confirm again.
+			if online:
+				unready_all(idx)
+
+
+## Change a shared rule by `dir` steps (-1 / 1; Row.MODE takes any number of
+## steps). Returns false when the mode doesn't have that row or the change
+## isn't possible. Everyone has to confirm the new rules. A mode without a
+## slot for every joined human (mode_fits) is skipped by a single step and
+## refused as the target of a longer one.
+func change_rule(row: int, dir: int) -> bool:
+	if row == Row.MODE:
+		var ms := modes()
+		var at := maxi(ms.find(mode), 0)
+		var to := posmod(at + dir, ms.size())
+		while absi(dir) == 1 and to != at and not mode_fits(ms[to]):
+			to = posmod(to + dir, ms.size())
+		if to == at or not mode_fits(ms[to]):
+			return false
+		set_mode(ms[to])
+		return true
+	if not row in rule_rows():
+		return false
+	dir = signi(dir)
+	var n := MenuHelpers.character_ids().size()
+	match row:
 		Row.LOCK_TEAMS:
 			lock_teams = not lock_teams
-		Row.MODE:
-			var ms := modes()
-			set_mode(ms[posmod(maxi(ms.find(mode), 0) + dir, ms.size())])
-		Row.CPU_CHARACTER:
-			var cpu := slots[cpu_target()]
-			cpu.char_index = posmod(cpu.char_index + dir, maxi(n, 1))
-		Row.CPU_LEVEL:
-			var cpu := slots[cpu_target()]
-			cpu.cpu_level = clampi(cpu.cpu_level + dir, 0, Tuning.cpu.level_count() - 1)
 		Row.ROUNDS:
 			rounds_to_win = clampi(rounds_to_win + dir, MIN_ROUNDS, MAX_ROUNDS)
 		Row.TIMER:
@@ -460,19 +510,54 @@ func _change_row(idx: int, dir: int) -> void:
 		Row.ENEMY_ROSTER:
 			coop_roster = posmod(coop_roster + dir, n + 1)
 		Row.ALLY:
-			if not coop_ally and online and joined_humans() >= Tuning.net.max_fighters:
-				return  # no place left for the ally
-			coop_ally = not coop_ally
+			if not _toggle_ally():
+				return false
 		Row.ALLY_LEVEL:
 			coop_ally_level = clampi(coop_ally_level + dir, 0, Tuning.cpu.level_count() - 1)
 		Row.ALLY_CHARACTER:
 			coop_ally_char = posmod(coop_ally_char + dir, maxi(n, 1))
 		Row.FRIENDLY_FIRE:
 			friendly_fire = not friendly_fire
-	# A shared rule changed: online, everyone has to confirm it again.
-	if online:
-		unready_all(idx)
+	unready_all()
 	fix_cursors()
+	return true
+
+
+## Change one of slot `idx`'s seat rows by `dir` (-1 / 1). Returns false
+## when the slot doesn't have that row or the change isn't possible.
+func change_seat(idx: int, row: int, dir: int) -> bool:
+	if not row in seat_rows(idx):
+		return false
+	dir = signi(dir)
+	var s := slots[idx]
+	var n := maxi(MenuHelpers.character_ids().size(), 1)
+	match row:
+		Row.SEAT_TYPE:
+			_toggle_cpu_seat(idx)
+		Row.SEAT_TEAM:
+			s.team = _next_team(s.team, dir)
+		Row.CPU_CHARACTER:
+			s.char_index = posmod(s.char_index + dir, n)
+		Row.CPU_LEVEL:
+			s.cpu_level = clampi(s.cpu_level + dir, 0, Tuning.cpu.level_count() - 1)
+		Row.ALLY:
+			if not _toggle_ally():
+				return false
+		Row.ALLY_CHARACTER:
+			coop_ally_char = posmod(coop_ally_char + dir, n)
+		Row.ALLY_LEVEL:
+			coop_ally_level = clampi(coop_ally_level + dir, 0, Tuning.cpu.level_count() - 1)
+	unready_all()
+	fix_cursors()
+	return true
+
+
+## Co-op ally on / off. Online it needs one of the max_fighters places.
+func _toggle_ally() -> bool:
+	if not coop_ally and online and joined_humans() >= Tuning.net.max_fighters:
+		return false
+	coop_ally = not coop_ally
+	return true
 
 
 ## Palette index of every slot: its pick, else the first free colour from the
@@ -555,24 +640,12 @@ func _toggle_cpu_seat(idx: int) -> void:
 		s.device_id = -1
 
 
-## Rows hidden by a change (Waves in Brawl, ally rows without an ally, CPU
-## rows after a mode switch, seat rows of another seat, a locked TEAM row)
-## send any cursor on them back to the row that controls them.
+## A cursor on a row its player no longer has (a locked TEAM row, another
+## mode's rows) goes back to the fighter row.
 func fix_cursors() -> void:
 	for i in slots.size():
-		var s := slots[i]
-		var r := rows_for(i)
-		if s.cursor in r:
-			continue
-		match s.cursor:
-			Row.WAVES:
-				s.cursor = Row.COOP_STRUCTURE
-			Row.ALLY_LEVEL, Row.ALLY_CHARACTER:
-				s.cursor = Row.ALLY
-			Row.SEAT_TYPE, Row.SEAT_TEAM, Row.CPU_CHARACTER, Row.CPU_LEVEL when Row.SEAT in r:
-				s.cursor = Row.SEAT
-			_:
-				s.cursor = Row.MODE if Row.MODE in r else Row.CHARACTER
+		if not slots[i].cursor in rows_for(i):
+			slots[i].cursor = Row.CHARACTER
 
 
 ## The match can start: one joined human, every joined one ready; versus
@@ -740,7 +813,7 @@ func to_dict() -> Dictionary:
 		"mode": mode, "online": online, "slots": ss, "rounds": rounds_to_win, "time": time_index, "stage": stage_index,
 		"coop": [coop_structure, coop_enemy_count, coop_waves, coop_enemy_level, coop_roster,
 			coop_ally, coop_ally_level, coop_ally_char],
-		"ff": friendly_fire, "seat": seat, "lock": lock_teams,
+		"ff": friendly_fire, "lock": lock_teams,
 	}
 
 
@@ -785,7 +858,6 @@ func apply_dict(d: Dictionary) -> bool:
 		coop_ally_level = Tuning.cpu.clamp_level(_int_at(c, 6, coop_ally_level))
 		coop_ally_char = clampi(_int_at(c, 7, coop_ally_char), 0, n - 1)
 	friendly_fire = d.get("ff", friendly_fire) == true
-	seat = clampi(_int(d, "seat", 0), 0, maxi(slots.size() - 1, 0))
 	lock_teams = d.get("lock", lock_teams) == true
 	return true
 

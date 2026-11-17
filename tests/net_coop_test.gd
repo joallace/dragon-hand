@@ -254,13 +254,13 @@ func _test_lobby() -> bool:
 	ann.room.join_local(DEVICES[1][0], DEVICES[1][1])
 	_pump(PUMP_FRAMES)
 	var hm := host.room.model
-	hm.slots[0].cursor = LobbyModel.Row.MODE
-	host.room.request({"op": OnlineRoom.OP_CMD, "slot": 0, "cmd": LobbyModel.Cmd.RIGHT})
+	host.room.request({"op": OnlineRoom.OP_RULE, "row": LobbyModel.Row.MODE, "dir": 1})
 	_pump(PUMP_FRAMES)
 	var places := mini(Tuning.net.max_humans, Tuning.net.max_fighters)
 	_check(hm.is_coop() and ann.room.model.is_coop() and ann.room.model.slots.size() == places
 			and ann.room.my_slots() == ([1] as Array[int]), "host switched the room to Co-op; the guest kept its slot")
-	hm.slots[1].cursor = LobbyModel.Row.MODE  # even on the Game row, a guest only steers its fighter
+	hm.slots[1].cursor = LobbyModel.Row.MODE  # even with a cursor off its rows, a guest only steers its fighter
+	ann.room.request({"op": OnlineRoom.OP_RULE, "row": LobbyModel.Row.MODE, "dir": 1})
 	ann.room.request({"op": OnlineRoom.OP_CMD, "slot": 1, "cmd": LobbyModel.Cmd.RIGHT})
 	_pump(PUMP_FRAMES)
 	var next_char := 1 % MenuHelpers.character_ids().size()
@@ -282,8 +282,7 @@ func _test_lobby() -> bool:
 	cid.room.join_local(DEVICES[3][0], DEVICES[3][1])
 	_pump(PUMP_FRAMES)
 	_check(hm.joined_humans() == places and cid.room.model.joined_humans() == places, "every co-op place taken")
-	hm.slots[0].cursor = LobbyModel.Row.ALLY
-	host.room.request({"op": OnlineRoom.OP_CMD, "slot": 0, "cmd": LobbyModel.Cmd.RIGHT})
+	host.room.request({"op": OnlineRoom.OP_RULE, "row": LobbyModel.Row.ALLY, "dir": 1})
 	_pump(PUMP_FRAMES)
 	_check(not hm.coop_ally, "the ally can't take a place a human holds")
 
@@ -292,7 +291,7 @@ func _test_lobby() -> bool:
 	_pump(PUMP_FRAMES)
 	_check(hm.slots[1].state == LobbyModel.SlotState.EMPTY and bob.room.model.slots[1].state == LobbyModel.SlotState.EMPTY,
 			"a guest leaving the lobby frees its slot everywhere")
-	host.room.request({"op": OnlineRoom.OP_CMD, "slot": 0, "cmd": LobbyModel.Cmd.RIGHT})
+	host.room.request({"op": OnlineRoom.OP_SEAT, "slot": hm.ally_place(), "row": LobbyModel.Row.ALLY, "dir": 1})
 	_pump(PUMP_FRAMES)
 	_check(hm.coop_ally and cid.room.model.coop_ally, "ally on once a place is free")
 	_check(bob.room.my_slots() == ([2] as Array[int]) and cid.room.my_slots() == ([3] as Array[int])

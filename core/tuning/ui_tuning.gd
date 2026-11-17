@@ -64,30 +64,41 @@ extends Resource
 @export_group("Join screen")
 ## Space kept free around the join screen (x: sides, y: top/bottom).
 @export var join_margin: Vector2 = Vector2(24, 12)
-## Gap between the title, the panels row, the status and the hint lines.
+## Gap between the mode tabs, the room bar, the cards, the rules line, the
+## status and the hint lines.
 @export var join_root_separation: int = 4
-## Gap between the player panels and the shared settings panel.
+## Gap between the slot cards (and between the room bar's items).
 @export var join_column_separation: int = 16
-## The screen title is smaller than other titles so the rows fit 648 px.
-@export var join_title_font: int = 44
+## Game mode tabs (LB / RB) at the top of the lobby, and the gap between them.
+@export var join_tab_font: int = 34
+@export var join_tab_separation: int = 28
 ## Player panel: "CHOOSE!" / "READY!" state line and the fighter name.
 @export var join_state_font: int = 30
 @export var join_character_font: int = 26
-## Shared settings rows (match rules / co-op run) font and row gap.
+## Rows of a card under the fighter name (colour, team, CPU level) and the
+## rules summary line.
 @export var join_row_font: int = 20
+## Opacity of a card nobody sits in.
+@export var join_empty_card_alpha: float = 0.6
+## "PRESS START" prompt of an empty card: lowest opacity and pulse speed.
+@export var join_blink_min_alpha: float = 0.55
+@export var join_blink_speed: float = 3.0
+## Seconds a notice stays in the room bar (copied, port in use...).
+@export var join_notice_seconds: float = 4.0
+## Match options overlay: panel width, rule row font and gap, and the width
+## of a row's "<" / ">" buttons (mouse / touch).
+@export var join_options_width: float = 620.0
+@export var join_options_row_font: int = 22
 @export var join_row_separation: int = 2
-## Settings panel width relative to one player panel (both expand).
-@export var join_settings_ratio: float = 1.5
+@export var join_options_arrow_width: float = 56.0
 ## Border width of the P1/P2-coloured player panels.
 @export var join_panel_border: int = 6
-## More than two player panels (online co-op): they stack two per column
-## either side of the settings panel, with these smaller fonts, a thinner
-## inner padding and a smaller gap between the stacked panels.
+## More than two cards: they share the row with these smaller fonts and a
+## thinner inner padding.
 @export var join_compact_header_font: int = 24
 @export var join_compact_state_font: int = 22
 @export var join_compact_character_font: int = 20
 @export var join_compact_panel_margin: int = 6
-@export var join_compact_stack_separation: int = 8
 ## Seconds between "all ready" and the match starting (cancel by un-readying).
 @export var join_start_delay: float = 1.0
 ## Stick deflection that counts as a menu direction on the join screen.

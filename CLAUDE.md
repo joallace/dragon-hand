@@ -120,8 +120,9 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     the main menu. `OnlineRoom`: host-authoritative lobby (`LobbyModel`),
     phases lobby/match/results, `request()` ops (LOBBY_REQ from guests),
     countdown -> MATCH_START -> `Game.start_match` on every peer.
-    Team versus (`LobbyModel.team_mode`): TEAM / Seat (CPU seats) / Lock
-    teams rows; several local players per machine online (couch + online,
+    Team versus (`LobbyModel.team_mode`): TEAM row, seat rows (CPU seats),
+    Lock teams rule (rules and seats are the host-only `rule` / `seat`
+    requests); several local players per machine online (couch + online,
     `Bindings.profile_for` / `MatchConfig.binding_profile`); a peer's
     drop-out = CPU takeover, forfeit only when the humans left share one team
     (`RollbackDriver.drop_out_commands`).
@@ -204,7 +205,10 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   after editing, `npm ci --ignore-scripts && npm run build` there (needs
   Node) and commit the regenerated `presentation/audio/music/strudel_bundle.*`.
 - `scenes/menus/`, `ui/` — main menu, unified lobby (`Lobby`, local and
-  online; rules/data in `core/match/LobbyModel`), join-online screen (recent
+  online: mode tabs on LB/RB, a card per slot holding that player's own
+  rows, X hops to other seats (CPUs, the co-op ally), rules on the Y options
+  overlay; rules/data in `core/match/LobbyModel`: `rows_for` / `rule_rows` /
+  `seat_rows`), join-online screen (recent
   hosts), settings hub (`SettingsScreen`: LB/RB tabs Graphics / Audio /
   Controls / Online, pages in `scenes/menus/settings/`; display changes are
   debounced then confirmed with a revert countdown; also a pause-menu

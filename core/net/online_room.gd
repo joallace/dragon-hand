@@ -10,6 +10,8 @@ extends RefCounted
 ## travel as LOBBY_REQ and the host validates them against the sender):
 ##   {"op": "join"}                     claim a free slot (lobby phase)
 ##   {"op": "cmd", "slot", "cmd"}       LobbyModel.Cmd on a slot you own
+##   {"op": "rule", "row", "dir"}       host only: LobbyModel.change_rule
+##   {"op": "seat", "slot", "row", "dir"}  host only: LobbyModel.change_seat
 ##   {"op": "pause", "on": bool}        pause overlay open / closed (match)
 ##   {"op": "rematch", "on": bool}      results: vote for a rematch
 ##   {"op": "forfeit"}                  versus match: you give up (RollbackDriver.drop_out:
@@ -38,6 +40,8 @@ enum Phase { LOBBY, MATCH, RESULTS }
 
 const OP_JOIN := "join"
 const OP_CMD := "cmd"
+const OP_RULE := "rule"
+const OP_SEAT := "seat"
 const OP_PAUSE := "pause"
 const OP_REMATCH := "rematch"
 const OP_FORFEIT := "forfeit"
@@ -226,6 +230,19 @@ func _apply(peer: int, req: Dictionary) -> void:
 				return
 			if model.command(slot, cmd) == LobbyModel.EV_LEAVE and peer == local_peer():
 				local_devices.erase(slot)
+		OP_RULE:
+			var row: Variant = req.get("row")
+			var dir: Variant = req.get("dir")
+			if peer != local_peer() or phase != Phase.LOBBY or not row is int or not dir is int \
+					or not model.change_rule(row, dir):
+				return
+		OP_SEAT:
+			var slot: Variant = req.get("slot")
+			var row: Variant = req.get("row")
+			var dir: Variant = req.get("dir")
+			if peer != local_peer() or phase != Phase.LOBBY or not slot is int or not row is int \
+					or not dir is int or not model.change_seat(slot, row, dir):
+				return
 		OP_PAUSE:
 			if phase != Phase.MATCH:
 				return

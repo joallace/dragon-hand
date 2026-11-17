@@ -75,6 +75,14 @@ func key_tap(code: int) -> void:
 	await key(code, false)
 
 
+## A left click / tap, for a control's gui_input.
+func _click() -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	return e
+
+
 # --- Tests -----------------------------------------------------------------------
 
 func _test_pad_ui_actions() -> void:
@@ -128,30 +136,80 @@ func _test_join_screen() -> void:
 	check(j.slots[1].state == Lobby.SlotState.JOINED and j.slots[1].device_kind == Bindings.Kind.KEYBOARD,
 			"Enter joins keyboard into P2")
 
-	# Settings: P1 pad moves past Colour, Team, Game and the Seat rows (its own seat:
-	# Seat, Seat team) to Rounds, then Timer, cycles to infinite.
+	# P1's cursor stays in their own card: fighter, colour, team, and around.
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
 	check(j.slots[0].cursor == Lobby.Row.COLOR, "down from fighter reaches the Colour row")
 	await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
 	check(j.slots[0].color_index == 1 and (j._ui[0]["swatch"] as Label).text.contains(Tuning.colors.color_name(1))
-			and j._ui[0]["color"] == Tuning.colors.color(1), "right picks the next colour, the panel shows it")
+			and j._ui[0]["color"] == Tuning.colors.color(1), "right picks the next colour, the card shows it")
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.TEAM, "then the Team row")
+	check(j.slots[0].cursor == Lobby.Row.TEAM and (j._ui[0]["team"] as Label).text.begins_with("<"), "then the Team row")
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.MODE, "then the Game row")
-	for i in 3:
-		await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.ROUNDS, "past the Seat rows to Rounds")
+	check(j.slots[0].cursor == Lobby.Row.CHARACTER, "and back to the fighter: no rules in a player's card")
+
+	# Seats: X hops to the next card; A on an empty one seats a CPU.
+	await pad_tap(0, JOY_BUTTON_X)
+	check(j.focus_of(0) == 2 and (j._ui[2]["seat"] as Label).text.contains("Open"),
+			"X moves P1's cursor to the first free seat (P2 is the keyboard player)")
+	await pad_tap(0, JOY_BUTTON_A)
+	check(j.slots[2].type == Lobby.SlotType.CPU and j.focus_of(0) == 2 and (j._ui[2]["header"] as Label).text == "CPU",
+			"A seats a CPU there")
+	var cpu_level := j.slots[2].cpu_level
+	var cpu_char := j.slots[0].char_index
+	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
 	await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
-	check(j.model.rounds_to_win == mini(Tuning.match_rules.rounds_to_win + 1, 5), "rounds to win changed by P1")
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
+	await pad_tap(0, JOY_BUTTON_DPAD_LEFT)
+	check(j.slots[2].char_index != cpu_char or MenuHelpers.character_ids().size() < 2, "down, right: the CPU's fighter")
+	check(j.slots[2].cpu_level == maxi(cpu_level - 1, 0) and j.slots[0].char_index == cpu_char
+			and (j._ui[2]["level"] as Label).text.contains(Tuning.cpu.level_name(j.slots[2].cpu_level)),
+			"down, left: the CPU's level (P1's own fighter untouched)")
+	await pad_tap(0, JOY_BUTTON_X)
+	check(j.focus_of(0) == 3, "X again: the next seat")
+	await pad_tap(0, JOY_BUTTON_X)
+	check(j.focus_of(0) == -1, "X after the last seat: back to P1's own card")
+	await pad_tap(0, JOY_BUTTON_X)
+	await pad_tap(0, JOY_BUTTON_DPAD_LEFT)
+	check(j.slots[2].type == Lobby.SlotType.HUMAN and j.slots[2].state == Lobby.SlotState.EMPTY,
+			"left on the CPU's seat switch takes it out again")
+	await pad_tap(0, JOY_BUTTON_B)
+	check(j.focus_of(0) == -1 and j.slots[0].state == Lobby.SlotState.JOINED, "B: back to the own card (not leaving)")
+	(j._ui[3]["panel"] as Control).gui_input.emit(_click())
+	check(j.slots[3].type == Lobby.SlotType.CPU, "a tap on an empty card seats a CPU")
+	(j._ui[3]["panel"] as Control).gui_input.emit(_click())
+	check(j.slots[3].type == Lobby.SlotType.HUMAN, "and another takes it out")
+
+	# Options: Y opens the rules; any device steers them.
+	await pad_tap(0, JOY_BUTTON_A)
+	check(j.slots[0].state == Lobby.SlotState.READY, "P1 ready")
+	await pad_tap(3, JOY_BUTTON_Y)
+	check(j.options_open() and j._options.visible and j.slots[0].state == Lobby.SlotState.JOINED
+			and j._options_item == Lobby.Row.ROUNDS, "Y (any pad, joined or not) opens the options; nobody stays ready")
+	await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
+	check(j.model.rounds_to_win == mini(Tuning.match_rules.rounds_to_win + 1, 5)
+			and (j._row_labels[Lobby.Row.ROUNDS] as Label).text.contains(str(j.model.rounds_to_win)),
+			"rounds to win changed on the options screen")
+	await pad_tap(0, JOY_BUTTON_A)
+	check(j.slots[0].state == Lobby.SlotState.JOINED, "A in the options doesn't ready anyone")
+	j.model.rounds_to_win = mini(Tuning.match_rules.rounds_to_win + 1, 5)
+	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
+	check(j._options_item == Lobby.Row.TIMER, "down: the Timer row")
 	var opts := Tuning.match_rules.round_time_options
 	var inf_idx := opts.find(0)
 	var guard := 0
 	while j.model.time_index != inf_idx and guard < 10:
-		await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
+		await key_tap(KEY_RIGHT)
 		guard += 1
-	check(j.model.time_index == inf_idx, "timer can be set to infinite")
+	check(j.model.time_index == inf_idx, "timer can be set to infinite (keyboard arrows work too)")
+	await pad_tap(0, JOY_BUTTON_DPAD_UP)
+	await pad_tap(0, JOY_BUTTON_DPAD_UP)
+	check(j._options_item == Lobby.ACT_DONE, "up from the first row wraps to Done")
+	await pad_tap(1, JOY_BUTTON_START)
+	check(not j.options_open() and j.slots[2].state == Lobby.SlotState.EMPTY, "A on Done closes the options (no join meanwhile)")
+	await key_tap(KEY_TAB)
+	check(j.options_open(), "TAB opens them too")
+	await pad_tap(0, JOY_BUTTON_B)
+	check(not j.options_open() and j.slots[0].state == Lobby.SlotState.JOINED, "B closes them without leaving")
 
 	# Ready both: pad A and keyboard P2 LIGHT key (layout B: KP_1).
 	await pad_tap(0, JOY_BUTTON_A)
@@ -179,24 +237,27 @@ func _test_join_screen_cpu() -> void:
 	await frames(3)
 	var cpu := j.cpu_slot()
 	check(cpu == 1 and j.slots[cpu].state == Lobby.SlotState.READY, "CPU slot is pre-joined and ready")
-	check(j.rows().has(Lobby.Row.CPU_LEVEL), "CPU mode offers a CPU level row")
+	check(j.model.seat_rows(cpu).has(Lobby.Row.CPU_LEVEL), "CPU mode offers a CPU level row on the CPU's card")
 	var start_level := j.slots[cpu].cpu_level
 	check(start_level == Tuning.cpu.clamp_level(-1) or LobbyModel._memory.has("cpu_level"), "CPU level starts at the default")
 
 	await pad_tap(0, JOY_BUTTON_START)
 	check(j.slots[0].state == Lobby.SlotState.JOINED, "pad 0 joins the human slot")
-	for i in 3:
-		await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.CPU_CHARACTER, "down past Game reaches CPU fighter row")
+	await pad_tap(0, JOY_BUTTON_X)
+	check(j.focus_of(0) == cpu and (j._ui[cpu]["character"] as Label).text.begins_with("<"), "X puts the cursor on the CPU's fighter")
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.CPU_LEVEL, "next row is CPU level")
+	check(j._focus[0]["row"] == Lobby.Row.CPU_LEVEL, "next row is CPU level")
 	await pad_tap(0, JOY_BUTTON_DPAD_LEFT)
 	check(j.slots[cpu].cpu_level == maxi(start_level - 1, 0), "left lowers the CPU level")
 	for i in Tuning.cpu.level_count() + 2:
 		await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
 	check(j.slots[cpu].cpu_level == Tuning.cpu.level_count() - 1, "CPU level clamps at the top")
-	check(j._cpu_level_label.text.contains(Tuning.cpu.level_name(Tuning.cpu.level_count() - 1)), "CPU level label shows the level name")
+	check((j._ui[cpu]["level"] as Label).text.contains(Tuning.cpu.level_name(Tuning.cpu.level_count() - 1))
+			and (j._ui[cpu]["hint"] as Label).text == Tuning.cpu.level_blurb(Tuning.cpu.level_count() - 1),
+			"the CPU's card shows the level name and what it means")
 
+	await pad_tap(0, JOY_BUTTON_A)
+	check(j.focus_of(0) == -1 and j.slots[0].state == Lobby.SlotState.JOINED, "A on a CPU row: done, back to the own card")
 	await pad_tap(0, JOY_BUTTON_A)
 	check(j.all_ready(), "human ready + CPU ready")
 	await seconds(UiTheme.tuning().join_start_delay + 0.3)
@@ -223,30 +284,51 @@ func _test_join_screen_coop() -> void:
 	var requested: Array = []
 	j.match_requested.connect(func(c: MatchConfig) -> void: requested.append(c))
 	await frames(3)
-	check(j.is_coop() and j.cpu_slot() < 0, "co-op join screen has two human slots")
-	check(not j.rows().has(Lobby.Row.ROUNDS) and j.rows().has(Lobby.Row.ENEMY_COUNT), "co-op rows replace rounds")
-	check(not j.rows().has(Lobby.Row.WAVES), "Waves row hidden in Brawl")
-	check(not j.rows().has(Lobby.Row.ALLY_LEVEL), "ally rows hidden without an ally")
+	var rules := func() -> Array[int]: return j.model.rule_rows()
+	check(j.is_coop() and j.cpu_slot() < 0, "co-op join screen has only human slots")
+	check(not rules.call().has(Lobby.Row.ROUNDS) and rules.call().has(Lobby.Row.ENEMY_COUNT), "co-op rows replace rounds")
+	check(not rules.call().has(Lobby.Row.WAVES), "Waves row hidden in Brawl")
+	check(not rules.call().has(Lobby.Row.ALLY_LEVEL), "ally rows hidden without an ally")
 	check(not j.all_ready(), "nobody joined: not ready")
 
+	# The mode tabs work before anyone joined (LB / RB, Q / E).
+	await pad_tap(2, JOY_BUTTON_RIGHT_SHOULDER)
+	check(j.model.mode == MatchConfig.Mode.LOCAL_VERSUS and j.nobody_joined() and j._ui.size() == Tuning.net.max_fighters,
+			"RB with nobody joined: the next mode (wrapping to Versus), with its cards")
+	await pad_tap(2, JOY_BUTTON_LEFT_SHOULDER)
+	check(j.is_coop(), "LB: back to Co-op")
+	await key_tap(KEY_Q)
+	check(j.model.mode == MatchConfig.Mode.VERSUS_CPU and j._ui.size() == 2, "Q: the previous mode (Versus CPU, two cards)")
+	await key_tap(KEY_E)
+	check(j.is_coop() and j._tab_buttons.size() == 3, "E: Co-op again")
+	j._tab_buttons[0].pressed.emit()
+	check(j.model.mode == MatchConfig.Mode.LOCAL_VERSUS, "a tab can be clicked")
+	j._tab_buttons[2].pressed.emit()
+	check(j.is_coop(), "and another")
+
 	await pad_tap(0, JOY_BUTTON_START)
-	for i in 3:
-		await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
-	check(j.slots[0].cursor == Lobby.Row.COOP_STRUCTURE, "down past Game reaches Run")
+	await pad_tap(0, JOY_BUTTON_Y)
+	check(j.options_open() and j._options_item == Lobby.Row.COOP_STRUCTURE, "Y opens the run options on Run")
 	await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
-	check(j.model.coop_structure == CoopConfig.Structure.WAVES and j.rows().has(Lobby.Row.WAVES), "Mode -> Waves shows the Waves row")
-	check((j._coop_labels[Lobby.Row.WAVES] as Label).visible, "Waves label visible in Waves mode")
-	check((j._coop_labels[Lobby.Row.ENEMY_COUNT] as Label).text.contains("per wave"), "enemy count reads per wave")
-	j.slots[0].cursor = Lobby.Row.WAVES
-	j.model.coop_structure = CoopConfig.Structure.BRAWL
-	j.model.fix_cursors()
-	check(j.slots[0].cursor == Lobby.Row.COOP_STRUCTURE, "cursor on a hidden row falls back to Mode")
-	j.slots[0].cursor = Lobby.Row.ALLY
-	j.model._change_row(0, 1)
-	check(j.model.coop_ally and j.rows().has(Lobby.Row.ALLY_LEVEL) and j.rows().has(Lobby.Row.ALLY_CHARACTER),
+	check(j.model.coop_structure == CoopConfig.Structure.WAVES and rules.call().has(Lobby.Row.WAVES), "Run -> Waves shows the Waves row")
+	check((j._row_labels[Lobby.Row.WAVES] as Label).is_visible_in_tree(), "Waves label visible in Waves mode")
+	check((j._row_labels[Lobby.Row.ENEMY_COUNT] as Label).text.contains("per wave"), "enemy count reads per wave")
+	j._options_item = Lobby.Row.WAVES
+	j.change_rule(Lobby.Row.COOP_STRUCTURE, 1)
+	check(j.model.coop_structure == CoopConfig.Structure.BRAWL and j._options_item == Lobby.Row.COOP_STRUCTURE
+			and not (j._row_labels[Lobby.Row.WAVES] as Label).is_visible_in_tree(), "cursor on a hidden row falls back to the first row")
+	j.change_rule(Lobby.Row.ALLY, 1)
+	check(j.model.coop_ally and rules.call().has(Lobby.Row.ALLY_LEVEL) and rules.call().has(Lobby.Row.ALLY_CHARACTER),
 			"Ally -> CPU shows ally level and fighter rows")
-	j.model.coop_ally = false
-	j._refresh()
+	await pad_tap(0, JOY_BUTTON_Y)
+	var place := j.model.ally_place()
+	check(not j.options_open() and place == j.slots.size() - 1 and (j._ui[place]["header"] as Label).text == "CPU ALLY",
+			"Y closes the options; the ally shows in the last free card")
+	await pad_tap(0, JOY_BUTTON_X)
+	await pad_tap(0, JOY_BUTTON_DPAD_LEFT)
+	check(not j.model.coop_ally and j.focus_of(0) == place and (j._ui[place]["seat"] as Label).text.contains("No ally"),
+			"X then left on the ally's card switches it off")
+	await pad_tap(0, JOY_BUTTON_B)
 
 	# Solo run: P2 stays empty.
 	await pad_tap(0, JOY_BUTTON_A)

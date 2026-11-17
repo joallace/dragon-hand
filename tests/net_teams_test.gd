@@ -5,7 +5,7 @@ extends Node
 ## peer in this process.
 ##   Lobby: the host joins one local player, Ann two (couch + online: one
 ##   request per device, each device on its own slot), Bob one; the room is
-##   then full. Players pick teams, the host moves Bob with the Seat rows and
+##   then full. Players pick teams, the host moves Bob with his seat's team row and
 ##   locks teams (Bob can't change his any more); everyone readies ->
 ##   countdown -> MATCH_START: a 2v2 config (A = host + Ann's first player,
 ##   B = Ann's second + Bob) where Ann's machine owns two LOCAL slots with
@@ -168,24 +168,20 @@ func _test_lobby() -> bool:
 			"a join into a full room is refused and forgotten")
 
 	# Teams: host and Ann's first player A, Ann's second player B (her own
-	# TEAM rows); Bob is moved to B by the host (Seat rows), then teams lock.
+	# TEAM rows); Bob is moved to B by the host (his seat's team row), then teams lock.
 	for pair: Array in [[host, 0, 1], [ann, 1, 1], [ann, 2, 2]]:
 		var p: Peer = pair[0]
 		_cursor_to(p, pair[1], LobbyModel.Row.TEAM)
 		for i in pair[2]:
 			_cmd(p, pair[1], LobbyModel.Cmd.RIGHT)
 		_pump(PUMP_FRAMES)
-	_cursor_to(host, 0, LobbyModel.Row.SEAT)
-	for i in 3:
-		_cmd(host, 0, LobbyModel.Cmd.RIGHT)
+	bob.room.request({"op": OnlineRoom.OP_SEAT, "slot": 1, "row": LobbyModel.Row.SEAT_TEAM, "dir": 1})
 	_pump(PUMP_FRAMES)
-	_check(hm.seat == 3 and bob.room.model.seat == 3, "host's Seat row on Bob's slot")
-	_cursor_to(host, 0, LobbyModel.Row.SEAT_TEAM)
-	_cmd(host, 0, LobbyModel.Cmd.RIGHT)
-	_cmd(host, 0, LobbyModel.Cmd.RIGHT)
+	_check(hm.slots[1].team == TEAM_A, "a guest can't move another player's team")
+	for i in 2:
+		host.room.request({"op": OnlineRoom.OP_SEAT, "slot": 3, "row": LobbyModel.Row.SEAT_TEAM, "dir": 1})
 	_pump(PUMP_FRAMES)
-	_cursor_to(host, 0, LobbyModel.Row.LOCK_TEAMS)
-	_cmd(host, 0, LobbyModel.Cmd.RIGHT)
+	host.room.request({"op": OnlineRoom.OP_RULE, "row": LobbyModel.Row.LOCK_TEAMS, "dir": 1})
 	_pump(PUMP_FRAMES)
 	var teams: Array[int] = []
 	for s in bob.room.model.slots:

@@ -189,37 +189,56 @@ func _check_join(m: MatchConfig.Mode, tag: String) -> void:
 	j.model.coop_ally_level = low_level
 	j.model.coop_ally_char = longest
 	if m == MatchConfig.Mode.COOP:
-		# Every row shown (Waves + ally rows), both cursors on the same row.
+		# Every row shown (Waves + ally rows), endless: the longest rules line.
 		j.model.coop_structure = CoopConfig.Structure.WAVES
 		j.model.coop_ally = true
 		j.model.coop_roster = longest + 1
-		for s in j.slots:
-			s.cursor = Lobby.Row.ENEMY_COUNT
+		j.model.coop_waves = Tuning.coop.max_wave_count + 1
+		j.model.coop_enemy_count = Tuning.coop.max_enemy_count
+		j.model.friendly_fire = true
 	elif m == MatchConfig.Mode.LOCAL_VERSUS:
+		# A CPU in a seat, named teams, and P1's cursor on it.
+		j.model.change_seat(2, Lobby.Row.SEAT_TYPE, 1)
+		j.model.slots[2].cpu_level = low_level
 		for s in j.slots:
-			s.cursor = Lobby.Row.ROUNDS
+			s.team = 0
+			s.cursor = Lobby.Row.TEAM
 	j._refresh()
-	for ui: Dictionary in j._ui:
-		if j.slots[j._ui.find(ui)].type == Lobby.SlotType.HUMAN:
-			(ui["device"] as Label).text = LONG_PAD_NAME
+	for i in j.slots.size():
+		if j.slots[i].type == Lobby.SlotType.HUMAN and j.slots[i].state != Lobby.SlotState.EMPTY:
+			(j._ui[i]["device"] as Label).text = LONG_PAD_NAME
 	await _assert_fits(j, what + "(2 pads joined) " + tag)
 	var cut := truncated(j, LONG_PAD_NAME)
 	check(cut.is_empty(), what + "shows every row / name untrimmed %s %s" % [tag, cut])
 	for c in cut.slice(0, 6):
 		print("    trimmed: ", c)
-	if m == MatchConfig.Mode.COOP:
-		var scroll := j._settings_scroll
-		check(scroll != null, what + "settings rows are in a ScrollContainer " + tag)
-		if scroll != null:
-			# Walking the cursor to the last row keeps that row in view.
-			j.slots[0].cursor = Lobby.Row.CHARACTER
-			for i in j.rows().size() - 1:
-				j._command(0, Lobby.Cmd.DOWN)
-			await frames(3)
-			var last: Label = j._row_labels[Lobby.Row.STAGE]
-			var view := scroll.get_global_rect().grow(TOLERANCE)
-			check(j.slots[0].cursor == Lobby.Row.STAGE and view.encloses(last.get_global_rect()),
-					what + "settings list follows the cursor to the last row " + tag)
+	# P1's cursor on every row of every other seat.
+	for target in j.seat_targets_for(0):
+		for r in j.model.seat_rows(target):
+			j._focus[0] = {"target": target, "row": r}
+			j._refresh()
+			(j._ui[0]["device"] as Label).text = LONG_PAD_NAME
+			(j._ui[1]["device"] as Label).text = LONG_PAD_NAME
+			await _assert_fits(j, what + "(P1 on seat %d row %d) %s" % [target + 1, r, tag])
+			cut = truncated(j, LONG_PAD_NAME)
+			check(cut.is_empty(), what + "seat %d row %d untrimmed %s %s" % [target + 1, r, tag, cut])
+	j._focus.clear()
+	# The options screen: every rule row and action, the cursor walked to the end.
+	j.open_options()
+	await _assert_fits(j, what + "(options) " + tag)
+	cut = truncated(j._options, "")
+	check(cut.is_empty(), what + "options untrimmed %s %s" % [tag, cut])
+	var items := j.option_items()
+	check(items.size() >= j.model.rule_rows().size() + 2 and j._options_item == items[0],
+			what + "options list the rules and the room actions " + tag)
+	for i in items.size() - 1:
+		j._options_command(Lobby.Cmd.DOWN)
+	await frames(3)
+	var view := j._options_scroll.get_global_rect().grow(TOLERANCE)
+	var last: Control = j._option_controls[items[-1]]
+	check(j._options_item == Lobby.ACT_DONE and last.is_visible_in_tree() and view.encloses(last.get_global_rect()),
+			what + "options list follows the cursor to the last item " + tag)
+	j.close_options()
 	LobbyModel._memory = {}
 	LobbyModel._coop_memory = {}
 	Lobby.pending_mode = MatchConfig.Mode.LOCAL_VERSUS
@@ -274,7 +293,7 @@ func _check_results(tag: String) -> void:
 	Game.last_result = saved
 
 
-## Online co-op lobby (hosted over a LoopbackNetwork): four compact slots,
+## Online co-op lobby (hosted over a LoopbackNetwork): four compact cards,
 ## the local host, remote players, the CPU ally's place and empty slots;
 ## per-slot colours and the co-op status line.
 func _check_online_coop_lobby(tag: String) -> void:
@@ -309,7 +328,12 @@ func _check_online_coop_lobby(tag: String) -> void:
 	check(j.ally_slots() == [last] and (ally_ui["header"] as Label).text == "CPU ALLY"
 			and (ally_ui["character"] as Label).text == MenuHelpers.character_name(MenuHelpers.character_ids()[longest]),
 			what + "the ally's place shows the CPU ally " + tag)
-	check(not (j._ui[2]["header"] as Label).text.contains("ALLY"), what + "the other empty slot stays open " + tag)
+	check(not (j._ui[2]["header"] as Label).text.contains("ALLY") and not (j._ui[2]["seat"] as Label).visible,
+			what + "the other empty slot stays open (no seat switch: the ally has its place) " + tag)
+	j.open_options()
+	await _assert_fits(j, what + "(host's options) " + tag)
+	check(truncated(j._options, "").is_empty(), what + "host's options untrimmed " + tag)
+	j.close_options()
 	check(j._status_label.text.begins_with("Ready up") and j._status_label.text.contains("can still join"),
 			what + "status: ready up, more can join (got %s) %s" % [j._status_label.text, tag])
 	(j._ui[0]["device"] as Label).text = LONG_PAD_NAME

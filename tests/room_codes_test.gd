@@ -362,17 +362,16 @@ func _test_lobby() -> void:
 	var direct_btn := l.get("_direct_button") as Button
 	check(room_btn.visible and room_btn.text == "Room code" and direct_btn.visible,
 			"desktop+codes lobby: Room code and Direct IP buttons")
-	var hint_ok := false
-	for lab in l.find_children("*", "Label", true, false):
-		hint_ok = hint_ok or ((lab as Label).text.contains("TAB room") and (lab as Label).text.contains("C by IP"))
-	check(hint_ok, "desktop+codes lobby: hint names TAB room and C by IP")
+	check(l.option_items().has(Lobby.ACT_ROOM) and l.option_items().has(Lobby.ACT_DIRECT),
+			"desktop+codes lobby: the options screen opens a room by code or by direct IP")
 	l.queue_free()
 	await frames(2)
 	_set_caps(false, false)
 	l = spawn(Game.SCENE_LOBBY) as Lobby
 	await frames(2)
-	check((l.get("_room_button") as Button).text == "Open online" and not (l.get("_direct_button") as Button).visible,
-			"desktop lobby without codes: one Open online button")
+	check((l.get("_room_button") as Button).text == "Open online" and not (l.get("_direct_button") as Button).visible
+			and l.option_items().has(Lobby.ACT_ROOM) and not l.option_items().has(Lobby.ACT_DIRECT),
+			"desktop lobby without codes: one Open online button / options item")
 	l.queue_free()
 	await frames(2)
 
@@ -383,11 +382,12 @@ func _test_lobby() -> void:
 	l.auto_start = false
 	await frames(2)
 	var copy_btn := l.get("_copy_button") as Button
-	check(_room_text(l).contains("Hosting") and _room_text(l).contains("Opening room") and not copy_btn.visible,
-			"code host lobby: Opening room…, nothing to copy yet")
+	check(_room_text(l).contains("Hosting") and _room_text(l).contains("Opening room") and not copy_btn.visible
+			and not l.option_items().has(Lobby.ACT_COPY), "code host lobby: Opening room…, nothing to copy yet")
 	t.room_opened.emit(CODE)
 	await frames(1)
-	check(_room_text(l).contains("Room code: %s" % CODE) and copy_btn.visible, "code host lobby: shows the code")
+	check(_room_text(l).contains("Room code: %s" % CODE) and copy_btn.visible and l.option_items().has(Lobby.ACT_COPY),
+			"code host lobby: shows the code (and offers to copy it)")
 	check(not _room_text(l).contains("UPnP") and not _room_text(l).contains("UDP")
 			and not (l.get("_direct_button") as Button).visible, "code host lobby: no LAN / UPnP / port text")
 	l.copy_address()

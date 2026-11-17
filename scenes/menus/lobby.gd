@@ -1,46 +1,58 @@
 class_name Lobby
 extends Control
-## Unified lobby (SPEC_ONLINE.md §10.2), local and online. Each physical
-## device claims a slot, picks a character and readies up; when every slot is
-## ready a MatchConfig is built and the match starts. The data and rules live
-## in a LobbyModel (`model`); this screen maps devices to commands and draws it.
+## Unified lobby (SPEC_ONLINE.md §10.2), local and online: the game mode on
+## tabs at the top, one card per slot, and the match rules on their own
+## options screen. The data and rules live in a LobbyModel (`model`); this
+## screen maps devices to commands and draws it.
 ##
 ## Input is read per *device* in _input (event.device), not through global
-## ui_* actions, so two pads never steer the same slot.
+## ui_* actions, so two pads never steer the same card.
 ##
+## Any device, joined or not (the lobby's owner: anyone offline, the host
+## online):
+##   LB / RB (Q / E, PageUp / PageDown): game mode, the tabs at the top.
+##   Y (TAB): the options screen (`open_options`): the mode's rules, one per
+##     row (up/down row, left/right value), then the room actions (open an
+##     online room, by room code where PlatformCaps.room_codes() and / or by
+##     direct IP; copy what to share; close / leave the room). While it is
+##     open every device steers it and nobody can ready up (opening it
+##     un-readies this machine's players); guests see the host's rules
+##     read-only. B / Y closes it.
 ## Gamepad (unjoined): START or A joins the next free slot. B with nobody
 ##   joined -> main menu (leaving the room online).
-## Gamepad (joined):   D-pad / left stick up-down picks a row, left-right
-##   changes it; A/START = ready; B = un-ready, then leave.
+## Gamepad (joined): the cursor stays in the player's own card: D-pad / left
+##   stick up-down picks fighter / colour / team, left-right changes it;
+##   A/START = ready; B = un-ready, then leave.
+##   X (`cycle_seat`, the lobby's owner): the cursor hops to the next card
+##   with seat rows (LobbyModel.seat_rows): an empty slot ("+ CPU": A or
+##   left/right seats a CPU), a CPU (remove it, fighter, level, team), online
+##   a player's team, in co-op the CPU ally's place. X again = next card,
+##   after the last one (or B) back to the player's own card.
 ## Keyboard: ENTER joins a keyboard player into the next free slot; that
 ##   player's number on this machine picks the Bindings keyboard layout
 ##   (first = A/WASD, second = B/arrows+numpad). Joined keyboard players
 ##   navigate with their layout's MOVE keys, ready with their LIGHT or JUMP key
-##   (or ENTER once all slots are filled) and back out with their PAUSE key (or
-##   ESC). While only one keyboard player is joined, arrow keys also navigate.
-## Room (any device): Y / TAB = Open online (local; a room-code room where
-##   PlatformCaps.room_codes(), else direct IP), Close room (host) or Leave
-##   (guest); X / C = copy what to share (host: the room code, the invite
-##   link on web, or the address), or, local on desktop with room codes,
-##   open a direct-IP room instead (the bar's "Direct IP" button). Hosting
-##   by code, the bar shows "Opening room…", then "Room code: XXXXXX", and
-##   any signaling problem; LAN / UPnP details only for direct IP. Without
-##   online play (Net.online_available() false) the room bar is hidden and
-##   these keys do nothing.
+##   (or ENTER once all slots are filled), hop to other seats with their HEAVY
+##   key and back out with their PAUSE key (or ESC). While only one keyboard
+##   player is joined, arrow keys also navigate.
+## Mouse / touch: the tabs, the Options button, the options rows ("<" / ">"
+##   and the action buttons) and the room bar's buttons; a tap on an empty
+##   card seats a CPU there (again: removes it).
 ##
-## Local: `model` is this screen's own; the MODE row switches Versus / Versus
-##   CPU / Co-op (see LobbyModel). The match starts after
-##   UiTheme join_start_delay seconds of everyone ready.
+## Room bar: "Local", or hosting by code "Opening room…", then "Room code:
+##   XXXXXX", and any signaling problem; LAN / UPnP details only for direct
+##   IP. Without online play (Net.online_available() false) the room bar and
+##   the room actions are gone.
+##
+## Local: `model` is this screen's own; the tabs switch Versus / Versus CPU /
+##   Co-op (see LobbyModel). The match starts after UiTheme join_start_delay
+##   seconds of everyone ready.
 ## Online: `model` is Net.room.model. The host applies commands directly; a
 ##   guest's commands go to the host (OnlineRoom.request) and the screen
 ##   redraws on every state broadcast. The host's countdown
 ##   (Tuning.net.lobby_countdown_frames) starts the match on every peer.
-## Team versus and co-op have up to four player slots: the panels then stack
-##   two per column either side of the settings panel (compact fonts); in
-##   co-op with the CPU ally on online, the place it takes
-##   (model.human_capacity()) shows the ally. Team versus: each panel shows
-##   its team (the player's TEAM row); the settings panel's Seat rows edit
-##   the marked slot (CPU in an empty one, its team, a CPU's fighter / level).
+## More than two slots (team versus, co-op) use compact cards. In co-op the
+##   CPU ally is shown in the last empty slot (model.ally_place()).
 ## Couch + online: every local device joins its own slot (up to
 ##   Tuning.net.max_local_players_online), each sending its own request.
 
@@ -51,8 +63,22 @@ const Cmd := LobbyModel.Cmd
 const Row := LobbyModel.Row
 const SlotType := LobbyModel.SlotType
 const SlotState := LobbyModel.SlotState
-## Rows that edit the slot under model.seat.
-const SEAT_ROWS: Array[int] = [Row.SEAT, Row.SEAT_TYPE, Row.SEAT_TEAM, Row.CPU_CHARACTER, Row.CPU_LEVEL]
+## Screen commands next to LobbyModel.Cmd (never sent to the model).
+const CMD_SEAT := 100
+const CMD_OPTIONS := 101
+const CMD_MODE_PREV := 102
+const CMD_MODE_NEXT := 103
+## Every rule row, in the order the options screen lists them.
+const RULE_ROWS: Array[int] = [
+	Row.LOCK_TEAMS, Row.ROUNDS, Row.COOP_STRUCTURE, Row.ENEMY_COUNT, Row.WAVES, Row.ENEMY_LEVEL,
+	Row.ENEMY_ROSTER, Row.ALLY, Row.ALLY_LEVEL, Row.ALLY_CHARACTER, Row.FRIENDLY_FIRE, Row.TIMER, Row.STAGE]
+## Action items of the options screen (after the rule rows; negative, so an
+## item is either a Row or one of these).
+const ACT_COPY := -1
+const ACT_ROOM := -2
+const ACT_DIRECT := -3
+const ACT_DONE := -4
+const ACTIONS: Array[int] = [ACT_COPY, ACT_ROOM, ACT_DIRECT, ACT_DONE]
 
 ## Set before Game.goto(Game.SCENE_LOBBY) to choose the local mode.
 static var pending_mode: MatchConfig.Mode = MatchConfig.Mode.LOCAL_VERSUS
@@ -60,7 +86,7 @@ static var pending_mode: MatchConfig.Mode = MatchConfig.Mode.LOCAL_VERSUS
 var model: LobbyModel
 ## Tests set this false to inspect match_requested without changing scene.
 var auto_start: bool = true
-## The rows' slot list (model.slots).
+## The cards' slot list (model.slots).
 var slots: Array[LobbyModel.Slot]:
 	get:
 		return model.slots
@@ -70,26 +96,40 @@ var _countdown := 0.0
 var _started := false
 var _stick_dir: Dictionary = {}  # device -> Vector2i
 var _blink := 0.0
-## Text shown under the top bar for a while (port in use, copied...).
-var _notice := ""
+## Text shown in the room bar for UiTuning.join_notice_seconds (port in use,
+## copied...).
+var _notice := "":
+	set(v):
+		_notice = v
+		_notice_left = UiTheme.tuning().join_notice_seconds
+var _notice_left := 0.0
+## Local players editing another seat: their slot -> {"target": slot, "row": Row}.
+var _focus: Dictionary = {}
+var _options_open := false
+## The options screen's cursor: a Row or an ACT_* (see option_items).
+var _options_item: int = ACT_DONE
 
 # UI refs
 var _ui: Array[Dictionary] = []
+var _tab_bar: HBoxContainer
+var _tab_buttons: Array[Button] = []
+var _tab_modes: Array[MatchConfig.Mode] = []
 var _panel_row: HBoxContainer
-var _settings_header: Label
-var _cpu_level_label: Label
-var _cpu_blurb_label: Label
+var _rules_label: Label
 var _status_label: Label
+var _hint_label: Label
 var _room_label: Label
 var _room_button: Button
 var _copy_button: Button
 var _direct_button: Button
-var _row_labels: Dictionary = {}  # Row -> Label, every row in the settings panel
-## Co-op rows only (tests read their text).
-var _coop_labels: Dictionary = {}
-var _settings_scroll: ScrollContainer
-## Slot whose cursor moved last (the settings list follows it).
-var _last_cursor_slot := -1
+var _options: Control
+var _options_header: Label
+var _options_hint: Label
+var _options_scroll: ScrollContainer
+## Rule Row -> its Label on the options screen.
+var _row_labels: Dictionary = {}
+## Rule Row / ACT_* -> the options screen control of that item.
+var _option_controls: Dictionary = {}
 
 
 func _ready() -> void:
@@ -122,12 +162,14 @@ func is_coop() -> bool:
 	return model.is_coop()
 
 
-func rows() -> Array[int]:
-	return model.rows()
+## This machine runs the lobby: its players change the mode, the rules and
+## the other seats (anyone offline, the host online).
+func can_manage() -> bool:
+	return not is_online() or Net.is_host()
 
 
 func cpu_slot() -> int:
-	return model.cpu_target()
+	return model.cpu_slot()
 
 
 func all_ready() -> bool:
@@ -142,21 +184,12 @@ func build_config() -> MatchConfig:
 	return model.build_config(randi())
 
 
-## Empty human slots drawn as the CPU ally: online co-op with the ally on
-## leaves model.human_capacity() places for humans; the last empty slots
-## stand for the ally's place.
+## The slot drawn as the CPU ally (co-op with the ally on; empty when every
+## slot has a player).
 func ally_slots() -> Array[int]:
 	var out: Array[int] = []
-	var humans := 0
-	for s in slots:
-		if s.type == SlotType.HUMAN:
-			humans += 1
-	var extra := humans - model.human_capacity()
-	for i in range(slots.size() - 1, -1, -1):
-		if out.size() >= extra:
-			break
-		if slots[i].type == SlotType.HUMAN and slots[i].state == SlotState.EMPTY:
-			out.append(i)
+	if model.coop_ally and model.ally_place() >= 0:
+		out.append(model.ally_place())
 	return out
 
 
@@ -185,14 +218,14 @@ func _on_signaling_problem(_text: String) -> void:
 	_refresh()
 
 
-## Both ways to open a room exist here (desktop with room codes): Y / TAB
-## opens a room-code room, X / C a direct-IP one.
+## Both ways to open a room exist here (desktop with room codes): by room
+## code and by direct IP.
 static func two_room_kinds() -> bool:
 	return Net.room_codes_ready() and PlatformCaps.direct_ip()
 
 
-## Y / TAB: open a room (local; by room code where available, else direct
-## IP), close it (host) or leave it (guest).
+## The room button / options item: open a room (local; by room code where
+## available, else direct IP), close it (host) or leave it (guest).
 func room_action() -> void:
 	if not Net.online_available():
 		return
@@ -202,15 +235,6 @@ func room_action() -> void:
 		close_room()
 	else:
 		_back_to_menu()
-
-
-## X / C: copy what to share (host), or open a direct-IP room (local, where
-## room codes are the Y / TAB default).
-func alt_room_action() -> void:
-	if Net.is_host():
-		copy_address()
-	elif not is_online() and two_room_kinds():
-		open_online(true)
 
 
 ## Host a room (room code unless `direct` or there are no room codes; the
@@ -240,6 +264,7 @@ func open_online(direct: bool = false) -> Error:
 			model.slots[mine[0]].color_index = keep.color_index
 	Net.room.publish()
 	_notice = ""
+	_focus.clear()
 	Sfx.play(&"ui_confirm")
 	_rebuild_panels()
 	_refresh()
@@ -254,6 +279,7 @@ func close_room() -> void:
 		if s.state == SlotState.READY and s.type == SlotType.HUMAN:
 			s.state = SlotState.JOINED
 	_started = false
+	_focus.clear()
 	Sfx.play(&"ui_back")
 	_rebuild_panels()
 	_refresh()
@@ -297,14 +323,299 @@ static func _with_port(ip: String, port: int) -> String:
 	return ("[%s]:%d" if ip.contains(":") else "%s:%d") % [ip, port]
 
 
+# --- Mode, rules, seats -------------------------------------------------------------
+
+## LB / RB: the next game mode (the lobby's owner).
+func cycle_mode(dir: int) -> void:
+	if model.modes().size() < 2:
+		return
+	if not can_manage():
+		_notice = "The host picks the game"
+		Sfx.play(&"ui_back")
+		_refresh()
+		return
+	change_rule(Row.MODE, dir)
+
+
+## A tab: switch to mode `m` (not one with fewer places than joined players).
+func select_mode(m: MatchConfig.Mode) -> void:
+	var ms := model.modes()
+	if not can_manage() or not m in ms or m == model.mode:
+		return
+	if not change_rule(Row.MODE, ms.find(m) - ms.find(model.mode)):
+		_notice = "Too many players for %s" % LobbyModel.mode_name(m)
+		_refresh()
+
+
+## Change a shared rule (LobbyModel.change_rule; the lobby's owner). Returns
+## whether anything changed.
+func change_rule(row: int, dir: int) -> bool:
+	return _owner_change({"op": OnlineRoom.OP_RULE, "row": row, "dir": dir},
+			func() -> bool: return model.change_rule(row, dir))
+
+
+## Change a seat row of slot `idx` (LobbyModel.change_seat; the lobby's owner).
+func change_seat(idx: int, row: int, dir: int) -> bool:
+	return _owner_change({"op": OnlineRoom.OP_SEAT, "slot": idx, "row": row, "dir": dir},
+			func() -> bool: return model.change_seat(idx, row, dir))
+
+
+## Apply an owner's change: `local` offline, the room request `req` online
+## (the host applies its own at once). A refused change sounds like one.
+func _owner_change(req: Dictionary, local: Callable) -> bool:
+	if not can_manage():
+		return false
+	var ok := false
+	if is_online():
+		var before := model.to_dict()
+		Net.room.request(req)
+		ok = model.to_dict() != before
+	else:
+		ok = local.call()
+	if ok:
+		_countdown = UiTheme.tuning().join_start_delay
+	Sfx.play(&"ui_move" if ok else &"ui_back")
+	_refresh()
+	return ok
+
+
+## Seats the player in slot `idx` can edit, in slot order.
+func seat_targets_for(idx: int) -> Array[int]:
+	var out: Array[int] = []
+	if can_manage():
+		for t in model.seat_targets():
+			if t != idx:
+				out.append(t)
+	return out
+
+
+## The seat the player in slot `idx` is editing, or -1 (their own card).
+func focus_of(idx: int) -> int:
+	return _focus[idx]["target"] if _focus.has(idx) else -1
+
+
+## X: this player's cursor hops to the next seat they can edit, and from the
+## last one back to their own card.
+func cycle_seat(idx: int) -> void:
+	if slots[idx].state != SlotState.JOINED:
+		return
+	var next := -1
+	for t in seat_targets_for(idx):
+		if t > focus_of(idx):
+			next = t
+			break
+	if next < 0 and not _focus.has(idx):
+		Sfx.play(&"ui_back")
+		return
+	if next < 0:
+		_focus.erase(idx)
+	else:
+		_focus[idx] = {"target": next, "row": model.seat_rows(next)[0]}
+	Sfx.play(&"ui_move")
+	_refresh()
+
+
+## A command of a player whose cursor is on another seat.
+func _seat_command(idx: int, cmd: int) -> void:
+	var f: Dictionary = _focus[idx]
+	var target: int = f["target"]
+	var rows := model.seat_rows(target)
+	match cmd:
+		Cmd.UP, Cmd.DOWN:
+			f["row"] = rows[posmod(rows.find(f["row"]) + (1 if cmd == Cmd.DOWN else -1), rows.size())]
+			Sfx.play(&"ui_move")
+		Cmd.LEFT:
+			change_seat(target, f["row"], -1)
+		Cmd.RIGHT:
+			change_seat(target, f["row"], 1)
+		Cmd.CONFIRM:
+			# A on "+ CPU" seats it; anywhere else the player is done here.
+			if _seat_off(target, f["row"]):
+				change_seat(target, f["row"], 1)
+			else:
+				_focus.erase(idx)
+				Sfx.play(&"ui_confirm")
+		Cmd.BACK:
+			_focus.erase(idx)
+			Sfx.play(&"ui_back")
+
+
+## `row` of slot `idx` is a switch that is off (no CPU / no ally there yet).
+func _seat_off(idx: int, row: int) -> bool:
+	return (row == Row.SEAT_TYPE and slots[idx].type != SlotType.CPU) or (row == Row.ALLY and not model.coop_ally)
+
+
+## Seat cursors whose player left / readied, or whose seat lost its rows.
+func _validate_focus() -> void:
+	var mine := local_slots()
+	for idx: int in _focus.keys():
+		var f: Dictionary = _focus[idx]
+		var rows := model.seat_rows(f["target"]) if can_manage() else ([] as Array[int])
+		if not idx in mine or slots[idx].state != SlotState.JOINED or rows.is_empty() or f["target"] == idx:
+			_focus.erase(idx)
+		elif not f["row"] in rows:
+			f["row"] = rows[0]
+
+
+## A tap on a card: seat a CPU in an empty slot / take it out (the co-op
+## ally in its place).
+func _on_card_gui_input(event: InputEvent, idx: int) -> void:
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if _started or _options_open or idx >= slots.size():
+		return
+	var rows := model.seat_rows(idx) if can_manage() else ([] as Array[int])
+	for r: int in [Row.SEAT_TYPE, Row.ALLY]:
+		if r in rows:
+			change_seat(idx, r, 1)
+			_punch_panel(idx)
+			return
+
+
+# --- Options screen -------------------------------------------------------------------
+
+## What the options screen lists, top to bottom: the mode's rule rows, then
+## the room actions this machine has, then Done.
+func option_items() -> Array[int]:
+	var items: Array[int] = []
+	items.append_array(model.rule_rows())
+	if Net.online_available():
+		if not is_online():
+			items.append(ACT_ROOM)
+			if two_room_kinds():
+				items.append(ACT_DIRECT)
+		else:
+			if _can_copy():
+				items.append(ACT_COPY)
+			items.append(ACT_ROOM)
+	items.append(ACT_DONE)
+	return items
+
+
+func options_open() -> bool:
+	return _options_open
+
+
+## Y / TAB: open the options screen. This machine's ready players are
+## un-readied, so the match can't start under it.
+func open_options() -> void:
+	if _options_open or _started:
+		return
+	_options_open = true
+	_options_item = option_items()[0]
+	_focus.clear()
+	for i in local_slots():
+		if slots[i].state == SlotState.READY:
+			_apply_cmd(i, Cmd.BACK)
+	Sfx.play(&"ui_confirm")
+	_refresh()
+
+
+func close_options() -> void:
+	if not _options_open:
+		return
+	_options_open = false
+	Sfx.play(&"ui_back")
+	_refresh()
+
+
+func toggle_options() -> void:
+	if _options_open:
+		close_options()
+	else:
+		open_options()
+
+
+func _options_command(cmd: int) -> void:
+	var items := option_items()
+	var at := maxi(items.find(_options_item), 0)
+	match cmd:
+		Cmd.UP, Cmd.DOWN:
+			_options_item = items[posmod(at + (1 if cmd == Cmd.DOWN else -1), items.size())]
+			Sfx.play(&"ui_move")
+			_refresh()
+		Cmd.LEFT:
+			_option_step(items[at], -1)
+		Cmd.RIGHT:
+			_option_step(items[at], 1)
+		Cmd.CONFIRM:
+			_option_activate(items[at])
+		Cmd.BACK, CMD_OPTIONS:
+			close_options()
+
+
+## Left / right on an item (a rule row; the "<" / ">" buttons).
+func _option_step(item: int, dir: int) -> void:
+	if item < 0:
+		return
+	_options_item = item
+	if can_manage():
+		change_rule(item, dir)
+	else:
+		Sfx.play(&"ui_back")
+		_refresh()
+
+
+## A / click on an item: a rule row steps forward, an action runs.
+func _option_activate(item: int) -> void:
+	if item >= 0:
+		_option_step(item, 1)
+		return
+	_options_item = item
+	match item:
+		ACT_DONE:
+			close_options()
+		ACT_COPY:
+			copy_address()
+		ACT_ROOM:
+			# Back to the cards: the room bar there shows the code, or why not.
+			_options_open = false
+			room_action()
+			_refresh()
+		ACT_DIRECT:
+			_options_open = false
+			open_online(true)
+			_refresh()
+
+
+func _can_copy() -> bool:
+	return Net.is_host() and (Net.backend != PlatformCaps.NetBackend.WEBRTC or not Net.room_code.is_empty())
+
+
 # --- Input ---------------------------------------------------------------------
+
+const _PAD_CMDS := {
+	JOY_BUTTON_A: Cmd.CONFIRM, JOY_BUTTON_START: Cmd.CONFIRM,
+	JOY_BUTTON_B: Cmd.BACK, JOY_BUTTON_BACK: Cmd.BACK,
+	JOY_BUTTON_DPAD_UP: Cmd.UP, JOY_BUTTON_DPAD_DOWN: Cmd.DOWN,
+	JOY_BUTTON_DPAD_LEFT: Cmd.LEFT, JOY_BUTTON_DPAD_RIGHT: Cmd.RIGHT,
+	JOY_BUTTON_X: CMD_SEAT, JOY_BUTTON_Y: CMD_OPTIONS,
+	JOY_BUTTON_LEFT_SHOULDER: CMD_MODE_PREV, JOY_BUTTON_RIGHT_SHOULDER: CMD_MODE_NEXT,
+}
+
+## Keys of a joined keyboard player's layout (Bindings action -> command).
+const _KEY_LAYOUT_CMDS := {
+	"MOVE_FORWARD": Cmd.UP, "MOVE_BACK": Cmd.DOWN,
+	"MOVE_LEFT": Cmd.LEFT, "MOVE_RIGHT": Cmd.RIGHT,
+	"LIGHT": Cmd.CONFIRM, "JUMP": Cmd.CONFIRM, "PAUSE": Cmd.BACK, "HEAVY": CMD_SEAT,
+}
+
+## Keys that mean the same for everyone (screen commands and the options screen).
+const _KEY_CMDS := {
+	KEY_TAB: CMD_OPTIONS, KEY_Q: CMD_MODE_PREV, KEY_PAGEUP: CMD_MODE_PREV,
+	KEY_E: CMD_MODE_NEXT, KEY_PAGEDOWN: CMD_MODE_NEXT,
+	KEY_UP: Cmd.UP, KEY_DOWN: Cmd.DOWN, KEY_LEFT: Cmd.LEFT, KEY_RIGHT: Cmd.RIGHT,
+	KEY_ENTER: Cmd.CONFIRM, KEY_KP_ENTER: Cmd.CONFIRM, KEY_SPACE: Cmd.CONFIRM,
+	KEY_ESCAPE: Cmd.BACK, KEY_BACKSPACE: Cmd.BACK,
+}
+
 
 func _input(event: InputEvent) -> void:
 	if _started:
 		return
 	if event is InputEventJoypadButton:
-		if event.pressed:
-			_on_pad_button(event)
+		if event.pressed and _PAD_CMDS.has(event.button_index):
+			_pad_command(event.device, _PAD_CMDS[event.button_index])
 	elif event is InputEventJoypadMotion:
 		_on_pad_motion(event)
 	elif event is InputEventKey:
@@ -315,43 +626,39 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
-func _on_pad_button(e: InputEventJoypadButton) -> void:
-	match e.button_index:
-		JOY_BUTTON_Y:
-			room_action()
-			return
-		JOY_BUTTON_X:
-			alt_room_action()
-			return
-	var idx := slot_for_device(Bindings.Kind.PAD, e.device)
-	if idx < 0:
-		match e.button_index:
-			JOY_BUTTON_START, JOY_BUTTON_A:
-				join(Bindings.Kind.PAD, e.device)
-			JOY_BUTTON_B, JOY_BUTTON_BACK:
-				if local_slots().is_empty():
-					_back_to_menu()
+## Commands that don't belong to a slot: the mode tabs, and everything
+## while the options screen is open. Returns true when `cmd` was one.
+func _screen_command(cmd: int) -> bool:
+	match cmd:
+		CMD_MODE_PREV:
+			cycle_mode(-1)
+			return true
+		CMD_MODE_NEXT:
+			cycle_mode(1)
+			return true
+	if _options_open:
+		_options_command(cmd)
+		return true
+	if cmd == CMD_OPTIONS:
+		open_options()
+		return true
+	return false
+
+
+func _pad_command(device: int, cmd: int) -> void:
+	if _screen_command(cmd):
 		return
-	match e.button_index:
-		JOY_BUTTON_A, JOY_BUTTON_START:
-			_command(idx, Cmd.CONFIRM)
-		JOY_BUTTON_B, JOY_BUTTON_BACK:
-			_command(idx, Cmd.BACK)
-		JOY_BUTTON_DPAD_UP:
-			_command(idx, Cmd.UP)
-		JOY_BUTTON_DPAD_DOWN:
-			_command(idx, Cmd.DOWN)
-		JOY_BUTTON_DPAD_LEFT:
-			_command(idx, Cmd.LEFT)
-		JOY_BUTTON_DPAD_RIGHT:
-			_command(idx, Cmd.RIGHT)
+	var idx := slot_for_device(Bindings.Kind.PAD, device)
+	if idx >= 0:
+		_command(idx, cmd)
+	elif cmd == Cmd.CONFIRM:
+		join(Bindings.Kind.PAD, device)
+	elif cmd == Cmd.BACK and local_slots().is_empty():
+		_back_to_menu()
 
 
 func _on_pad_motion(e: InputEventJoypadMotion) -> void:
 	if e.axis != JOY_AXIS_LEFT_X and e.axis != JOY_AXIS_LEFT_Y:
-		return
-	var idx := slot_for_device(Bindings.Kind.PAD, e.device)
-	if idx < 0:
 		return
 	var th := UiTheme.tuning().stick_nav_threshold
 	var v := Vector2(Input.get_joy_axis(e.device, JOY_AXIS_LEFT_X), Input.get_joy_axis(e.device, JOY_AXIS_LEFT_Y))
@@ -369,45 +676,43 @@ func _on_pad_motion(e: InputEventJoypadMotion) -> void:
 		return
 	_stick_dir[e.device] = dir
 	if dir.x < 0:
-		_command(idx, Cmd.LEFT)
+		_pad_command(e.device, Cmd.LEFT)
 	elif dir.x > 0:
-		_command(idx, Cmd.RIGHT)
+		_pad_command(e.device, Cmd.RIGHT)
 	elif dir.y < 0:
-		_command(idx, Cmd.UP)
+		_pad_command(e.device, Cmd.UP)
 	elif dir.y > 0:
-		_command(idx, Cmd.DOWN)
-
-
-const _KEY_LAYOUT_CMDS := {
-	"MOVE_FORWARD": Cmd.UP, "MOVE_BACK": Cmd.DOWN,
-	"MOVE_LEFT": Cmd.LEFT, "MOVE_RIGHT": Cmd.RIGHT,
-	"LIGHT": Cmd.CONFIRM, "JUMP": Cmd.CONFIRM, "PAUSE": Cmd.BACK,
-}
+		_pad_command(e.device, Cmd.DOWN)
 
 
 func _on_key(e: InputEventKey) -> void:
-	match e.keycode:
-		KEY_TAB:
-			room_action()
-			return
-		KEY_C:
-			if Net.is_host() or (not is_online() and two_room_kinds()):
-				alt_room_action()
-				return
 	var b := Bindings.binding_from_event(e, Bindings.Kind.KEYBOARD)
 	if b.is_empty():
 		return
 	var code: int = b["i"]
 	var kb := keyboard_slots()
+	if _options_open:
+		# Everyone steers the options: the shared keys, then any layout's.
+		var cmd: int = _KEY_CMDS.get(code, -1)
+		for profile in Bindings.SLOT_COUNT:
+			for action: String in _KEY_LAYOUT_CMDS:
+				if cmd < 0 and Bindings.get_binding(profile, Bindings.Kind.KEYBOARD, action) == b:
+					cmd = _KEY_LAYOUT_CMDS[action]
+		if cmd >= 0 and cmd != CMD_SEAT:
+			_screen_command(cmd)
+		return
 	# 1) Per-layout keys of each joined keyboard player.
 	for idx in kb:
-		for action in _KEY_LAYOUT_CMDS:
+		for action: String in _KEY_LAYOUT_CMDS:
 			if Bindings.get_binding(binding_slot(idx), Bindings.Kind.KEYBOARD, action) == b:
 				_command(idx, _KEY_LAYOUT_CMDS[action])
 				return
-	# 2) Generic keys.
-	match code:
-		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+	# 2) Shared keys.
+	var shared: int = _KEY_CMDS.get(code, -1)
+	if shared < 0 or _screen_command(shared):
+		return
+	match shared:
+		Cmd.CONFIRM:
 			if _can_join_more() and kb.size() < Bindings.SLOT_COUNT:
 				join(Bindings.Kind.KEYBOARD, -1)
 			else:
@@ -415,7 +720,7 @@ func _on_key(e: InputEventKey) -> void:
 					if slots[idx].state == SlotState.JOINED:
 						_command(idx, Cmd.CONFIRM)
 						return
-		KEY_ESCAPE, KEY_BACKSPACE:
+		Cmd.BACK:
 			if not kb.is_empty():
 				var last := kb[0]
 				for idx in kb:
@@ -424,10 +729,9 @@ func _on_key(e: InputEventKey) -> void:
 				_command(last, Cmd.BACK)
 			elif local_slots().is_empty():
 				_back_to_menu()
-		KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT:
+		_:  # arrows
 			if kb.size() == 1:
-				var cmd: int = {KEY_UP: Cmd.UP, KEY_DOWN: Cmd.DOWN, KEY_LEFT: Cmd.LEFT, KEY_RIGHT: Cmd.RIGHT}[code]
-				_command(kb[0], cmd)
+				_command(kb[0], shared)
 
 
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
@@ -554,14 +858,26 @@ func leave(idx: int) -> void:
 func _command(idx: int, cmd: int) -> void:
 	if idx < 0 or idx >= slots.size():
 		return
-	if cmd == Cmd.UP or cmd == Cmd.DOWN:
-		_last_cursor_slot = idx
-	if is_online():
-		_play_for(_predict(idx, cmd), idx)
-		_send(idx, cmd)
+	if cmd == CMD_SEAT:
+		cycle_seat(idx)
+		return
+	if cmd >= CMD_SEAT:
+		return
+	if _focus.has(idx):
+		_seat_command(idx, cmd)
 	else:
-		_play_for(model.command(idx, cmd), idx)
+		_play_for(_apply_cmd(idx, cmd), idx)
 	_refresh()
+
+
+## Apply a LobbyModel.Cmd to a slot of this machine (online: ask the host).
+## Returns what it did (online: what it should do).
+func _apply_cmd(idx: int, cmd: int) -> StringName:
+	if not is_online():
+		return model.command(idx, cmd)
+	var ev := _predict(idx, cmd)
+	_send(idx, cmd)
+	return ev
 
 
 func _send(idx: int, cmd: int) -> void:
@@ -597,20 +913,24 @@ func _process(delta: float) -> void:
 	if _started:
 		return
 	if not is_online():
-		if all_ready():
+		if all_ready() and not _options_open:
 			_countdown -= delta
 			if _countdown <= 0.0:
 				_start()
 				return
 		else:
 			_countdown = UiTheme.tuning().join_start_delay
+	if _notice != "":
+		_notice_left -= delta
+		if _notice_left <= 0.0:
+			_notice = ""
+			_refresh_room()
 	_refresh_status()
-	var ally := ally_slots()
+	var u := UiTheme.tuning()
 	for i in mini(_ui.size(), slots.size()):
-		if slots[i].state == SlotState.EMPTY and not i in ally:
-			(_ui[i]["state"] as Label).modulate.a = 0.55 + 0.45 * absf(sin(_blink * 3.0))
-		else:
-			(_ui[i]["state"] as Label).modulate.a = 1.0
+		var prompt := slots[i].state == SlotState.EMPTY and not i in ally_slots()
+		(_ui[i]["state"] as Label).modulate.a = \
+			lerpf(u.join_blink_min_alpha, 1.0, absf(sin(_blink * u.join_blink_speed))) if prompt else 1.0
 
 
 func _start() -> void:
@@ -646,33 +966,42 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", u.join_root_separation)
 	add_child(root)
 
-	var title := MenuHelpers.title("CHOOSE YOUR FIGHTERS")
-	title.add_theme_font_size_override("font_size", u.join_title_font)
-	root.add_child(title)
+	_tab_bar = HBoxContainer.new()
+	_tab_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	_tab_bar.add_theme_constant_override("separation", u.join_tab_separation)
+	root.add_child(_tab_bar)
 	root.add_child(_build_room_bar())
-	# Player panels and the shared settings panel share the width (no minimum
-	# widths: long values are cut with an ellipsis, never pushed off-screen).
+	# One card per slot, sharing the width (no minimum widths: long values
+	# are cut with an ellipsis, never pushed off-screen).
 	_panel_row = HBoxContainer.new()
 	_panel_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_panel_row.add_theme_constant_override("separation", u.join_column_separation)
 	root.add_child(_panel_row)
 	_rebuild_panels()
 
+	# The rules at a glance, and the way to their screen.
+	var rules := HBoxContainer.new()
+	rules.alignment = BoxContainer.ALIGNMENT_CENTER
+	rules.add_theme_constant_override("separation", u.join_column_separation)
+	_rules_label = _fit_label("", &"", u.join_row_font)
+	_rules_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rules.add_child(_rules_label)
+	var options := MenuHelpers.button("Options (Y)", toggle_options)
+	options.focus_mode = Control.FOCUS_NONE
+	options.custom_minimum_size.x = 0
+	rules.add_child(options)
+	root.add_child(rules)
+
 	_status_label = MenuHelpers.label("", &"HeaderLabel", HORIZONTAL_ALIGNMENT_CENTER)
 	root.add_child(_status_label)
-	var online := Net.online_available()
-	var two := two_room_kinds()
-	var hint := MenuHelpers.label(
-			"Pad: START/A join  -  D-pad/stick choose  -  A ready  -  B back/leave%s\n"
-			% (("  -  Y room  -  X by IP" if two else "  -  Y room") if online else "")
-			+ "Keyboard: ENTER join  -  MOVE keys choose (arrows if alone)  -  LIGHT/JUMP ready  -  PAUSE/ESC back%s"
-			% (("  -  TAB room  -  C by IP" if two else "  -  TAB room") if online else ""),
-			&"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(hint)
+	_hint_label = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_hint_label)
+	_build_options()
 
 
-## Top bar: room status and its buttons (mouse; pads/keys use Y/TAB, X/C).
+## Top bar: room status and its buttons (mouse / touch; pads and keys open
+## rooms from the options screen).
 func _build_room_bar() -> Control:
 	var bar := HBoxContainer.new()
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -700,9 +1029,44 @@ func _build_room_bar() -> Control:
 	return bar
 
 
-## (Re)build one panel per slot around the settings panel. Two slots: P1 |
-## settings | P2. More (online co-op): compact panels in two columns, odd
-## players (P1, P3) on the left, even ones on the right.
+## The mode tabs: one flat button per model.modes(), "LB" / "RB" around them.
+func _rebuild_tabs() -> void:
+	for c in _tab_bar.get_children():
+		_tab_bar.remove_child(c)
+		c.queue_free()
+	_tab_buttons.clear()
+	_tab_modes = model.modes().duplicate()
+	var u := UiTheme.tuning()
+	_tab_bar.add_child(MenuHelpers.label("LB", &"HintLabel"))
+	for m in _tab_modes:
+		var b := Button.new()
+		b.text = LobbyModel.mode_name(m).to_upper()
+		b.flat = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", u.join_tab_font)
+		b.pressed.connect(select_mode.bind(m))
+		_tab_bar.add_child(b)
+		_tab_buttons.append(b)
+	_tab_bar.add_child(MenuHelpers.label("RB", &"HintLabel"))
+
+
+func _refresh_tabs() -> void:
+	if _tab_modes != model.modes():
+		_rebuild_tabs()
+	var u := UiTheme.tuning()
+	var mine := can_manage()
+	for i in _tab_buttons.size():
+		var b := _tab_buttons[i]
+		var on := _tab_modes[i] == model.mode
+		for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+			b.add_theme_color_override(c, u.color_focus if on else u.color_text_dim)
+		b.mouse_filter = Control.MOUSE_FILTER_STOP if mine else Control.MOUSE_FILTER_IGNORE
+	# LB / RB only mean something to whoever picks the mode.
+	(_tab_bar.get_child(0) as Control).visible = mine
+	(_tab_bar.get_child(_tab_bar.get_child_count() - 1) as Control).visible = mine
+
+
+## (Re)build one card per slot, side by side (compact from three slots up).
 func _rebuild_panels() -> void:
 	if _panel_row == null:
 		return
@@ -710,32 +1074,10 @@ func _rebuild_panels() -> void:
 		_panel_row.remove_child(c)
 		c.queue_free()
 	_ui.clear()
-	_row_labels.clear()
-	_coop_labels.clear()
-	var u := UiTheme.tuning()
-	var compact := slots.size() > 2
-	if not compact:
-		for i in slots.size():
-			var ui := _build_player_panel(i, false)
-			_ui.append(ui)
-			_panel_row.add_child(ui["panel"])
-			if i == 0:
-				_panel_row.add_child(_build_settings_panel())
-		return
-	var columns: Array[VBoxContainer] = []
-	for side in 2:
-		var column := VBoxContainer.new()
-		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.add_theme_constant_override("separation", u.join_compact_stack_separation)
-		columns.append(column)
-	_panel_row.add_child(columns[0])
-	_panel_row.add_child(_build_settings_panel())
-	_panel_row.add_child(columns[1])
 	for i in slots.size():
-		var ui := _build_player_panel(i, true)
-		(ui["panel"] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var ui := _build_card(i, slots.size() > 2)
 		_ui.append(ui)
-		columns[i % 2].add_child(ui["panel"])
+		_panel_row.add_child(ui["panel"])
 
 
 ## Single-line label that shrinks with an ellipsis instead of widening its panel.
@@ -747,7 +1089,10 @@ static func _fit_label(text: String, variation: StringName = &"", font_size := 0
 	return l
 
 
-func _build_player_panel(_i: int, compact: bool) -> Dictionary:
+## A slot's card, top to bottom: who (header, device), the seat switch of an
+## empty slot, the fighter, a CPU's level, the colour, the team, the state
+## and a hint. _refresh_card shows the lines the slot has.
+func _build_card(i: int, compact: bool) -> Dictionary:
 	var u := UiTheme.tuning()
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -756,234 +1101,369 @@ func _build_player_panel(_i: int, compact: bool) -> Dictionary:
 	if compact:
 		sb.set_content_margin_all(u.join_compact_panel_margin)
 	panel.add_theme_stylebox_override("panel", sb)
+	panel.gui_input.connect(_on_card_gui_input.bind(i))
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(col)
 	var header := _fit_label("", &"HeaderLabel", u.join_compact_header_font if compact else 0)
-	col.add_child(header)
 	var device := _fit_label("", &"HintLabel")
-	col.add_child(device)
-	var state := _fit_label("", &"HeaderLabel", u.join_compact_state_font if compact else u.join_state_font)
-	var swatch := _fit_label("", &"", u.join_row_font)
-	# State and colour share a line: a panel has no height to spare, and the
-	# state is the one short line (it only wraps while the colour is hidden).
-	var state_row := HBoxContainer.new()
-	state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	swatch.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	state_row.add_child(state)
-	state_row.add_child(swatch)
-	col.add_child(state_row)
+	var seat := _fit_label("", &"", u.join_row_font)
 	var character := _fit_label("", &"", u.join_compact_character_font if compact else u.join_character_font)
-	col.add_child(character)
+	var level := _fit_label("", &"", u.join_row_font)
+	var swatch := _fit_label("", &"", u.join_row_font)
+	var team := _fit_label("", &"", u.join_row_font)
+	var state := _fit_label("", &"HeaderLabel", u.join_compact_state_font if compact else u.join_state_font)
 	var hint := MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(hint)
-	return {"panel": panel, "header": header, "device": device, "state": state, "character": character,
-		"swatch": swatch, "hint": hint, "style": sb, "color": Color.WHITE}
+	for l: Label in [header, device, seat, character, level, swatch, team, state, hint]:
+		col.add_child(l)
+	return {"panel": panel, "header": header, "device": device, "seat": seat, "character": character,
+		"level": level, "swatch": swatch, "team": team, "state": state, "hint": hint, "style": sb,
+		"color": Color.WHITE, "compact": compact}
 
 
-## Shared rows (mode, match rules / co-op run) live once, in the middle
-## panel; every row has a label, shown when the mode has that row. They
-## scroll when they don't fit; the row under the last-moved cursor is kept in view.
-func _build_settings_panel() -> Control:
+## The options screen: a dimmed overlay with a row per rule ("<" name: value
+## ">") and a button per action, in a list that scrolls when it has to.
+func _build_options() -> void:
 	var u := UiTheme.tuning()
+	_options = Control.new()
+	_options.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_options.visible = false
+	add_child(_options)
+	var dim := ColorRect.new()
+	dim.color = Tuning.hud.pause_dim_color
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_options.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"PanelBox"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = u.join_settings_ratio
+	# Opaque, so the cards behind don't read through the rows.
+	var box := (UiTheme.get_theme().get_stylebox("panel", "PanelBox") as StyleBoxFlat).duplicate() as StyleBoxFlat
+	box.bg_color.a = 1.0
+	panel.add_theme_stylebox_override("panel", box)
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -u.join_options_width * 0.5
+	panel.offset_right = u.join_options_width * 0.5
+	panel.offset_top = u.join_margin.y
+	panel.offset_bottom = -u.join_margin.y
+	_options.add_child(panel)
 	var outer := VBoxContainer.new()
 	panel.add_child(outer)
-	_settings_header = _fit_label("", &"HeaderLabel")
-	outer.add_child(_settings_header)
-	_settings_scroll = ScrollContainer.new()
-	_settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_settings_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.add_child(_settings_scroll)
+	_options_header = _fit_label("", &"HeaderLabel")
+	outer.add_child(_options_header)
+	_options_scroll = ScrollContainer.new()
+	_options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_options_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(_options_scroll)
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", u.join_row_separation)
-	_settings_scroll.add_child(col)
-	for r in [Row.MODE, Row.SEAT, Row.SEAT_TYPE, Row.SEAT_TEAM, Row.CPU_LEVEL]:
-		_add_row_label(col, r)
-	_cpu_level_label = _row_labels[Row.CPU_LEVEL]
-	_cpu_blurb_label = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	_cpu_blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(_cpu_blurb_label)
-	_add_row_label(col, Row.LOCK_TEAMS)
-	_add_row_label(col, Row.ROUNDS)
-	for r in [Row.COOP_STRUCTURE, Row.ENEMY_COUNT, Row.WAVES, Row.ENEMY_LEVEL, Row.ENEMY_ROSTER,
-			Row.ALLY, Row.ALLY_LEVEL, Row.ALLY_CHARACTER, Row.FRIENDLY_FIRE]:
-		_coop_labels[r] = _add_row_label(col, r)
-	_add_row_label(col, Row.TIMER)
-	_add_row_label(col, Row.STAGE)
-	var how := MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	how.name = "How"
-	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	outer.add_child(how)
-	return panel
+	_options_scroll.add_child(col)
+	for r in RULE_ROWS:
+		var row := HBoxContainer.new()
+		row.add_child(_arrow_button("<", r, -1))
+		var l := _fit_label("", &"", u.join_options_row_font)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		row.add_child(_arrow_button(">", r, 1))
+		col.add_child(row)
+		_row_labels[r] = l
+		_option_controls[r] = row
+	for a in ACTIONS:
+		var b := Button.new()
+		b.theme_type_variation = &"RowButton"
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", u.join_options_row_font)
+		b.pressed.connect(_option_activate.bind(a))
+		col.add_child(b)
+		_option_controls[a] = b
+	_options_hint = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	_options_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	outer.add_child(_options_hint)
 
 
-func _add_row_label(col: Container, r: int) -> Label:
-	var l := _fit_label("", &"", UiTheme.tuning().join_row_font)
-	col.add_child(l)
-	_row_labels[r] = l
-	return l
-
-
-## Scroll the settings list so the row under the last-moved cursor shows.
-func _scroll_to_cursor() -> void:
-	if _settings_scroll == null or _last_cursor_slot < 0 or _last_cursor_slot >= slots.size():
-		return
-	var l: Label = _row_labels.get(slots[_last_cursor_slot].cursor)
-	if l != null and l.visible:
-		_settings_scroll.ensure_control_visible(l)
-
-
-func _cursor_tags(row: int) -> String:
-	var tags: PackedStringArray = []
-	for i in slots.size():
-		if slots[i].state == SlotState.JOINED and slots[i].cursor == row:
-			tags.append("P%d" % (i + 1))
-	return ("[%s] " % ",".join(tags)) if not tags.is_empty() else ""
-
-
-## "[P1] " for the slot the Seat rows edit while someone's cursor is on them.
-func _seat_tags(idx: int) -> String:
-	if not model.team_mode() or idx != model.seat:
-		return ""
-	var tags: PackedStringArray = []
-	for i in slots.size():
-		if slots[i].state == SlotState.JOINED and slots[i].cursor in SEAT_ROWS:
-			tags.append("P%d" % (i + 1))
-	return ("[%s] " % ",".join(tags)) if not tags.is_empty() else ""
-
-
-func _row_color(row: int) -> Color:
+func _arrow_button(text: String, row: int, dir: int) -> Button:
 	var u := UiTheme.tuning()
-	for i in slots.size():
-		if slots[i].state == SlotState.JOINED and slots[i].cursor == row:
-			return _ui[i]["color"]
-	return u.color_text
+	var b := Button.new()
+	b.text = text
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size.x = u.join_options_arrow_width
+	b.add_theme_font_size_override("font_size", u.join_options_row_font)
+	b.pressed.connect(_option_step.bind(row, dir))
+	return b
 
 
 func _refresh() -> void:
-	if _ui.is_empty() and slots.is_empty():
+	if _panel_row == null:
 		return
 	if _ui.size() != slots.size():
 		_rebuild_panels()
-	var u := UiTheme.tuning()
-	var ids := MenuHelpers.character_ids()
-	var mine := local_slots()
-	var ally := ally_slots()
+	_validate_focus()
+	_refresh_tabs()
 	var colors := model.resolved_colors()
+	var ally := ally_slots()
 	for i in slots.size():
-		var s := slots[i]
-		var ui := _ui[i]
-		_show_color(i, ui, model.ally_color() if i in ally else colors[i])
-		var header: Label = ui["header"]
-		var state: Label = ui["state"]
-		var device: Label = ui["device"]
-		var character: Label = ui["character"]
-		var hint: Label = ui["hint"]
-		var cname := MenuHelpers.character_name(ids[clampi(s.char_index, 0, ids.size() - 1)])
-		var remote := is_online() and s.state != SlotState.EMPTY and not i in mine
-		character.visible = s.state != SlotState.EMPTY
-		if s.type == SlotType.CPU:
-			header.text = "CPU"
-		elif is_online() and s.display_name != "":
-			header.text = s.display_name.to_upper()
-		else:
-			header.text = "PLAYER %d" % (i + 1)
-		header.text = _seat_tags(i) + header.text
-		if s.type == SlotType.CPU:
-			device.text = "Level %d/%d" % [s.cpu_level + 1, Tuning.cpu.level_count()]
-		elif remote:
-			device.text = _online_label(s.owner_peer)
-		elif s.state != SlotState.EMPTY:
-			device.text = MenuHelpers.device_label(_device_kind(i), _device_id(i), binding_slot(i))
-		else:
-			device.text = "(optional)" if (is_coop() and i > 0) or (model.team_mode() and i > 1) else "-"
-		match s.state:
-			SlotState.EMPTY:
-				state.text = "PRESS START\nOR ENTER" if _can_join_more() else "WAITING FOR\nA PLAYER..."
-				state.add_theme_color_override("font_color", u.color_text)
-				hint.text = ""
-			SlotState.JOINED:
-				state.text = "CHOOSE!"
-				state.add_theme_color_override("font_color", ui["color"])
-				hint.text = "" if remote else "Press A / %s when ready" % _confirm_key_name(i)
-			SlotState.READY:
-				state.text = "READY!"
-				state.add_theme_color_override("font_color", u.color_ready)
-				hint.text = "" if remote else "B / %s to cancel" % _back_key_name(i)
-		var on_char := s.state == SlotState.JOINED and s.cursor == Row.CHARACTER
-		var tags := ""
-		if s.type == SlotType.CPU:
-			hint.text = "Scroll down past your fighter to pick the CPU's fighter and level" \
-				if not model.team_mode() else "Seat rows: fighter, level, team"
-			tags = _cursor_tags(Row.CPU_CHARACTER) if i == cpu_slot() else ""
-			on_char = tags != ""
-		character.text = ("%s<  %s  >" % [tags, cname]) if on_char else cname
-		character.add_theme_color_override("font_color", ui["color"] if on_char else u.color_text)
-		_refresh_team(i, ui)
-		if i in ally:
-			_show_ally(ui)
-		hint.visible = hint.text != ""
-	_refresh_rows()
+		_ui[i]["color"] = Tuning.colors.color(model.ally_color() if i in ally else colors[i])
+	for i in slots.size():
+		_refresh_card(i)
+	_refresh_rules()
+	_refresh_options()
 	_refresh_room()
 	_refresh_status()
-	_scroll_to_cursor.call_deferred()
+	_refresh_hint()
 
 
-## The slot's colour: panel border, header and the Colour line, which reads
-## "<  Blue  >" while the player's cursor is on it.
-func _show_color(i: int, ui: Dictionary, index: int) -> void:
-	var s := slots[i]
-	var color := Tuning.colors.color(index)
-	ui["color"] = color
-	(ui["style"] as StyleBoxFlat).border_color = color
-	(ui["header"] as Label).add_theme_color_override("font_color", color)
-	var swatch: Label = ui["swatch"]
-	var cname := Tuning.colors.color_name(index)
-	var on_color := s.state == SlotState.JOINED and s.cursor == Row.COLOR
-	swatch.visible = s.state != SlotState.EMPTY or i in ally_slots()
-	swatch.text = "<  %s  >" % cname if on_color else cname
-	swatch.add_theme_color_override("font_color", color)
-
-
-## Team versus: the slot's team after its device line ("<  Team A  >",
-## in the player's colour, while their cursor is on their TEAM row).
-func _refresh_team(i: int, ui: Dictionary) -> void:
-	var s := slots[i]
-	var device: Label = ui["device"]
-	var on_team := s.state == SlotState.JOINED and s.cursor == Row.TEAM
-	if on_team:
-		device.add_theme_color_override("font_color", ui["color"])
-	else:
-		device.remove_theme_color_override("font_color")
-	if not model.team_mode() or s.state == SlotState.EMPTY:
-		return
-	var tname := LobbyModel.team_name(s.team)
-	device.text += "  -  " + ("<  %s  >" % tname if on_team else tname)
-
-
-## A place the CPU ally takes (ally_slots): its level and fighter from the
-## co-op rows (set there, so no hint).
-func _show_ally(ui: Dictionary) -> void:
+## Draw slot `i`'s card: a player, a CPU, the co-op ally, or an empty seat.
+func _refresh_card(i: int) -> void:
 	var u := UiTheme.tuning()
+	var s := slots[i]
+	var ui := _ui[i]
 	var ids := MenuHelpers.character_ids()
-	(ui["header"] as Label).text = "CPU ALLY"
-	(ui["device"] as Label).text = "Level: %s" % Tuning.cpu.level_name(model.coop_ally_level)
-	var state: Label = ui["state"]
-	state.text = "READY!"
-	state.add_theme_color_override("font_color", u.color_ready)
+	var mine := i in local_slots()
+	var is_ally := i in ally_slots()
+	var is_cpu := s.type == SlotType.CPU
+	var empty := s.state == SlotState.EMPTY and not is_ally
+	var joined_human := s.type == SlotType.HUMAN and s.state != SlotState.EMPTY
+	var color: Color = ui["color"]
+	(ui["style"] as StyleBoxFlat).border_color = color
+	(ui["panel"] as Control).modulate.a = u.join_empty_card_alpha if empty else 1.0
+
+	var header: Label = ui["header"]
+	header.add_theme_color_override("font_color", color)
+	if is_ally:
+		header.text = "CPU ALLY"
+	elif is_cpu:
+		header.text = "CPU"
+	elif is_online() and s.display_name != "":
+		header.text = s.display_name.to_upper()
+	else:
+		header.text = "PLAYER %d" % (i + 1)
+
+	var device: Label = ui["device"]
+	if not joined_human:
+		device.text = ""
+	elif mine or not is_online():
+		device.text = MenuHelpers.device_label(_device_kind(i), _device_id(i), binding_slot(i))
+	else:
+		device.text = _online_label(s.owner_peer)
+	device.visible = device.text != ""
+
+	# The switch of an empty seat ("+ CPU"), or of a seated CPU / the ally
+	# while someone's cursor is on it.
+	var seat: Label = ui["seat"]
+	var seat_rows := model.seat_rows(i) if can_manage() else ([] as Array[int])
+	var seat_row := Row.SEAT_TYPE if Row.SEAT_TYPE in seat_rows else (Row.ALLY if Row.ALLY in seat_rows else -1)
+	var seat_cursor := _row_cursor(i, -1, seat_row)
+	seat.visible = seat_row >= 0 and (empty or not seat_cursor.is_empty())
+	if seat_row == Row.ALLY:
+		_set_row(seat, ("CPU ally" if model.coop_ally else "No ally") if not seat_cursor.is_empty() else "+ CPU ally",
+				seat_cursor, u.color_text_dim)
+	else:
+		_set_row(seat, ("CPU" if is_cpu else "Open") if not seat_cursor.is_empty() else "+ CPU",
+				seat_cursor, u.color_text_dim)
+
 	var character: Label = ui["character"]
-	character.visible = true
-	character.text = MenuHelpers.character_name(ids[clampi(model.coop_ally_char, 0, ids.size() - 1)])
-	character.add_theme_color_override("font_color", u.color_text)
-	(ui["hint"] as Label).text = ""
+	character.visible = not empty
+	var char_index := model.coop_ally_char if is_ally else s.char_index
+	_set_row(character, MenuHelpers.character_name(ids[clampi(char_index, 0, ids.size() - 1)]),
+			_row_cursor(i, Row.CHARACTER, Row.ALLY_CHARACTER if is_ally else Row.CPU_CHARACTER), u.color_text)
+
+	var level: Label = ui["level"]
+	level.visible = is_ally or is_cpu
+	var level_cursor := _row_cursor(i, -1, Row.ALLY_LEVEL if is_ally else Row.CPU_LEVEL)
+	var cpu_level := model.coop_ally_level if is_ally else s.cpu_level
+	_set_row(level, Tuning.cpu.level_name(cpu_level), level_cursor, u.color_text_dim)
+
+	var swatch: Label = ui["swatch"]
+	swatch.visible = joined_human
+	_set_row(swatch, Tuning.colors.color_name(model.resolved_colors()[i]), _row_cursor(i, Row.COLOR, -1), color)
+
+	var team: Label = ui["team"]
+	team.visible = model.team_mode() and not empty
+	_set_row(team, LobbyModel.team_name(s.team), _row_cursor(i, Row.TEAM, Row.SEAT_TEAM), u.color_text_dim)
+
+	var state: Label = ui["state"]
+	var hint: Label = ui["hint"]
+	# Narrow (compact) cards break their two-part lines; wide ones have the room.
+	var br := "\n" if ui["compact"] else "  -  "
+	var gap := "\n" if ui["compact"] else " "
+	hint.text = ""
+	if is_ally or is_cpu or s.state == SlotState.READY:
+		state.text = "READY!"
+		state.add_theme_color_override("font_color", u.color_ready)
+		if mine and not is_cpu:
+			hint.text = "%s: cancel" % _key_pair("B", i, "PAUSE")
+		elif not level_cursor.is_empty():
+			hint.text = Tuning.cpu.level_blurb(cpu_level)
+	elif s.state == SlotState.EMPTY:
+		state.text = ("PRESS START%sOR ENTER" if _can_join_more() else "WAITING FOR%sA PLAYER...") % gap
+		state.add_theme_color_override("font_color", u.color_text)
+	elif _focus.has(i):
+		state.text = "AT SEAT %d" % (focus_of(i) + 1)
+		state.add_theme_color_override("font_color", color)
+		hint.text = "%s: next seat  -  %s: back" % [_key_pair("X", i, "HEAVY"), _key_pair("B", i, "PAUSE")]
+	else:
+		state.text = "CHOOSE!"
+		state.add_theme_color_override("font_color", color)
+		if mine:
+			hint.text = "%s: ready" % _key_pair("A", i, "LIGHT")
+			if not seat_targets_for(i).is_empty():
+				hint.text += "%s%s: %s" % [br, _key_pair("X", i, "HEAVY"), _seats_word()]
+	hint.visible = hint.text != ""
+
+
+## The cursor on one of slot `i`'s lines: its player's own (`own_row`, a
+## rows_for row) or a local player's seat cursor (`seat_row`). Returns the
+## colour to draw it in, as [Color], or [] for no cursor.
+func _row_cursor(i: int, own_row: int, seat_row: int) -> Array:
+	var s := slots[i]
+	if own_row >= 0 and s.type == SlotType.HUMAN and s.state == SlotState.JOINED and s.cursor == own_row \
+			and not _focus.has(i):
+		return [_ui[i]["color"]]
+	if seat_row >= 0:
+		for p: int in _focus:
+			if _focus[p]["target"] == i and _focus[p]["row"] == seat_row:
+				return [_ui[p]["color"]]
+	return []
+
+
+## A card line: "<  value  >" in the cursor's colour, or the plain value.
+static func _set_row(label: Label, text: String, cursor: Array, plain: Color) -> void:
+	label.text = text if cursor.is_empty() else "<  %s  >" % text
+	label.add_theme_color_override("font_color", plain if cursor.is_empty() else cursor[0])
+
+
+## What X does for the players of this mode.
+func _seats_word() -> String:
+	if is_coop():
+		return "CPU ally"
+	return "CPUs and teams" if is_online() and model.team_mode() else ("CPUs" if model.team_mode() else "CPU")
+
+
+## "A" for a pad player, the key bound to `action` for a keyboard player.
+func _key_pair(pad: String, i: int, action: String) -> String:
+	if _device_kind(i) != Bindings.Kind.KEYBOARD:
+		return pad
+	return Bindings.binding_label(Bindings.get_binding(binding_slot(i), Bindings.Kind.KEYBOARD, action))
+
+
+## The rules in one line, under the cards.
+func _refresh_rules() -> void:
+	var parts: PackedStringArray = []
+	var time: int = model.time_options[model.time_index]
+	if is_coop():
+		if model.coop_structure != CoopConfig.Structure.WAVES:
+			parts.append("Brawl: %d enemies" % model.coop_enemy_count)
+		elif model.coop_endless():
+			parts.append("Endless waves from %d" % model.coop_enemy_count)
+		else:
+			parts.append("%d waves of %d" % [model.coop_waves, model.coop_enemy_count])
+		parts.append(Tuning.cpu.level_name(model.coop_enemy_level))
+		if model.friendly_fire:
+			parts.append("Friendly fire")
+		if time > 0:
+			parts.append("%d s" % time)
+		if model.coop_ally and model.ally_place() < 0:
+			parts.append("+ CPU ally")  # every card has a player
+	else:
+		parts.append("First to %d" % model.rounds_to_win)
+		parts.append("Timer %s" % MenuHelpers.round_time_label(time))
+	parts.append(ArenaCatalog.display_name(ArenaCatalog.IDS[model.stage_index]))
+	_rules_label.text = "  -  ".join(parts)
+
+
+## Name and value of a rule row.
+func _rule_text(r: int) -> Array:
+	var ids := MenuHelpers.character_ids()
+	var waves := model.coop_structure == CoopConfig.Structure.WAVES
+	match r:
+		Row.LOCK_TEAMS:
+			return ["Lock teams", "On" if model.lock_teams else "Off"]
+		Row.ROUNDS:
+			return ["Rounds to win", str(model.rounds_to_win)]
+		Row.TIMER:
+			return ["Time limit" if is_coop() else "Timer", MenuHelpers.round_time_label(model.time_options[model.time_index])]
+		Row.STAGE:
+			return ["Stage", ArenaCatalog.display_name(ArenaCatalog.IDS[model.stage_index])]
+		Row.COOP_STRUCTURE:
+			return ["Run", "Waves" if waves else "Brawl"]
+		Row.ENEMY_COUNT:
+			return [("First wave" if model.coop_endless() else "Enemies per wave") if waves else "Enemies",
+					str(model.coop_enemy_count)]
+		Row.WAVES:
+			return ["Waves", "Endless" if model.coop_endless() else str(model.coop_waves)]
+		Row.ENEMY_LEVEL:
+			return ["Enemy level", Tuning.cpu.level_name(model.coop_enemy_level)]
+		Row.ENEMY_ROSTER:
+			return ["Enemy roster", "Random" if model.coop_roster == 0
+					else MenuHelpers.character_name(ids[clampi(model.coop_roster - 1, 0, ids.size() - 1)])]
+		Row.ALLY:
+			return ["Ally", "CPU" if model.coop_ally else "None"]
+		Row.ALLY_LEVEL:
+			return ["Ally level", Tuning.cpu.level_name(model.coop_ally_level)]
+		Row.ALLY_CHARACTER:
+			return ["Ally fighter", MenuHelpers.character_name(ids[clampi(model.coop_ally_char, 0, ids.size() - 1)])]
+		Row.FRIENDLY_FIRE:
+			return ["Friendly fire", "On" if model.friendly_fire else "Off"]
+	return ["", ""]
+
+
+func _action_text(a: int) -> String:
+	match a:
+		ACT_COPY:
+			return "Copy the invite link" if Net.invite_text() != Net.room_code else \
+				("Copy the room code" if Net.backend == PlatformCaps.NetBackend.WEBRTC else "Copy the address")
+		ACT_ROOM:
+			if not is_online():
+				return "Open an online room (room code)" if two_room_kinds() else "Open an online room"
+			return "Close the room" if Net.is_host() else "Leave the room"
+		ACT_DIRECT:
+			return "Open an online room (direct IP)"
+	return "Done"
+
+
+func _refresh_options() -> void:
+	_options.visible = _options_open
+	if not _options_open:
+		return
+	var u := UiTheme.tuning()
+	var items := option_items()
+	if not _options_item in items:
+		_options_item = items[0]
+	var mine := can_manage()
+	for item: int in _option_controls:
+		var c: Control = _option_controls[item]
+		var on := item == _options_item
+		c.visible = item in items
+		if item >= 0:
+			var t := _rule_text(item)
+			var l: Label = _row_labels[item]
+			l.text = "%s:  %s" % [t[0], t[1]]
+			l.add_theme_color_override("font_color", u.color_focus if on else (u.color_text if mine else u.color_text_dim))
+			for arrow: int in [0, 2]:
+				(c.get_child(arrow) as Button).modulate.a = 1.0 if mine else 0.0
+				(c.get_child(arrow) as Button).disabled = not mine
+		else:
+			(c as Button).text = _action_text(item)
+			for col in ["font_color", "font_hover_color"]:
+				c.add_theme_color_override(col, u.color_focus if on else u.color_text)
+	_options_header.text = ("CO-OP RUN" if is_coop() else "MATCH RULES") + ("" if mine else "  (THE HOST'S)")
+	_options_hint.text = "Up/down: row  -  left/right: change  -  A: select  -  B: back" if mine \
+		else "The host sets the rules  -  B: back"
+	(func() -> void:
+		if _options_open and _option_controls.has(_options_item):
+			_options_scroll.ensure_control_visible(_option_controls[_options_item])).call_deferred()
+
+
+func _refresh_hint() -> void:
+	var owner_keys := can_manage()
+	_hint_label.text = "Pad: START/A join  -  A ready  -  B back%s  -  Y options\n" \
+			% ("  -  LB/RB game  -  X seats" if owner_keys else "") \
+		+ "Keyboard: ENTER join  -  LIGHT/JUMP ready  -  PAUSE/ESC back%s  -  TAB options" \
+			% ("  -  Q/E game  -  HEAVY seats" if owner_keys else "")
 
 
 func _online_label(peer: int) -> String:
@@ -991,65 +1471,11 @@ func _online_label(peer: int) -> String:
 	return "Online  -  %d ms" % roundi(ms) if ms >= 0.0 else "Online"
 
 
-## Text of every settings row, hidden when not in rows().
-func _refresh_rows() -> void:
-	var ids := MenuHelpers.character_ids()
-	var waves := model.coop_structure == CoopConfig.Structure.WAVES
-	var cpu := cpu_slot()
-	var seat := slots[model.seat] if model.seat < slots.size() else null
-	var values := {
-		Row.MODE: ["Game", LobbyModel.mode_name(model.mode)],
-		Row.SEAT: ["Seat", "P%d  %s" % [model.seat + 1, _seat_label(seat)]],
-		Row.SEAT_TYPE: ["Seat is", "CPU" if seat != null and seat.type == SlotType.CPU else "Open"],
-		Row.SEAT_TEAM: ["Seat team", LobbyModel.team_name(seat.team) if seat != null else ""],
-		Row.LOCK_TEAMS: ["Lock teams", "On" if model.lock_teams else "Off"],
-		Row.CPU_LEVEL: ["CPU level", Tuning.cpu.level_name(slots[cpu].cpu_level) if cpu >= 0 else ""],
-		Row.ROUNDS: ["Rounds to win", str(model.rounds_to_win)],
-		Row.TIMER: ["Time limit" if is_coop() else "Timer",
-				MenuHelpers.round_time_label(model.time_options[model.time_index])],
-		Row.STAGE: ["Stage", ArenaCatalog.display_name(ArenaCatalog.IDS[model.stage_index])],
-		Row.COOP_STRUCTURE: ["Run", "Waves" if waves else "Brawl"],
-		Row.ENEMY_COUNT: [("First wave" if model.coop_endless() else "Enemies per wave") if waves else "Enemies",
-				str(model.coop_enemy_count)],
-		Row.WAVES: ["Waves", "Endless" if model.coop_endless() else str(model.coop_waves)],
-		Row.ENEMY_LEVEL: ["Enemy level", Tuning.cpu.level_name(model.coop_enemy_level)],
-		Row.ENEMY_ROSTER: ["Enemy roster",
-				"Random" if model.coop_roster == 0 else MenuHelpers.character_name(ids[clampi(model.coop_roster - 1, 0, ids.size() - 1)])],
-		Row.ALLY: ["Ally", "CPU" if model.coop_ally else "None"],
-		Row.ALLY_LEVEL: ["Ally level", Tuning.cpu.level_name(model.coop_ally_level)],
-		Row.ALLY_CHARACTER: ["Ally fighter", MenuHelpers.character_name(ids[clampi(model.coop_ally_char, 0, ids.size() - 1)])],
-		Row.FRIENDLY_FIRE: ["Friendly fire", "On" if model.friendly_fire else "Off"],
-	}
-	var shown := rows()
-	for r: int in _row_labels:
-		var l: Label = _row_labels[r]
-		l.visible = r in shown
-		l.text = "%s%s  <  %s  >" % [_cursor_tags(r), values[r][0], values[r][1]]
-		l.add_theme_color_override("font_color", _row_color(r))
-	_cpu_blurb_label.visible = cpu >= 0
-	_cpu_blurb_label.text = Tuning.cpu.level_blurb(slots[cpu].cpu_level) if cpu >= 0 else ""
-	_settings_header.text = "CO-OP RUN" if is_coop() else "MATCH RULES"
-	var how := _settings_header.get_parent().get_node("How") as Label
-	how.text = "Rules: the host (up/down row, left/right value)" if is_online() \
-		else "Any player: up/down row, left/right value"
-
-
-## Who sits in a slot, for the Seat row.
-func _seat_label(s: LobbyModel.Slot) -> String:
-	if s == null:
-		return ""
-	if s.type == SlotType.CPU:
-		return "CPU"
-	if s.state == SlotState.EMPTY:
-		return "(empty)"
-	return s.display_name if is_online() and s.display_name != "" else "Player"
-
-
 func _refresh_room() -> void:
 	if _room_label == null:
 		return
 	var by_code := Net.backend == PlatformCaps.NetBackend.WEBRTC
-	_copy_button.visible = Net.is_host() and (not by_code or not Net.room_code.is_empty())
+	_copy_button.visible = _can_copy()
 	_copy_button.text = "Copy link" if by_code and Net.invite_text() != Net.room_code else "Copy"
 	_direct_button.visible = not is_online() and two_room_kinds()
 	var parts: PackedStringArray = []
@@ -1089,18 +1515,6 @@ func _refresh_room() -> void:
 	_room_label.text = "  -  ".join(parts)
 
 
-func _confirm_key_name(i: int) -> String:
-	if _device_kind(i) != Bindings.Kind.KEYBOARD:
-		return "START"
-	return Bindings.binding_label(Bindings.get_binding(binding_slot(i), Bindings.Kind.KEYBOARD, "LIGHT"))
-
-
-func _back_key_name(i: int) -> String:
-	if _device_kind(i) != Bindings.Kind.KEYBOARD:
-		return "BACK"
-	return Bindings.binding_label(Bindings.get_binding(binding_slot(i), Bindings.Kind.KEYBOARD, "PAUSE"))
-
-
 func _refresh_status() -> void:
 	if _status_label == null:
 		return
@@ -1110,15 +1524,16 @@ func _refresh_status() -> void:
 		_status_label.text = "FIGHT!"
 	elif is_online() and Net.room.countdown != OnlineRoom.NO_COUNTDOWN:
 		_status_label.text = "GET READY... %d" % Net.room.countdown_seconds()
-	elif not is_online() and all_ready():
+	elif not is_online() and all_ready() and not _options_open:
 		_status_label.text = "GET READY... %d" % ceili(maxf(_countdown, 0.0))
 	elif local_slots().is_empty():
 		_status_label.text = "B / ESC: leave the room" if is_online() else "B / ESC: back to menu"
 	elif is_online() and is_coop():
 		_status_label.text = _coop_online_status()
 	elif model.team_mode() and not model.teams_ok():
-		_status_label.text = "Waiting for an opponent to join (or add a CPU on the Seat rows)..." if is_online() \
-			else "Needs two fighters on two teams (Seat rows add a CPU)"
+		_status_label.text = ("Waiting for an opponent to join (or seat a CPU with X)..." if Net.is_host()
+				else "Waiting for an opponent to join...") if is_online() \
+			else "Needs two fighters on two teams (X seats a CPU)"
 	elif is_online():
 		var waiting := local_slots().all(func(i: int) -> bool: return slots[i].state == SlotState.READY)
 		_status_label.text = "Waiting for everyone to ready up..." if waiting else ""

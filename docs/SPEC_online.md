@@ -314,8 +314,28 @@ options moved here).
 
 ### 10.2 Unified lobby (replaces `join_screen`)
 
-One screen for local and online. It generalizes the current join screen:
-pads/keyboard join into free slots, and the shared rows below the slots.
+One screen for local and online: pads/keyboard join into free slots. Layout
+(top to bottom): mode tabs, room bar, one card per slot, the rules in one
+line, status, key hints.
+
+- **Mode tabs** (LB / RB, Q / E, or a click; the lobby's owner = anyone
+  offline, the host online): Versus / Versus CPU / Co-op offline, Versus /
+  Co-op online. They work before anyone has joined.
+- **Cards**: a player's cursor never leaves their own card (fighter, colour,
+  team). X (keyboard: the layout's HEAVY key) moves the owner's cursor to the
+  next card with *seat rows*: an empty slot ("+ CPU"), a CPU (remove,
+  fighter, level, team), online a player's team, in co-op the CPU ally's
+  place (the last empty slot); X again = next card, B = back to their own.
+  A tap / click on an empty card seats a CPU too.
+- **Options screen** (Y / TAB / the Options button; an overlay): the mode's
+  rules, one per row, then the room actions (open by code / direct IP, copy,
+  close / leave) and Done. Every device steers it while it is open; opening
+  it un-readies that machine's players. Guests see the host's rules
+  read-only.
+- Wire: a guest only sends `join` and `cmd` (its own rows); rules and seats
+  are the host-only requests `rule` and `seat` (OnlineRoom).
+
+The points below describe the data the cards and the options screen show.
 
 - **Top bar**: room status.
   - Local: `Local · [Open online]`.
@@ -326,9 +346,9 @@ pads/keyboard join into free slots, and the shared rows below the slots.
   4 humans. Each slot shows name, source (pad/keyboard icon, "Online · 38 ms",
   or "CPU Lv n"), character, team, ready. Remote slots are display-only.
   On each machine, local devices join only free slots.
-- **Mode row** (host only): Versus / Co-op. Then the mode's rows, as in the
-  join screen today (Versus: rounds, timer, friendly fire; Co-op: SPEC.md §9
-  rows, with `online_field_cap` limiting Enemies-on-field when online).
+- **Mode** (host only): Versus / Co-op. Then the mode's rules (Versus:
+  rounds, timer, stage; Co-op: SPEC.md §9 rows, with `online_field_cap`
+  limiting Enemies-on-field when online).
 - **Teams** (Versus): each slot has a Team row (A / B / FFA = own team). Players
   change their own; the host can change anyone's and toggle "Lock teams".
   Start requires ≥ 2 non-empty teams. Co-op: all humans + ally on team 0.

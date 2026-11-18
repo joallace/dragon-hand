@@ -98,8 +98,8 @@ func _ready() -> void:
 	back_btn = MenuHelpers.button("Back", back)
 	back_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(back_btn)
-	col.add_child(MenuHelpers.label(("[A]/[Enter] connect     [X]/[Del] forget host     [B]/[Esc] back" if direct
-			else "[A]/[Enter] join     [B]/[Esc] back"), &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(MenuHelpers.prompt("{accept} connect     {forget} forget host     {back} back" if direct
+			else "{accept} join     {back} back"))
 	add_child(MenuHelpers.centered(col))
 
 	Net.join_succeeded.connect(_on_join_succeeded)

@@ -116,15 +116,15 @@ var _tab_buttons: Array[Button] = []
 var _tab_modes: Array[MatchConfig.Mode] = []
 var _panel_row: HBoxContainer
 var _rules_label: Label
-var _status_label: Label
-var _hint_label: Label
+var _status_label: PromptLabel
+var _hint_label: PromptLabel
 var _room_label: Label
 var _room_button: Button
 var _copy_button: Button
 var _direct_button: Button
 var _options: Control
 var _options_header: Label
-var _options_hint: Label
+var _options_hint: PromptLabel
 var _options_scroll: ScrollContainer
 ## Rule Row -> its Label on the options screen.
 var _row_labels: Dictionary = {}
@@ -929,7 +929,7 @@ func _process(delta: float) -> void:
 	var u := UiTheme.tuning()
 	for i in mini(_ui.size(), slots.size()):
 		var prompt := slots[i].state == SlotState.EMPTY and not i in ally_slots()
-		(_ui[i]["state"] as Label).modulate.a = \
+		(_ui[i]["state"] as Control).modulate.a = \
 			lerpf(u.join_blink_min_alpha, 1.0, absf(sin(_blink * u.join_blink_speed))) if prompt else 1.0
 
 
@@ -986,15 +986,17 @@ func _build_ui() -> void:
 	_rules_label = _fit_label("", &"", u.join_row_font)
 	_rules_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rules.add_child(_rules_label)
-	var options := MenuHelpers.button("Options (Y)", toggle_options)
+	rules.add_child(MenuHelpers.prompt("{options}", &"PromptText"))
+	var options := MenuHelpers.button("Options", toggle_options)
 	options.focus_mode = Control.FOCUS_NONE
 	options.custom_minimum_size.x = 0
 	rules.add_child(options)
 	root.add_child(rules)
 
-	_status_label = MenuHelpers.label("", &"HeaderLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	_status_label = MenuHelpers.prompt("", &"HeaderPrompt")
+	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status_label)
-	_hint_label = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	_hint_label = MenuHelpers.prompt("")
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_hint_label)
 	_build_options()
@@ -1029,7 +1031,7 @@ func _build_room_bar() -> Control:
 	return bar
 
 
-## The mode tabs: one flat button per model.modes(), "LB" / "RB" around them.
+## The mode tabs: one flat button per model.modes(), LB / RB glyphs around them.
 func _rebuild_tabs() -> void:
 	for c in _tab_bar.get_children():
 		_tab_bar.remove_child(c)
@@ -1037,7 +1039,7 @@ func _rebuild_tabs() -> void:
 	_tab_buttons.clear()
 	_tab_modes = model.modes().duplicate()
 	var u := UiTheme.tuning()
-	_tab_bar.add_child(MenuHelpers.label("LB", &"HintLabel"))
+	_tab_bar.add_child(MenuHelpers.prompt("{tab_prev}", &"PromptText"))
 	for m in _tab_modes:
 		var b := Button.new()
 		b.text = LobbyModel.mode_name(m).to_upper()
@@ -1047,7 +1049,7 @@ func _rebuild_tabs() -> void:
 		b.pressed.connect(select_mode.bind(m))
 		_tab_bar.add_child(b)
 		_tab_buttons.append(b)
-	_tab_bar.add_child(MenuHelpers.label("RB", &"HintLabel"))
+	_tab_bar.add_child(MenuHelpers.prompt("{tab_next}", &"PromptText"))
 
 
 func _refresh_tabs() -> void:
@@ -1112,10 +1114,13 @@ func _build_card(i: int, compact: bool) -> Dictionary:
 	var level := _fit_label("", &"", u.join_row_font)
 	var swatch := _fit_label("", &"", u.join_row_font)
 	var team := _fit_label("", &"", u.join_row_font)
-	var state := _fit_label("", &"HeaderLabel", u.join_compact_state_font if compact else u.join_state_font)
-	var hint := MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	var state := MenuHelpers.prompt("", &"HeaderPrompt")
+	state.add_theme_font_size_override(&"normal_font_size", u.join_compact_state_font if compact else u.join_state_font)
+	state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# The player's own glyphs (kind / device / profile: _refresh_card).
+	var hint := MenuHelpers.prompt("")
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	for l: Label in [header, device, seat, character, level, swatch, team, state, hint]:
+	for l: Control in [header, device, seat, character, level, swatch, team, state, hint]:
 		col.add_child(l)
 	return {"panel": panel, "header": header, "device": device, "seat": seat, "character": character,
 		"level": level, "swatch": swatch, "team": team, "state": state, "hint": hint, "style": sb,
@@ -1179,7 +1184,7 @@ func _build_options() -> void:
 		b.pressed.connect(_option_activate.bind(a))
 		col.add_child(b)
 		_option_controls[a] = b
-	_options_hint = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	_options_hint = MenuHelpers.prompt("")
 	_options_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	outer.add_child(_options_hint)
 
@@ -1285,34 +1290,38 @@ func _refresh_card(i: int) -> void:
 	team.visible = model.team_mode() and not empty
 	_set_row(team, LobbyModel.team_name(s.team), _row_cursor(i, Row.TEAM, Row.SEAT_TEAM), u.color_text_dim)
 
-	var state: Label = ui["state"]
-	var hint: Label = ui["hint"]
+	var state: PromptLabel = ui["state"]
+	var hint: PromptLabel = ui["hint"]
 	# Narrow (compact) cards break their two-part lines; wide ones have the room.
 	var br := "\n" if ui["compact"] else "  -  "
 	var gap := "\n" if ui["compact"] else " "
-	hint.text = ""
+	var tip := ""
 	if is_ally or is_cpu or s.state == SlotState.READY:
-		state.text = "READY!"
-		state.add_theme_color_override("font_color", u.color_ready)
+		state.template = "READY!"
+		state.set_color(u.color_ready)
 		if mine and not is_cpu:
-			hint.text = "%s: cancel" % _key_pair("B", i, "PAUSE")
+			tip = "%s cancel" % _key_pair("back", i, "PAUSE")
 		elif not level_cursor.is_empty():
-			hint.text = Tuning.cpu.level_blurb(cpu_level)
+			tip = Tuning.cpu.level_blurb(cpu_level)
 	elif s.state == SlotState.EMPTY:
-		state.text = ("PRESS START%sOR ENTER" if _can_join_more() else "WAITING FOR%sA PLAYER...") % gap
-		state.add_theme_color_override("font_color", u.color_text)
+		# Both join buttons: whoever wants in may be on the other device.
+		state.template = "PRESS {pad:start} / {key:start}" if _can_join_more() \
+			else "WAITING FOR%sA PLAYER..." % gap
+		state.set_color(u.color_text)
 	elif _focus.has(i):
-		state.text = "AT SEAT %d" % (focus_of(i) + 1)
-		state.add_theme_color_override("font_color", color)
-		hint.text = "%s: next seat  -  %s: back" % [_key_pair("X", i, "HEAVY"), _key_pair("B", i, "PAUSE")]
+		state.template = "AT SEAT %d" % (focus_of(i) + 1)
+		state.set_color(color)
+		tip = "%s next seat%s%s back" % [_key_pair("seat", i, "HEAVY"), br, _key_pair("back", i, "PAUSE")]
 	else:
-		state.text = "CHOOSE!"
-		state.add_theme_color_override("font_color", color)
+		state.template = "CHOOSE!"
+		state.set_color(color)
 		if mine:
-			hint.text = "%s: ready" % _key_pair("A", i, "LIGHT")
+			tip = "%s ready" % _key_pair("accept", i, "LIGHT")
 			if not seat_targets_for(i).is_empty():
-				hint.text += "%s%s: %s" % [br, _key_pair("X", i, "HEAVY"), _seats_word()]
-	hint.visible = hint.text != ""
+				tip += "%s%s %s" % [br, _key_pair("seat", i, "HEAVY"), _seats_word()]
+	# The card's player's own glyphs, whatever device the screen shows.
+	hint.set_prompt(tip, "", _device_kind(i) if mine else -1, _device_id(i) if mine else -1, binding_slot(i))
+	hint.visible = tip != ""
 
 
 ## The cursor on one of slot `i`'s lines: its player's own (`own_row`, a
@@ -1343,11 +1352,13 @@ func _seats_word() -> String:
 	return "CPUs and teams" if is_online() and model.team_mode() else ("CPUs" if model.team_mode() else "CPU")
 
 
-## "A" for a pad player, the key bound to `action` for a keyboard player.
-func _key_pair(pad: String, i: int, action: String) -> String:
+## The prompt token for what a lobby command is on slot `i`'s device: the
+## shared pad button `pad_token` for a pad player, the key bound to `action`
+## in a keyboard player's layout.
+func _key_pair(pad_token: String, i: int, action: String) -> String:
 	if _device_kind(i) != Bindings.Kind.KEYBOARD:
-		return pad
-	return Bindings.binding_label(Bindings.get_binding(binding_slot(i), Bindings.Kind.KEYBOARD, action))
+		return "{%s}" % pad_token
+	return "{@%s}" % action
 
 
 ## The rules in one line, under the cards.
@@ -1451,19 +1462,20 @@ func _refresh_options() -> void:
 			for col in ["font_color", "font_hover_color"]:
 				c.add_theme_color_override(col, u.color_focus if on else u.color_text)
 	_options_header.text = ("CO-OP RUN" if is_coop() else "MATCH RULES") + ("" if mine else "  (THE HOST'S)")
-	_options_hint.text = "Up/down: row  -  left/right: change  -  A: select  -  B: back" if mine \
-		else "The host sets the rules  -  B: back"
+	_options_hint.template = "{up_down} row     {left_right} change     {accept} select     {back} back" if mine \
+		else "The host sets the rules     {back} back"
 	(func() -> void:
 		if _options_open and _option_controls.has(_options_item):
 			_options_scroll.ensure_control_visible(_option_controls[_options_item])).call_deferred()
 
 
 func _refresh_hint() -> void:
+	# Shared keys only: a keyboard player's own layout keys are on their card.
 	var owner_keys := can_manage()
-	_hint_label.text = "Pad: START/A join  -  A ready  -  B back%s  -  Y options\n" \
-			% ("  -  LB/RB game  -  X seats" if owner_keys else "") \
-		+ "Keyboard: ENTER join  -  LIGHT/JUMP ready  -  PAUSE/ESC back%s  -  TAB options" \
-			% ("  -  Q/E game  -  HEAVY seats" if owner_keys else "")
+	_hint_label.template = "{start} join     {accept} ready     {back} back%s     {options} options" \
+			% ("     {tab_prev}/{tab_next} game     {seat} seats" if owner_keys else "")
+	_hint_label.key_template = "{accept} join     {back} back%s     {options} options" \
+			% ("     {tab_prev}/{tab_next} game" if owner_keys else "")
 
 
 func _online_label(peer: int) -> String:
@@ -1518,27 +1530,33 @@ func _refresh_room() -> void:
 func _refresh_status() -> void:
 	if _status_label == null:
 		return
+	# {seat} on the keyboard: the first local keyboard player's layout key.
+	var kb := keyboard_slots()
+	var profile := binding_slot(kb[0]) if not kb.is_empty() else 0
+	if _status_label.slot != profile:
+		_status_label.slot = profile
+		_status_label.refresh()
 	if is_online():
 		_refresh_room()
 	if _started:
-		_status_label.text = "FIGHT!"
+		_status_label.template = "FIGHT!"
 	elif is_online() and Net.room.countdown != OnlineRoom.NO_COUNTDOWN:
-		_status_label.text = "GET READY... %d" % Net.room.countdown_seconds()
+		_status_label.template = "GET READY... %d" % Net.room.countdown_seconds()
 	elif not is_online() and all_ready() and not _options_open:
-		_status_label.text = "GET READY... %d" % ceili(maxf(_countdown, 0.0))
+		_status_label.template = "GET READY... %d" % ceili(maxf(_countdown, 0.0))
 	elif local_slots().is_empty():
-		_status_label.text = "B / ESC: leave the room" if is_online() else "B / ESC: back to menu"
+		_status_label.template = "{back} leave the room" if is_online() else "{back} back to menu"
 	elif is_online() and is_coop():
-		_status_label.text = _coop_online_status()
+		_status_label.template = _coop_online_status()
 	elif model.team_mode() and not model.teams_ok():
-		_status_label.text = ("Waiting for an opponent to join (or seat a CPU with X)..." if Net.is_host()
+		_status_label.template = ("Waiting for an opponent to join (or seat a CPU with {seat})..." if Net.is_host()
 				else "Waiting for an opponent to join...") if is_online() \
-			else "Needs two fighters on two teams (X seats a CPU)"
+			else "Needs two fighters on two teams ({seat} seats a CPU)"
 	elif is_online():
 		var waiting := local_slots().all(func(i: int) -> bool: return slots[i].state == SlotState.READY)
-		_status_label.text = "Waiting for everyone to ready up..." if waiting else ""
+		_status_label.template = "Waiting for everyone to ready up..." if waiting else ""
 	else:
-		_status_label.text = ""
+		_status_label.template = ""
 
 
 ## Online co-op starts once every joined player is ready, however many joined.

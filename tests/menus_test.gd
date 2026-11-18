@@ -253,7 +253,7 @@ func _test_join_screen_cpu() -> void:
 		await pad_tap(0, JOY_BUTTON_DPAD_RIGHT)
 	check(j.slots[cpu].cpu_level == Tuning.cpu.level_count() - 1, "CPU level clamps at the top")
 	check((j._ui[cpu]["level"] as Label).text.contains(Tuning.cpu.level_name(Tuning.cpu.level_count() - 1))
-			and (j._ui[cpu]["hint"] as Label).text == Tuning.cpu.level_blurb(Tuning.cpu.level_count() - 1),
+			and (j._ui[cpu]["hint"] as PromptLabel).get_parsed_text() == Tuning.cpu.level_blurb(Tuning.cpu.level_count() - 1),
 			"the CPU's card shows the level name and what it means")
 
 	await pad_tap(0, JOY_BUTTON_A)

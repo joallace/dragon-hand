@@ -1,36 +1,38 @@
 class_name HowToPlayPanel
 extends Control
-## Modal "How to play" overlay listing the default controls. Emits `closed`
-## and frees itself on ui_cancel / Back.
+## Modal "How to play" overlay listing the controls (P1's bindings, as
+## button glyphs for the device on screen; see Prompts). Emits `closed` and
+## frees itself on ui_cancel / Back.
 
 signal closed
 
+## [action, pad template, keyboard template ("" = the same)].
 const ROWS := [
-	["Move", "Left Stick / D-Pad", "WASD"],
-	["Dodge (God Hand style)", "Right Stick flick", "T F G H"],
-	["Light / Heavy attack", "X / Y", "J / I"],
-	["Ki Blast", "Y at range", "I at range"],
-	["Jump", "A", "K"],
-	["Jump attacks (blast / special too)", "A, then X / Y / LT + Y", "K, then J / I / U + I"],
-	["Duck kick", "Right Stick up + Y", "T + I"],
-	["Guard (Fwd: high, Back: low)", "B", "L"],
-	["Teleport (timed guard)", "B on hit / just before one", "L"],
-	["Charge Ki", "LT (hold)", "U"],
-	["Special (Fwd: Super 1, Back: Ultimate)", "LT + Y", "U + I"],
-	["Throw (break: guard)", "RB", "O"],
-	["Taunt (gains ki)", "RT", "Y"],
-	["Target / cycle lock", "LB (tap)", "Q (tap)"],
-	["Free roam on/off (Stick: turn / walk, God Hand camera)", "LB (hold)", "Q (hold)"],
-	["Turn around (in free roam)", "LB (tap)", "Q (tap)"],
-	["Revive a downed ally (co-op)", "Hold RT near them", "Hold Y near them"],
-	["Dash", "Left Stick forward twice", "W W"],
-	["Pause", "Start", "Esc"],
+	["Move", "{lstick} / {dpad}", "{@MOVE_FORWARD}{@MOVE_LEFT}{@MOVE_BACK}{@MOVE_RIGHT}"],
+	["Dodge (God Hand style)", "{rstick} flick", "{@DODGE_FORWARD}{@DODGE_LEFT}{@DODGE_BACK}{@DODGE_RIGHT}"],
+	["Light / Heavy attack", "{@LIGHT} / {@HEAVY}", ""],
+	["Ki Blast", "{@HEAVY} at range", ""],
+	["Jump", "{@JUMP}", ""],
+	["Jump attacks (blast / special too)", "{@JUMP}, then {@LIGHT} / {@HEAVY} / {@CHARGE} + {@HEAVY}", ""],
+	["Duck kick", "{rstick_up} + {@HEAVY}", "{@DODGE_FORWARD} + {@HEAVY}"],
+	["Guard (Fwd: high, Back: low)", "{@GUARD}", ""],
+	["Teleport (timed guard)", "{@GUARD} on hit / just before one", ""],
+	["Charge Ki", "{@CHARGE} (hold)", ""],
+	["Special (Fwd: Super 1, Back: Ultimate)", "{@CHARGE} + {@HEAVY}", ""],
+	["Throw (break: guard)", "{@THROW}", ""],
+	["Taunt (gains ki)", "{@TAUNT}", ""],
+	["Target / cycle lock", "{@TARGET} (tap)", ""],
+	["Free roam on/off (Stick: turn / walk, God Hand camera)", "{@TARGET} (hold)", ""],
+	["Turn around (in free roam)", "{@TARGET} (tap)", ""],
+	["Revive a downed ally (co-op)", "Hold {@TAUNT} near them", ""],
+	["Dash", "{lstick_up} twice", "{@MOVE_FORWARD} {@MOVE_FORWARD}"],
+	["Pause", "{@PAUSE}", ""],
 ]
 
 ## "Online" section, per backend (PlatformCaps): room codes, direct IP (%d =
 ## Tuning.net.default_port), then lines for both.
 const ONLINE_LINES_CODES := [
-	"Host: in the lobby (Play), press Y / TAB to open a room and get a room code. Share it (X / C copies it; in a browser it copies an invite link that joins in one click).",
+	"Host: in the lobby (Play), press {options} for the options and open a room to get a room code. Share it (Copy on the same screen; in a browser it copies an invite link that joins in one click).",
 	"Others pick Join online and type the code. No port forwarding needed.",
 	"In a browser, keep the game's tab in front during a match: a hidden tab pauses the match for everyone.",
 ]
@@ -90,18 +92,19 @@ func _ready() -> void:
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_col.add_child(_scroll)
 	_grid = GridContainer.new()
-	_grid.columns = 3
+	_grid.columns = 2
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_grid.add_theme_constant_override("h_separation", u.how_to_grid_separation.x)
 	_grid.add_theme_constant_override("v_separation", u.how_to_grid_separation.y)
-	for h in ["Action", "Gamepad", "Keyboard (P1)"]:
-		var hl := MenuHelpers.label(h)
-		hl.add_theme_color_override("font_color", u.color_orange)
-		_grid.add_child(hl)
+	var action_head := MenuHelpers.label("Action")
+	action_head.add_theme_color_override("font_color", u.color_orange)
+	_grid.add_child(action_head)
+	var device_head := MenuHelpers.prompt("Gamepad", &"PromptText", HORIZONTAL_ALIGNMENT_LEFT, "Keyboard (P1)")
+	device_head.set_color(u.color_orange)
+	_grid.add_child(device_head)
 	for r in ROWS:
-		for i in 3:
-			var l := MenuHelpers.label(r[i], &"HintLabel" if i > 0 else &"")
-			_grid.add_child(l)
+		_grid.add_child(MenuHelpers.label(r[0]))
+		_grid.add_child(MenuHelpers.prompt(r[1], &"HintPrompt", HORIZONTAL_ALIGNMENT_LEFT, r[2]))
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.add_child(_grid)
@@ -110,7 +113,7 @@ func _ready() -> void:
 		online.add_theme_color_override("font_color", u.color_orange)
 		_content.add_child(online)
 		for line in online_lines():
-			var l := MenuHelpers.label(line, &"HintLabel")
+			var l := MenuHelpers.prompt(line, &"HintPrompt", HORIZONTAL_ALIGNMENT_LEFT)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			_content.add_child(l)
 	_scroll.add_child(_content)

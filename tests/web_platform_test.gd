@@ -107,8 +107,7 @@ func _test_room_code_menus() -> void:
 	var online_found := false
 	var code_text := false
 	var udp_text := false
-	for l in (m.get("_how_to") as Node).find_children("*", "Label", true, false):
-		var t := (l as Label).text
+	for t in _texts(m.get("_how_to") as Node):
 		online_found = online_found or t == "Online"
 		code_text = code_text or t.contains("room code")
 		udp_text = udp_text or t.contains("UPnP") or t.contains("UDP")
@@ -181,8 +180,8 @@ func _test_main_menu() -> void:
 	m.call("_on_how_to_play")
 	await frames(2)
 	var online_found := false
-	for l in (m.get("_how_to") as Node).find_children("*", "Label", true, false):
-		online_found = online_found or (l as Label).text == "Online"
+	for t in _texts(m.get("_how_to") as Node):
+		online_found = online_found or t == "Online"
 	check(not online_found, "web how-to-play: no Online section")
 	m.queue_free()
 	await frames(2)
@@ -217,3 +216,13 @@ func _test_lobby() -> void:
 			"web lobby: the options screen has the rules and no room actions")
 	l.queue_free()
 	await frames(2)
+
+
+## The text of every Label and PromptLabel (without its BBCode) under `root`.
+func _texts(root: Node) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for l in root.find_children("*", "Label", true, false):
+		out.append((l as Label).text)
+	for l in root.find_children("*", "RichTextLabel", true, false):
+		out.append((l as RichTextLabel).get_parsed_text())
+	return out

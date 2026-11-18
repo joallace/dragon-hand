@@ -20,6 +20,8 @@ extends Node
 ## see Fighter).
 
 signal changed(slot: int)
+## The button-prompt preferences changed (prompt_device / pad_style).
+signal prompts_changed
 
 const SAVE_PATH := "user://controls.cfg"
 ## Bump when the defaults change incompatibly; older saves are discarded.
@@ -32,6 +34,11 @@ const DROPPED_SINCE := {3: ["DASH"]}
 const SLOT_COUNT := 2
 
 enum Kind { PAD, KEYBOARD }
+## Which device the shared button legends show (Prompts autoload): AUTO
+## follows the last device used.
+enum PromptDevice { AUTO, KEYBOARD, PAD }
+## Glyph style for gamepad buttons: AUTO detects it per controller.
+enum PadStyle { AUTO, XBOX, PLAYSTATION, NINTENDO }
 
 ## Button actions (names match InputFrame.Btn keys).
 const BUTTON_ACTIONS: Array[String] = [
@@ -98,6 +105,10 @@ const UI_PAD_BUTTONS := {
 
 ## _maps[slot][Kind] -> Dictionary(action -> binding)
 var _maps: Array = []
+## Button-prompt preferences (presentation only; saved with the bindings,
+## untouched by reset_defaults). Set through set_prompt_prefs().
+var prompt_device: PromptDevice = PromptDevice.AUTO
+var pad_style: PadStyle = PadStyle.AUTO
 
 
 func _ready() -> void:
@@ -156,6 +167,14 @@ func set_binding(slot: int, kind: Kind, action: String, binding: Dictionary) -> 
 	changed.emit(slot)
 
 
+func set_prompt_prefs(device: PromptDevice, style: PadStyle) -> void:
+	if device == prompt_device and style == pad_style:
+		return
+	prompt_device = device
+	pad_style = style
+	prompts_changed.emit()
+
+
 func reset_defaults(slot: int) -> void:
 	_maps[slot] = [DEFAULT_PAD.duplicate(true), DEFAULT_KEYBOARD[slot].duplicate(true)]
 	changed.emit(slot)
@@ -169,6 +188,8 @@ func save_to_disk() -> void:
 			var section := "slot%d_%s" % [slot, Kind.find_key(kind)]
 			for action in _maps[slot][kind]:
 				cfg.set_value(section, action, _maps[slot][kind][action])
+	cfg.set_value("prompts", "device", PromptDevice.find_key(prompt_device))
+	cfg.set_value("prompts", "pad_style", PadStyle.find_key(pad_style))
 	cfg.save(SAVE_PATH)
 
 
@@ -176,6 +197,10 @@ func load_from_disk() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return
+	# Prompt preferences don't depend on the bindings' version. Saved by
+	# name, so reordering the enums can't misread them.
+	set_prompt_prefs(PromptDevice.get(str(cfg.get_value("prompts", "device", "")), PromptDevice.AUTO),
+			PadStyle.get(str(cfg.get_value("prompts", "pad_style", "")), PadStyle.AUTO))
 	var version: int = cfg.get_value("meta", "version", 1)
 	if version < MIN_SAVE_VERSION:
 		return  # saved against old defaults; start fresh

@@ -24,7 +24,7 @@ signal closed
 
 const SCENE_PATH := "res://scenes/menus/settings_screen.tscn"
 enum Tab { GRAPHICS, AUDIO, CONTROLS, ONLINE }
-const HINT := "[LB]/[RB] or Q/E tabs     [A]/[Enter] select     [B]/[Esc] back"
+const HINT := "{tab_prev}/{tab_next} tabs     {accept} select     {back} back"
 
 ## Back emits `closed` and frees this node instead of going to the main menu.
 var as_overlay := false
@@ -99,7 +99,7 @@ func _ready() -> void:
 	var bar := HBoxContainer.new()
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_theme_constant_override("separation", u.settings_tab_separation)
-	bar.add_child(MenuHelpers.label("LB", &"HintLabel"))
+	bar.add_child(MenuHelpers.prompt("{tab_prev}", &"PromptText"))
 	for i in pages.size():
 		var b := Button.new()
 		b.text = str(pages[i].get("title"))
@@ -109,7 +109,7 @@ func _ready() -> void:
 		b.pressed.connect(func() -> void: select_tab(i))
 		bar.add_child(b)
 		tab_buttons.append(b)
-	bar.add_child(MenuHelpers.label("RB", &"HintLabel"))
+	bar.add_child(MenuHelpers.prompt("{tab_next}", &"PromptText"))
 	col.add_child(bar)
 
 	var area := Control.new()
@@ -127,7 +127,7 @@ func _ready() -> void:
 	status = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(status)
-	col.add_child(MenuHelpers.label(HINT, &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(MenuHelpers.prompt(HINT))
 
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 	select_tab(initial_tab)

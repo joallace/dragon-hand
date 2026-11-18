@@ -3,7 +3,8 @@ extends RefCounted
 ## Shared bold fighting-game Theme, built in code from Tuning.ui.
 ## Use: `control.theme = UiTheme.get_theme()` on a screen root.
 ## Type variations: "TitleLabel", "HeaderLabel", "HintLabel", "PanelBox",
-## "RowButton".
+## "RowButton"; for PromptLabel (a RichTextLabel) "PromptText", "HintPrompt"
+## and "HeaderPrompt", which look like Label, "HintLabel" and "HeaderLabel".
 
 static var _cached: Theme
 
@@ -96,6 +97,16 @@ static func build() -> Theme:
 	th.set_font_size("font_size", "HintLabel", u.font_hint)
 	th.set_color("font_color", "HintLabel", u.color_text_dim)
 	th.set_constant("outline_size", "HintLabel", maxi(u.outline_text - 3, 2))
+
+	# --- Prompt labels (RichTextLabel twins of the labels above) ---------------
+	for v: Array in [[&"PromptText", u.font_body, u.color_text, u.outline_text],
+			[&"HintPrompt", u.font_hint, u.color_text_dim, maxi(u.outline_text - 3, 2)],
+			[&"HeaderPrompt", u.font_header, u.color_orange, u.outline_text + 4]]:
+		th.set_type_variation(v[0], "RichTextLabel")
+		th.set_font_size("normal_font_size", v[0], v[1])
+		th.set_color("default_color", v[0], v[2])
+		th.set_constant("outline_size", v[0], v[3])
+		th.set_color("font_outline_color", v[0], u.color_outline)
 
 	# --- Panels -----------------------------------------------------------------
 	var panel := _box(u.color_panel, u.color_orange, u.border_width, u)

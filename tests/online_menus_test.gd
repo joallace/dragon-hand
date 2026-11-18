@@ -106,8 +106,7 @@ func _test_main_menu() -> void:
 	check(m.get("_how_to") != null and _focus_text() == "Back", "how-to-play panel opens with focus")
 	var online_found := false
 	var port_found := false
-	for l in (m.get("_how_to") as Node).find_children("*", "Label", true, false):
-		var t := (l as Label).text
+	for t in _texts(m.get("_how_to") as Node):
 		online_found = online_found or t == "Online"
 		port_found = port_found or (t.contains(str(Tuning.net.default_port)) and t.contains("UPnP"))
 	check(online_found and port_found, "how-to-play has an Online section naming the port and UPnP")
@@ -329,3 +328,13 @@ func _test_local_addresses() -> void:
 	u.stop()
 	u.poll()
 	check(u.status == UpnpHelper.Status.IDLE, "idle UpnpHelper stop/poll are no-ops")
+
+
+## The text of every Label and PromptLabel (without its BBCode) under `root`.
+func _texts(root: Node) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for l in root.find_children("*", "Label", true, false):
+		out.append((l as Label).text)
+	for l in root.find_children("*", "RichTextLabel", true, false):
+		out.append((l as RichTextLabel).get_parsed_text())
+	return out

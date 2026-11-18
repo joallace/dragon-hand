@@ -120,8 +120,54 @@ func _test_glyph_tables() -> void:
 			"colours: brand face colours, neutral elsewhere and for Nintendo")
 	var bb := PromptGlyphs.bbcode({"cp": XBOX_A, "face": 0}, S.XBOX, 30, u)
 	check(bb.contains("[color=#%s]" % u.prompt_xbox_face_colors[0].to_html()) and bb.contains("[font_size=30]")
-			and bb.contains(PromptGlyphs.FONT_PATH) and bb.contains("[outline_size=0]"),
-			"glyph BBCode: tinted, sized, in Promptfont, no outline")
+			and bb.contains(PromptGlyphs.FONT_PATH) and bb.contains("[outline_size=0]")
+			and bb.contains("[%s " % PromptGlyphs.PBG_TAG),
+			"pad glyph BBCode: tinted, sized, in Promptfont, no outline, wrapped for its badge")
+	var B := PromptGlyphs.Badge
+	check(PromptGlyphs.badge_of(XBOX_A, S.XBOX) == B.CIRCLE
+			and PromptGlyphs.badge_of(PS_CROSS, S.PLAYSTATION) == B.CIRCLE
+			and PromptGlyphs.badge_of(0x2198, S.XBOX) == B.ROUNDED_RECT
+			and PromptGlyphs.badge_of(PS_L2, S.PLAYSTATION) == B.ROUNDED_RECT
+			and PromptGlyphs.badge_of(0x2208, S.PLAYSTATION) == B.PILL
+			and PromptGlyphs.badge_of(0x21BE, S.XBOX) == B.PILL
+			and PromptGlyphs.badge_of(KEY_J_CAP, S.KEYBOARD) == B.NONE,
+			"badge shapes: circles, pills and rounded rects on pads; none on keyboard")
+	var key_bb := PromptGlyphs.bbcode({"cp": KEY_J_CAP, "face": -1}, S.KEYBOARD, 30, u)
+	check(key_bb.contains("[outline_size=%d]" % roundi(30 * u.prompt_key_outline_scale))
+			and key_bb.contains("[outline_color=#%s]" % u.color_outline.to_html())
+			and not key_bb.contains("[%s " % PromptGlyphs.PBG_TAG),
+			"keyboard glyph BBCode: dark outline, no gamepad badge")
+	var num_bb := PromptGlyphs.bbcode({"text": "Kp 1"}, S.KEYBOARD, 30, u)
+	check(num_bb.contains("Num 1") and num_bb.contains("[%s b=%d " % [PromptGlyphs.PBG_TAG, B.KEYCAP_TEXT]),
+			"text keycap BBCode: wrapped for a bordered keycap backdrop")
+	var m_a := PromptGlyphs.ink_metrics(XBOX_A)
+	var ink_a: Rect2 = m_a["rect"]
+	check(ink_a.size.x > 0.74 and ink_a.size.x < 0.77 and absf(ink_a.size.x - ink_a.size.y) < 0.01,
+			"ink_metrics samples the outer button circle (~0.756 em), not just the inner cutout")
+	var round_ok := true
+	for cp: int in [XBOX_B, PS_CROSS, 0x21E2, 0x21E1, 0x21FB, 0x21FE]:
+		var mc := PromptGlyphs.ink_metrics(cp)
+		round_ok = round_ok and absf(float(mc["radius"]) - float(m_a["radius"])) < 0.01 \
+			and (mc["rect"] as Rect2).get_center().distance_to(ink_a.get_center()) < 0.01
+	check(round_ok, "every round face/system button shares one badge center and radius")
+	var spec_a := PromptGlyphs.badge_spec(B.CIRCLE, XBOX_A, Vector2(40, 30), 30, u)
+	var rect_a: Rect2 = spec_a["rect"]
+	var rim_a: int = spec_a["border_width"]
+	var ink_px := Rect2(Vector2(40, 30) + ink_a.position * 30.0, ink_a.size * 30.0)
+	var charcoal_ring := (ink_px.position.x - rect_a.position.x) - float(rim_a)
+	check(is_equal_approx(rect_a.size.x, rect_a.size.y)
+			and rect_a.get_center().distance_to(ink_px.get_center()) < 0.05
+			and charcoal_ring > 3.0 and spec_a["bg"] == u.prompt_pad_badge_color
+			and spec_a["border"] == u.prompt_pad_rim_color and rim_a >= 1,
+			"circle badge: centered charcoal disc (> 3 px outside ink) + thin black rim")
+	var m_lt := PromptGlyphs.ink_metrics(0x2196)
+	var spec_lt := PromptGlyphs.badge_spec(B.ROUNDED_RECT, 0x2196, Vector2.ZERO, 30, u)
+	var lt_px := Rect2((m_lt["rect"] as Rect2).position * 30.0, (m_lt["rect"] as Rect2).size * 30.0)
+	check((spec_lt["rect"] as Rect2).encloses(lt_px.grow(3.0)),
+			"trigger badge encloses the full trigger glyph by > 3 px on all sides")
+	var spec_lb := PromptGlyphs.badge_spec(B.ROUNDED_RECT, 0x2198, Vector2.ZERO, 30, u)
+	check((spec_lb["rect"] as Rect2).size.x > (spec_lb["rect"] as Rect2).size.y,
+			"shoulder badge: wide rounded rectangle")
 
 
 func _test_device_tracking() -> void:
@@ -189,24 +235,53 @@ func _test_format() -> void:
 
 
 func _test_prompt_label() -> void:
+	var u := UiTheme.tuning()
 	Prompts.note_event(key_press(KEY_A))
 	var l := MenuHelpers.prompt("{@LIGHT} light", &"HintPrompt", HORIZONTAL_ALIGNMENT_CENTER, "")
 	add_child(l)
-	await frames(1)
+	await frames(2)
 	check(_has(l.text, KEY_J_CAP) and l.get_parsed_text().ends_with(" light"),
 			"PromptLabel draws on entering the tree")
+	check(l.badge_specs().is_empty() and not l.clip_contents,
+			"keyboard glyph has no gamepad badge and PromptLabel doesn't clip outer rims")
 	Prompts.note_event(pad_press(PAD_A, JOY_BUTTON_A))
+	await frames(2)
 	check(_has(l.text, 0x21D0), "redrawn for the pad (LIGHT = X)")
+	check(l.badge_specs().size() == 1 and l.badge_specs()[0]["bg"] == u.prompt_pad_badge_color
+			and not l.is_processing_internal(),
+			"pad glyph draws one charcoal badge and doesn't tick per frame while idle")
 	var old := Bindings.get_binding(0, Bindings.Kind.PAD, "LIGHT")
 	Bindings.set_binding(0, Bindings.Kind.PAD, "LIGHT", {"t": "btn", "i": JOY_BUTTON_Y})
 	check(_has(l.text, 0x21D1), "redrawn after a rebind (LIGHT = Y)")
 	Bindings.set_binding(0, Bindings.Kind.PAD, "LIGHT", old)
 	l.key_template = "keys only"
 	Prompts.note_event(key_press(KEY_A))
-	check(l.get_parsed_text() == "keys only", "key_template replaces the template on the keyboard")
+	await frames(2)
+	check(l.get_parsed_text() == "keys only" and l.badge_specs().is_empty(),
+			"key_template replaces the template on the keyboard and clears badges")
+	l.key_template = ""
+	l.slot = 1
+	l.refresh()
+	await frames(2)
+	check(l.badge_specs().size() == 1 and l.badge_specs()[0]["bg"] == u.prompt_key_color
+			and int(l.badge_specs()[0]["border_width"]) == u.prompt_keycap_border_width,
+			"text keycap ('Num 1') draws one bordered keycap backdrop")
+	l.slot = 0
 	l.kind = Bindings.Kind.PAD
 	l.refresh()
-	check(_has(l.text, 0x21D0), "a fixed kind ignores the shared device")
+	await frames(2)
+	check(_has(l.text, 0x21D0) and l.badge_specs().size() == 1, "a fixed kind ignores the shared device")
+	var saved_bg := u.prompt_pad_badge_color
+	u.prompt_pad_badge_color = Color(0.25, 0.26, 0.30)
+	l.refresh()
+	await frames(2)
+	check(l.badge_specs()[0]["bg"] == u.prompt_pad_badge_color,
+			"refresh() redraws backdrop when badge tuning changes without text changing")
+	u.prompt_pad_badge_color = saved_bg
+	l.visible = false
+	l.template = "{accept} go"
+	check(not l.is_processing_internal() and l.badge_specs().is_empty(),
+			"a hidden PromptLabel never leaves internal processing on or stale badges behind")
 	l.queue_free()
 	await frames(1)
 

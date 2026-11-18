@@ -41,10 +41,28 @@ extends Resource
 ## Keyboard keycaps, and the text keycap of keys without a glyph.
 @export var prompt_key_color: Color = Color(1.0, 0.98, 0.92)
 @export var prompt_keycap_text_color: Color = Color(0.05, 0.02, 0.0)
-## Text keycap size relative to a glyph.
+## Outline size of keyboard keycap glyphs, relative to glyph size (0 = none).
+@export var prompt_key_outline_scale: float = 0.22
+## Text keycap size relative to a glyph, plus its dark border, corner radius
+## and horizontal padding (relative to its text size).
 @export var prompt_keycap_text_scale: float = 0.6
+@export var prompt_keycap_border_width: int = 2
+@export var prompt_keycap_corner_radius: int = 4
+@export var prompt_keycap_h_padding: float = 0.16
 ## Pad buttons without a brand colour (shoulders, triggers, sticks, d-pad).
 @export var prompt_pad_color: Color = Color(1.0, 0.98, 0.92)
+## Solid dark charcoal badge behind every gamepad glyph (fills its cutout too).
+@export var prompt_pad_badge_color: Color = Color(0.17, 0.18, 0.22)
+## Width of the charcoal ring around a gamepad glyph's ink bounds, relative to
+## glyph size (~4 px at body size).
+@export var prompt_pad_badge_padding: float = 0.14
+## Thin black rim outline around each gamepad badge, and its width relative to
+## glyph size (0 = no rim).
+@export var prompt_pad_rim_color: Color = Color(0.03, 0.03, 0.05)
+@export var prompt_pad_rim_scale: float = 0.055
+## Corner radius of rounded-rect gamepad badges (shoulders, triggers,
+## touchpad), relative to their shorter ink side before padding.
+@export var prompt_pad_corner_ratio: float = 0.3
 ## Face buttons per style, ordered bottom, right, left, top (Xbox A, B, X,
 ## Y). An empty array draws that style's face buttons in prompt_pad_color.
 @export var prompt_xbox_face_colors: PackedColorArray = PackedColorArray([

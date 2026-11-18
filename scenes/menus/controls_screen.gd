@@ -1,7 +1,10 @@
 class_name ControlsScreen
 extends Control
 ## Controls settings: pick Player (P1/P2) and Device (Gamepad/Keyboard), then
-## select an action row to rebind it. Edits the Bindings autoload directly
+## select an action row to rebind it. Bindings show as button glyphs
+## (PromptLabel). Two more rows set the button prompts every menu shows:
+## which device (Auto = the last one used) and the gamepad glyph style
+## (Auto = per controller); see the Prompts autoload. Edits the Bindings autoload directly
 ## (LocalDeviceInput reads it live); "Save & Back" persists to disk.
 ##
 ## Rebinding ("Press a button..."):
@@ -43,8 +46,8 @@ const ACTION_NAMES := {
 	"DODGE_LEFT": "Dodge Left", "DODGE_RIGHT": "Dodge Right",
 }
 const PAD_FIXED_ROWS := [
-	["Move", "Left Stick / D-Pad"],
-	["Dodge", "Right Stick flick"],
+	["Move", "{lstick} / {dpad}"],
+	["Dodge", "{rstick} flick"],
 ]
 ## Button combos (Fighter's BT overloads), shown for every device.
 const COMBO_ROWS := [
@@ -72,13 +75,15 @@ var kind: int = Bindings.Kind.PAD
 
 var _player_sel: OptionSelector
 var _device_sel: OptionSelector
+var _prompt_sel: OptionSelector
+var _style_sel: OptionSelector
 var _rows_box: VBoxContainer
 var _scroll: ScrollContainer
 var _reset_btn: Button
 var _back_btn: Button
-var _status: Label
+var _status: PromptLabel
 var _row_buttons: Dictionary = {}  # action -> Button
-var _row_values: Dictionary = {}  # action -> Label
+var _row_values: Dictionary = {}  # action -> PromptLabel
 
 var _listen_action := ""
 var _listen_time := 0.0
@@ -142,6 +147,22 @@ func _ready() -> void:
 	sel_row.add_child(_device_sel)
 	col.add_child(sel_row)
 
+	# Button prompts (Bindings.PromptDevice / PadStyle, same order).
+	var prompt_row := HBoxContainer.new()
+	prompt_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	prompt_row.add_theme_constant_override("separation", 40)
+	_prompt_sel = MenuHelpers.selector("Prompts", PackedStringArray(["Auto", "Keyboard", "Gamepad"]),
+			Bindings.prompt_device)
+	_style_sel = MenuHelpers.selector("Pad style", PackedStringArray(["Auto", "Xbox", "PlayStation", "Nintendo"]),
+			Bindings.pad_style)
+	_prompt_sel.value_changed.connect(func(i: int) -> void:
+		Bindings.set_prompt_prefs(i as Bindings.PromptDevice, Bindings.pad_style))
+	_style_sel.value_changed.connect(func(i: int) -> void:
+		Bindings.set_prompt_prefs(Bindings.prompt_device, i as Bindings.PadStyle))
+	prompt_row.add_child(_prompt_sel)
+	prompt_row.add_child(_style_sel)
+	col.add_child(prompt_row)
+
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = &"PanelBox"
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -155,8 +176,9 @@ func _ready() -> void:
 	_rows_box.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_rows_box)
 
-	_status = MenuHelpers.label("", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	_status.add_theme_font_size_override("font_size", UiTheme.tuning().font_body)
+	_status = MenuHelpers.prompt("")
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.add_theme_font_size_override(&"normal_font_size", UiTheme.tuning().font_body)
 	col.add_child(_status)
 
 	var bottom := HBoxContainer.new()
@@ -195,6 +217,10 @@ func _rebuild_rows() -> void:
 		_row_buttons[action] = btn
 		_row_values[action] = row.get_meta("value_label")
 		_rows_box.add_child(row)
+	# The status line's glyphs are this profile's.
+	_status.kind = kind
+	_status.slot = slot
+	_status.refresh()
 	_update_values()
 	_relink_focus()
 	_set_status_idle()
@@ -228,10 +254,10 @@ func _make_row(name_text: String, value_text: String, focusable: bool) -> Contro
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var value_label := MenuHelpers.label(value_text, &"", HORIZONTAL_ALIGNMENT_RIGHT)
-	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	value_label.add_theme_color_override("font_color", u.color_orange_light if focusable else u.color_text_dim)
+	var value_label := MenuHelpers.prompt(value_text, &"PromptText", HORIZONTAL_ALIGNMENT_RIGHT)
+	value_label.kind = kind
+	value_label.slot = slot
+	value_label.set_color(u.color_orange_light if focusable else u.color_text_dim)
 	if not focusable:
 		name_label.add_theme_color_override("font_color", u.color_text_dim)
 	hb.add_child(name_label)
@@ -242,7 +268,7 @@ func _make_row(name_text: String, value_text: String, focusable: bool) -> Contro
 
 
 func _relink_focus() -> void:
-	var chain: Array = [_player_sel, _device_sel]
+	var chain: Array = [_player_sel, _device_sel, _prompt_sel, _style_sel]
 	for action in _row_buttons:
 		chain.append(_row_buttons[action])
 	chain.append(_reset_btn)
@@ -260,16 +286,13 @@ func _relink_focus() -> void:
 
 func _update_values() -> void:
 	for action in _row_values:
-		var l: Label = _row_values[action]
-		if action == _listen_action:
-			l.text = "Press a button..."
-		else:
-			l.text = Bindings.binding_label(Bindings.get_binding(slot, kind, action))
+		var l: PromptLabel = _row_values[action]
+		l.template = "Press a button..." if action == _listen_action else "{@%s}" % action
 
 
 func _set_status_idle(extra: String = "") -> void:
-	var t := "Select an action to rebind  -  Left/Right on Player/Device to switch profile"
-	_status.text = extra if extra != "" else t
+	var t := "Select an action to rebind  -  {left_right} on Player/Device to switch profile"
+	_status.template = extra if extra != "" else t
 
 
 # --- Listening -----------------------------------------------------------------
@@ -297,9 +320,9 @@ func cancel_listen() -> void:
 func _status_listen() -> void:
 	var u := UiTheme.tuning()
 	var left := ceili(maxf(u.rebind_timeout_seconds - _listen_time, 0.0))
-	var cancel_hint := "Esc" if kind == Bindings.Kind.PAD else "B on a gamepad"
+	var cancel_hint := "{key:back}" if kind == Bindings.Kind.PAD else "{pad:back} on a gamepad"
 	var what := "a gamepad button or trigger" if kind == Bindings.Kind.PAD else "a key"
-	_status.text = "%s:  press %s  (%s / click to cancel - %d)" % [
+	_status.template = "%s:  press %s  (%s / click to cancel - %d)" % [
 			ACTION_NAMES.get(_listen_action, _listen_action), what, cancel_hint, left]
 
 
@@ -352,7 +375,7 @@ func assign(action: String, b: Dictionary) -> void:
 	Bindings.set_binding(slot, kind, action, b)
 	_listen_action = ""
 	_update_values()
-	var msg := "%s = %s" % [ACTION_NAMES.get(action, action), Bindings.binding_label(b)]
+	var msg := "%s = {@%s}" % [ACTION_NAMES.get(action, action), action]
 	if swapped != "":
 		msg += "   (swapped with %s)" % ACTION_NAMES.get(swapped, swapped)
 	if kind == Bindings.Kind.KEYBOARD:

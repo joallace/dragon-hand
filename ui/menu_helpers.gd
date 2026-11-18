@@ -27,6 +27,17 @@ static func label(text: String, variation: StringName = &"", align := HORIZONTAL
 	return l
 
 
+## A PromptLabel showing `template` (and `key_template` on the keyboard).
+static func prompt(template: String, variation: StringName = &"HintPrompt",
+		align := HORIZONTAL_ALIGNMENT_CENTER, key_template := "") -> PromptLabel:
+	var l := PromptLabel.new()
+	l.theme_type_variation = variation
+	l.horizontal_alignment = align
+	l.template = template
+	l.key_template = key_template
+	return l
+
+
 ## A themed Button with press punch feedback. `on_press` may be an invalid
 ## Callable for disabled placeholders.
 static func button(text: String, on_press: Callable = Callable(), disabled := false) -> Button:

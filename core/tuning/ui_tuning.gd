@@ -33,6 +33,26 @@ extends Resource
 @export var box_skew: float = 0.18
 @export var list_separation: int = 10
 
+@export_group("Button prompts")
+## Glyph size relative to the text around it (Promptfont glyphs are 1 em).
+@export var prompt_glyph_scale: float = 1.3
+## A stick pushed past this switches the legends to the gamepad (Prompts).
+@export var prompt_pad_axis_threshold: float = 0.5
+## Keyboard keycaps, and the text keycap of keys without a glyph.
+@export var prompt_key_color: Color = Color(1.0, 0.98, 0.92)
+@export var prompt_keycap_text_color: Color = Color(0.05, 0.02, 0.0)
+## Text keycap size relative to a glyph.
+@export var prompt_keycap_text_scale: float = 0.6
+## Pad buttons without a brand colour (shoulders, triggers, sticks, d-pad).
+@export var prompt_pad_color: Color = Color(1.0, 0.98, 0.92)
+## Face buttons per style, ordered bottom, right, left, top (Xbox A, B, X,
+## Y). An empty array draws that style's face buttons in prompt_pad_color.
+@export var prompt_xbox_face_colors: PackedColorArray = PackedColorArray([
+	Color(0.38, 0.78, 0.25), Color(0.93, 0.25, 0.22), Color(0.2, 0.52, 0.95), Color(1.0, 0.78, 0.1)])
+@export var prompt_playstation_face_colors: PackedColorArray = PackedColorArray([
+	Color(0.49, 0.7, 0.95), Color(1.0, 0.4, 0.4), Color(0.9, 0.6, 0.79), Color(0.25, 0.89, 0.63)])
+@export var prompt_nintendo_face_colors: PackedColorArray = PackedColorArray()
+
 @export_group("Feel")
 ## Scale punch on button press.
 @export var press_punch_scale: float = 0.92

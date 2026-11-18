@@ -215,6 +215,13 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   overlay with the Online page locked), controls rebinding (`ControlsScreen`,
   embedded as the Controls tab), results (online: rematch votes, lobby,
   save replay). `ui/`: `OptionSelector`, `NumberStepper`, `ConfirmPrompt`.
+  Button legends: never write button names ("A", "Esc") in UI text; use a
+  `PromptLabel` template (`{accept}`, `{back}`, `{@LIGHT}`... tokens in
+  `ui/input_prompts.gd`, the `Prompts` autoload: shared legends follow the
+  last device used, a lobby card its player's) drawn with Promptfont glyphs
+  (`ui/prompt_glyphs.gd`, `assets/fonts/promptfont/`, OFL; Xbox /
+  PlayStation / Nintendo styles, keycaps). Overrides: Settings > Controls
+  (`Bindings.prompt_device` / `pad_style`, saved in controls.cfg).
 
 ## Rules
 

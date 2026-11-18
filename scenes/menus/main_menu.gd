@@ -41,7 +41,7 @@ func _ready() -> void:
 	_message.visible = not Net.pending_message.is_empty()
 	Net.pending_message = ""
 	col.add_child(_message)
-	col.add_child(MenuHelpers.label("[A]/[Enter] select     [B]/[Esc] back", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(MenuHelpers.prompt("{accept} select     {back} back"))
 	add_child(MenuHelpers.centered(col))
 	MenuHelpers.focus_first(_list)
 	# Web invite link (?room=CODE at boot): straight into joining that room.

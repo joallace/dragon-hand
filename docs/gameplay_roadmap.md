@@ -73,7 +73,11 @@ rollback test, save/load round trip.
   into the floor and the ring edge does.
 - A frame-data sheet tool for our moves (startup, active, recovery,
   advantage on hit and on guard, damage %, push), to compare on paper.
-- God Hand: see "Not done" below.
+- God Hand: the third pass (2026-11-23, God Hand: Rearmed + the retail
+  ELF) answered the dodges and the crowd rules from code
+  ([god_hand_reference.md](god_hand_reference.md)). Still open: hitstop
+  length (two runtime words) and per-move cancel windows (motion data);
+  Rearmed's test mode could measure both like `bt3_script.py` does.
 
 **Stage 1. Numbers pass on the current fighter** (one branch, one playtest).
 - Damage scale: about 0.75% per jab, ~5% per full string; round timer and
@@ -90,13 +94,20 @@ rollback test, save/load round trip.
 **Stage 2. Reactions and states.** Reaction table (heavy stagger, bounce,
 blow-away with crashes, stun), follow-ups by the victim's reaction,
 momentum, then God Hand's converters: guard break, floaty juggles, dizzy →
-pummel, downed → stomp, victim slow-motion. *Decide here whether the
+pummel (a decaying stun gauge: 200, 5 s dizzy), downed → stomp, victim
+slow-motion. God Hand's dodge split goes here too: short invulnerable
+starts (sway 10f, back-flip 24f), a duck that only removes the upper
+hurtbox and loses to **low** attacks, a near-miss reward and a duck
+counter in place of the perfect-dodge freeze. *Decide here whether the
 fighter is rebuilt as actions + attack records + reaction table (shape in
 the appendix).*
 
 **Stage 3. Opponents.** CPU as situation word → weighted rules →
 personalities, tells and level-scaled recoveries, a level meter; co-op
-enemies as a few authored types.
+enemies as a few authored types, placed by God Hand's crowd rules
+(distance rank → approach ring, flankers walk to the front, back-hold
+cones by level, no attacks on a grabbed player; reference "Enemies as a
+group").
 
 **Stage 4. Variety.** String loadouts *(approved)*, skill flags per
 character.
@@ -120,12 +131,14 @@ per hit taken, both-hit trades. The 2-bar vanish escape from hitstun is
 
 ## Not done
 
-- **God Hand in PCSX2.** Nothing was played. PCSX2 has no headless pad
-  script like the BT3 port; driving it needs input injection on your
-  desktop session (no tool for that is installed) or its input-recording
-  files, which I have not tried. Open questions there: hitstop on a jab
-  versus a heavy, whether counter hits stagger harder, which dodge beats
-  which attack. Your own answers are the cheapest source.
+- **God Hand played.** Still nothing was run. Since 2026-11-23 the
+  God Hand: Rearmed port is installed (`~/Downloads/God Hand Rearmed/`):
+  its test mode plays a recorded pad from a save state and writes a CSV
+  row per game frame (Gene's and the enemies' state, HP, motion frame,
+  hitstop). It is a Windows exe (Wine + your ISO), not tried yet. Open
+  questions there: hitstop length, whether counter hits stagger harder,
+  per-move cancel frames. Which dodge beats which attack is now answered
+  in code.
 - BT3 rules listed in stage 0.
 - Our game was not run.
 

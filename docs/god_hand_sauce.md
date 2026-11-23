@@ -6,15 +6,14 @@ in [god_hand_reference.md](god_hand_reference.md); this file is about why
 they stay fun, and what they mean for a game where the opponent is another
 fighter and not a crowd.
 
-**How solid this is.** Much less than the BT3 file. The decomp
-(https://github.com/LucasPicoli/god-hand-decomp, read at its 2026-11-12
-state) went from 47% to 57% matched code, but most files are still named by
-address and the player's dodge / cancel dispatcher is still not readable as
-a system. This pass added little hard data. So the tags matter here:
-**[V]** read in matching C (mostly from the October pass), **[M]** measured
-in our PCSX2 captures, **[K]** how the game is known to play (my knowledge
-of it, not checked in code: treat as a hypothesis until one of us confirms
-it in PCSX2).
+**How solid this is.** Better since the third pass (2026-11-23): the
+God Hand: Rearmed recompilation, its authors' notes and the retail ELF
+finally opened the player's input, dodge and cancel code and the enemies'
+group logic ([god_hand_reference.md](god_hand_reference.md) "Sources").
+Tags: **[V]** read in code (matching C, or the disassembly in the third
+pass), **[R]** read by the God Hand: Rearmed authors, **[M]** measured in our PCSX2 captures, **[K]** how the game is
+known to play (not checked in code: a hypothesis until confirmed). Where
+the third pass corrected this file, the text says so.
 
 Mechanics in our own words; no decomp code.
 
@@ -36,16 +35,36 @@ supplies the texture of every single action.
 
 - No guard exists in the player's code [V]. The only defences are the four
   right-stick dodges, walking out, and hitting first.
-- Each dodge covers something different [M/K]: the **duck** (18f, re-chain
-  every ~10f) keeps you in place and beats high strikes; the **side sway**
-  (26f) beats straight attacks and moves you off line; the **backflip**
-  (36f, 26f airborne) beats everything by distance but gives the turn away.
-  They chain with no cap and no lockout [M].
+- Each dodge covers something different [M/V]: the **duck** (18f, re-chain
+  every ~10f) keeps you in place and beats high strikes **only**: it
+  switches the head/chest hurt spheres off for ~18f and is never
+  invulnerable, so the fourth sphere stays hittable, and enemies pick
+  their downed-Gene attack (likely low) ~56% of the time against a
+  ducking Gene [V]. The **side sway** (26f) is
+  invulnerable for its first 10f only [V]; after that it works by moving
+  Gene's four small hurt spheres out of the attack. The **backflip** (36f,
+  26f airborne, invulnerable 24f [V]) beats everything by distance but
+  gives the turn away. They chain with no cap and no lockout [M].
 - So a dodge is also a *positioning choice*: the best dodge is the one that
   leaves you in range to hit back. Ducking under a hook and answering in
   the same breath is the game's signature moment.
-- Invulnerability is a timer the dodge states refresh, with a tail [V]. The
-  exact windows are still unmeasured.
+- *Corrected:* the dodges set the invulnerability timer once, at the start
+  (sway 10f, backflip 24f, duck 0) [V]; only reaction states refresh it.
+  Dodging in God Hand is mostly **geometry**: small hurt spheres and
+  motions that carry them away, with a short invulnerable start.
+- Every dodge keeps turning Gene toward his target (~5.6°/f) [V]: you come
+  out of it facing the enemy, ready to hit.
+- **The near miss pays** [V]: a duck that had an enemy attack within 1.5 m
+  of Gene's chest counts as a combo hit (tension, level points, combo
+  timer). An attack pressed during the duck becomes a dedicated **duck
+  counter** that stays head/chest-proof until its own cancel point.
+  There is no perfect-dodge window, slow-motion or freeze in the dodge
+  code: the reward is the free turn plus the meter.
+- Input [V]: the dodge fires the instant the right stick leaves a ~8%
+  deadzone and is **not buffered**; attack buttons are buffered 6f
+  (3 game frames) and win over a dodge on the same frame. The dodge is
+  only taken inside the current motion's dodge-cancel window, so being
+  "stuck" in a move is real.
 
 For us: our guard (BT3) and our dodges (God Hand) currently overlap as
 "ways to not get hit". In God Hand's logic the dodge should be the
@@ -60,6 +79,10 @@ passive one that costs ki against heavy hits (BT3 §2) and loses to throws.
   ~10 frames with no more tracking.
 - Enemy recovery before acting again is long and level-scaled: 120 / 90 /
   60 / 30 frames + random 0–90 [V].
+- Attacks you can't see are rationed [R, from the Rearmed authors' reading]: lunges only come from inside a
+  cone of Gene's facing (none on Level 1, ±90° at DIE), enemies behind him
+  hold off (all-round attacks only at DIE), and enemies at his side walk
+  round to his front before they count as ready.
 - Result: every hit you take is one you could have seen. This is the
   fairness contract that lets the game be brutally hard and still
   replayable.
@@ -133,7 +156,9 @@ the difficulty follows the player instead of being picked from a menu.
 ## 6. Impact
 
 - **Hitstop is global**: one counter in the damage manager; while it runs,
-  every object skips its tick [V]. Its length is still not found.
+  hit tests, Gene's update and the enemies' update all wait [V]. Two
+  lengths (Gene hits / Gene is hit) come from game data that is 0 in the
+  ELF image and filled at run time, so the number still needs a RAM read.
 - **Speed is a global enemy multiplier** [V] re-applied every frame: big
   hits and special moves slow the *victim's world*, not the picture. The
   player keeps full speed, which reads as power instead of as lag.
@@ -159,8 +184,16 @@ cooldown. There is a "react" hook checked while the player attacks and a
   and how often, not from one brain with different sliders.
 - Enemies have explicit *non-attacking* behaviours (circle, watch, hop
   away) that make their attacks events.
-- Only one enemy may grab at a time [V]; the rest of the crowd pacing is
-  emergent from long recoveries.
+- *Corrected:* crowd pacing is **not** emergent [V/R]. Every common enemy
+  ranks itself by distance (how many others are nearer Gene), and the rank
+  sets how close it may come (1.8 m for the first one to three, 5, 8, 12 m
+  further back), when it steps back to make room, and where it stands
+  (one of 3 to 7 spots in Gene's own frame). Flankers walk round to his
+  front; enemies behind him hold off; nobody starts an attack while Gene is
+  grabbed; one grabber at a time. Difficulty mostly changes these
+  positioning rules, not damage. No tokens anywhere: each enemy decides
+  alone from shared, simple geometry. Full rules:
+  [god_hand_reference.md](god_hand_reference.md#enemies-as-a-group).
 
 Our `CpuBrain` is the opposite: one 1700-line parametric brain, every
 character and enemy the same mind at a different level. BT3's CPU sits in
@@ -170,13 +203,16 @@ Both games agree that **personality is authored per type**.
 ## What to take, in order of leverage
 
 1. **States that demand different answers** (§3): guard → guard break,
-   launch → juggle, dizzy → pummel, downed → stomp or wait. This is the
-   strongest candidate cure for "same plan always wins".
+   launch → juggle, dizzy → pummel, downed → stomp or wait, **ducking →
+   low attack** [V]. This is the strongest candidate cure for "same plan
+   always wins".
 2. **Tells** (§2): slower, readable startups on everything but the fastest
    jab, long level-scaled recoveries on CPU attacks.
-3. **Dodge as the aggressive defence** (§1), clearly separated from guard.
-4. **Authored opponent personalities** (§7) and a **level meter** (§5) for
-   solo and co-op play.
+3. **Dodge as the aggressive defence** (§1), clearly separated from guard:
+   short invulnerable starts, the rest geometry, a near-miss reward and
+   a duck counter instead of a perfect-dodge freeze.
+4. **Authored opponent personalities** (§7), God Hand's **crowd geometry**
+   (§7) for co-op, and a **level meter** (§5) for solo and co-op play.
 5. **Victim slow-motion** instead of freezes for big hits (§6), floaty
    launches, more launch strengths, a closer camera.
 6. **String loadouts** (§4) as the variety system.
@@ -185,9 +221,10 @@ How these become a plan: [gameplay_roadmap.md](gameplay_roadmap.md).
 
 ## Not verified, and how to verify
 
-Everything tagged [K], plus: hitstop length, dodge startup and
-invulnerability, counter-hit rules, after how many hits enemies guard, the
-camera's behaviour on hit. None of these needs a recording with input
+Everything tagged [K], plus: hitstop length (two runtime words, see the
+reference), per-move cancel windows (motion data), counter-hit rules,
+after how many hits enemies guard, the camera's behaviour on hit. Dodge
+invulnerability is answered by the code (third pass). None of these needs a recording with input
 display: playing ten minutes of the first stage in PCSX2 and writing down
 what happens answers most of them, and frame-stepping a save state answers
 the rest.

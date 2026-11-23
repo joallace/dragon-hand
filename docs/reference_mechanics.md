@@ -19,6 +19,14 @@ file, they are newer: BT3's Z-counter only works against smashes and
 finishers (never rush punches), a restarted string is blockable while a
 chained one is not (measured), and its ki charge is fast (full gauge in ~4 s for most characters).
 
+**Third pass (2026-11-23), God Hand only:** the God Hand: Rearmed
+recompilation (https://github.com/God-Hand-Rearmed/God-Hand-Rearmed), its
+authors' notes, the updated decomp and the retail ELF opened the player's
+input, dodge and cancel code and the enemies' group rules. Results in
+[god_hand_reference.md](god_hand_reference.md) (sections "Controls",
+"Dodges: read in code", "Enemies as a group"); the God Hand cells below
+are updated from it.
+
 Only *mechanics and numbers* are recorded here, in our own words. Never copy
 code from either repo into this project (game code belongs to the rights
 holders; the BT3 port code is AGPL).
@@ -40,12 +48,12 @@ already converted to **60 Hz frames** unless marked `@30`.
 
 | Mechanic | BT3 | God Hand | Us now |
 |---|---|---|---|
-| Hitstop on normal melee | **none** — camera shake per hit sells impact | global freeze, length unknown (unmatched) | 4 light / 8 heavy, global |
+| Hitstop on normal melee | **none** — camera shake per hit sells impact | global freeze (hit tests, player and enemy updates wait); two lengths (Gene hits / is hit) are runtime data, still unread | 4 light / 8 heavy, global |
 | Z-counter / guard vanish | guard **press** opens 8f window (6f <70% HP, 4f <30%); re-press during it = ~58f lockout (anti-mash); **first hit of an attack only**; 1 bar; no ki → free sidestep | — | ~~guard held 1..6f, any melee hit, 2 bars~~ → **done:** press window 8/6/4f by HP, 60f mash lockout, string openers only, 1 bar |
 | After a paid vanish | forced counter-attack; opponent can Z-counter it back (unlimited duel) | — | ping-pong duel with shrinking window; ends with positions only |
 | Escape from mid-combo | not possible (mid-string hits undodgeable) — anti-loop rule instead | mash-out of grabs | vanish escape from hitstun, 2 bars (approved design) |
-| Dodge invuln | vanishing step: invuln for the whole ~14f burst; dash steps: first 20% | invuln is a countdown timer refreshed each state tick + tail (10/30/60f) | ~~12 of 24f~~ → per direction: duck 6 of 18f, sway 12 of 26f, back-sway 20 of 36f (lengths GH-measured; invuln still our pick) |
-| Dodge chaining | successful dodge re-arms instantly; attacks buffer during step and fire at its end | measured (PCSX2): back-sway re-chains at 30f (lands at 26), side sway at 26f, duck at ~9f; 9 back-sways in a row with no cap ([details](god_hand_reference.md#dodges-measured-in-pcsx2)) | ~~no chaining~~ → **done:** ~~chain from frame 16, max 2~~ → GH timings: duck from 10, sway 26, back-sway 30, no cap; LIGHT/HEAVY mid-dodge queues for frame 10 / 18 / 30 |
+| Dodge invuln | vanishing step: invuln for the whole ~14f burst; dash steps: first 20% | **set once at the start**: sway 10f, back-flip 24f; **duck none**: head/chest hurt spheres off ~18f, low attacks still hit; dash none. The rest is geometry (four 0.25 m hurt spheres) | ~~12 of 24f~~ → per direction: duck 6 of 18f, sway 12 of 26f, back-sway 20 of 36f (lengths GH-measured; invuln still our pick) |
+| Dodge chaining | successful dodge re-arms instantly; attacks buffer during step and fire at its end | measured (PCSX2): back-sway re-chains at 30f (lands at 26), side sway at 26f, duck at ~9f; 9 back-sways in a row with no cap ([details](god_hand_reference.md#dodges-measured-in-pcsx2)). Code: the windows are motion-data cancel bits; the dodge fires on the stick leaving an ~8% deadzone and is **not buffered** (attacks: 6f) | ~~no chaining~~ → **done:** ~~chain from frame 16, max 2~~ → GH timings: duck from 10, sway 26, back-sway 30, no cap; LIGHT/HEAVY mid-dodge queues for frame 10 / 18 / 30 |
 | Combo scaling | from **5th hit**, −3%/hit, floor 50% | — | ~~0.92^n from 2nd hit, floor 35%~~ → **done:** BT3 curve |
 | Anti-loop | same light stagger twice in one combo → push-out reaction | consecutive-hit counter caps at 4 | ~~none~~ → **done:** ~~repeated melee move~~ same special reaction (MoveData.loop_group) or 5th juggle hit per segment = push-out knockdown (a teleport starts a new segment) |
 | Charged smash | full in 45f; tiers <0.3 / <0.99 / full; release on first full frame = invuln lunge | hold at charge marker, ~80f pool | 45f punch / 60f kick; smashes knock down from 0.3, held body blow ≥0.5 stuns, full breaks guard |
@@ -62,6 +70,8 @@ already converted to **60 Hz frames** unless marked `@30`.
 | Trades | higher-priority move wins; tie = both cancel + shake | — | both hit |
 | Rush vs rush | attacker mid-rush auto-guards incoming rush hits | — | trade |
 | Low-HP guts | — | hit leaves 1 HP if HP was ≥11 | — |
+| Perfect dodge | — (Z-counter is the timing defence) | none in code; a near-miss **duck** (enemy attack within 1.5 m) counts as a combo hit; an attack in the duck window = duck counter | first 4f of any dodge: ki 15, 30f counter window ×1.5, 6f freeze; perfect duck staggers 40f |
+| Crowd attacks | — | no tokens: distance rank sets approach distance (1.8 / 5 / 8 / 12 m), flankers walk to the front, enemies behind hold off (cone ±60°…±180° by level), lunges only inside a facing cone, 10 s lunge cooldown, no attacks while the player is grabbed, a ducking player draws a likely-low attack ~56% (vs 1 in 8) | co-op tokens: 2 melee / 1 ranged per player, grab lock, optional facing-cone off-screen rule |
 | CPU reaction | (b + b·rand), b = 22→0 by level, i.e. **44–88f** at lowest | per-level recovery 120/90/60/30f + rand(90) | 30 → 5f |
 
 ## Recommendations, highest payoff first
@@ -126,14 +136,15 @@ How to record or pick footage for these: [footage_capture.md](footage_capture.md
 These live in unmatched code or disc data. Record at 60 fps (or use frame
 advance) and count frames; note which 60 fps patch, if any, is active.
 
-God Hand (Gene vs. a basic enemy, Level 1):
+God Hand (Gene vs. a basic enemy, Level 1). *Dodge invulnerability and
+input handling are now read in code (third pass), not measured.* Rearmed's
+test mode (scripted pad + per-frame CSV, under Wine) could replace PCSX2
+for the rest:
 
-- Back-sway, side-sway L/R, duck: frames from input to movement and to
-  invulnerability end (test by dodging a jab at increasing delays) — needs
-  an input display. *(Total length and earliest chain are measured: see
-  [god_hand_reference.md](god_hand_reference.md#dodges-measured-in-pcsx2).)*
-- Earliest attack out of a dodge.
-- Hitstop on a jab vs. a heavy (freeze frames).
+- Hitstop length: the two runtime words at `0x3BF190` / `0x3BF194`
+  (RAM read during a fight).
+- Per-move cancel windows and startup (motion data): earliest attack out
+  of a sway / back-flip, a jab's startup.
 - Camera shake on light/heavy hits; distance/height of the default camera.
 
 BT3 (Goku Early vs. Goku Early, ground only):

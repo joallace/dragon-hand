@@ -347,7 +347,9 @@ Online in the browser: `docs/web_online.md`; servers: `server/README.md`.
 ## Design references
 
 `docs/bt3_reference.md` and `docs/god_hand_reference.md` hold mechanics and
-numbers from the two games' decompilations (converted to 60 Hz), with ideas
+numbers from the two games' decompilations, converted to 60 Hz (God Hand
+also from the God Hand: Rearmed recompilation and the retail ELF:
+`tools/reference/gh_disasm.py` disassembles a function by name), with ideas
 for steering toward each; `docs/reference_mechanics.md` compares them with
 ours. `docs/bt3_sauce.md` / `docs/god_hand_sauce.md` explain why they feel
 good (BT3 per-move tables read from your own disc data with

@@ -112,13 +112,106 @@ group").
 **Stage 4. Variety.** String loadouts *(approved)*, skill flags per
 character.
 
+*String loadouts* (God Hand's technique slots,
+[god_hand_sauce.md](god_hand_sauce.md) §4): each player builds their own
+LIGHT string from a pool of techniques, so variety comes per player rather
+than per character.
+- **What blocks it now:** the string is written into the moves. Each step's
+  `cancel_into` names the next step and that position's finisher
+  (`jab1 → jab2 → hook → kick → ender`); `CharacterDef.light_string` is
+  only read for its first entry. Nothing can be reordered.
+- **Chain by slot, not by move** (the one real core change): the fighter
+  keeps a `string_step` (sim state, in `save_state`); LIGHT in the cancel
+  window starts the move in slot `step + 1`. Timing and cancel windows stay
+  per move; `cancel_into` stays for links outside the string (enders,
+  follow-ups on hit). Decide whether the HEAVY finisher keeps following the
+  position (BT3, as now) or becomes a slot too (God Hand: forward / back +
+  button are slots as well).
+- **The loadout is a player choice, not character data:** it lives in
+  `PlayerSlotConfig`, is checked by `MatchConfig.from_dict` and carried by
+  `to_dict`, so replays and online peers get it with no extra work. It is
+  fixed for the match, so it stays out of `save_state`. Saved loadouts per
+  character and binding profile go in `user://`.
+- **Technique pool:** moves anyone can slot, each with a slot type
+  (opener, string, ender, finisher, launcher). `tools/generate_moves.gd`
+  scales every pool move per roster profile offline, as it already does
+  for the Brawler's moves, so Titan's version is slower and stronger.
+- **Editor rules:** slot types (only an ender in the last slot, launchers
+  at the end); a true-combo / gap readout per link (the next move's startup
+  against the previous one's hitstun). In God Hand a gap is part of the
+  choice, while BT3 strings always land: decide which way we lean.
+  Infinite loops are already stopped by `loop_group`.
+- **CPU:** `CpuBrain` reads `def.light_string` (reach, string length);
+  it reads the fighter's active string instead and then plays any loadout.
+- **UI:** a loadout editor from the lobby card (slots with startup, damage
+  and true-combo / gap marks); online it travels with the seat rows.
+- **Order:** after stage 2. If the fighter is rebuilt there, strings must
+  be built as lists of slots (see the appendix); then this stage is mostly
+  data, UI and generator work. Done earlier, a first step that changes
+  nothing in play: chain by slot with today's string as the default
+  loadout, plus a save/load round-trip test.
+
+**Stage 5. Custom characters (mods)** *(proposal, 2026-11-24)*: players
+add characters from files, as MUGEN does, without rebuilding the game.
+What already makes it practical:
+- Gameplay does not depend on what is shown. A move is data (`MoveData`:
+  frames, a hitbox in the fighter's own space, damage, guard results,
+  cancels), not boxes drawn on animation frames, so a custom look cannot
+  break determinism or rollback.
+- A character is already data: `CharacterDef` + its `MoveData` + stat
+  overrides. The CPU knows only moveset roles, so it plays a custom
+  character without extra work.
+- The body format suits modders: `FighterModel` loads a `.glb` with one
+  rigid mesh per rig joint, named after the joint, with palette slots in
+  UV.x. Poses come from code (`FighterVisual`), so a custom model needs
+  **no animations of its own**: a Blender file with the right part names
+  is enough. Godot loads a `.glb` at runtime with `GLTFDocument`, the web
+  build included.
+
+What has to be built:
+- **A safe file format:** never load `.tres` from users, because a
+  Resource can embed a script that then runs on the player's machine.
+  Use JSON for the character and its moves, turned into `CharacterDef` /
+  `MoveData` with every field checked (as `MatchConfig.from_dict` does),
+  plus the `.glb` and optional sfxr `.sfs` sounds (tiny text files).
+- **Finding characters:** `CharacterRegistry.IDS` is a fixed list; scan
+  `res://data/characters/` plus `user://characters/<id>/`.
+- **A model per character:** today every fighter uses one model
+  (`Tuning.vfx.fighter_model_path`); `CharacterDef` gets its own path,
+  falling back to the shared model, then to the primitives. A missing part
+  falls back to the default part.
+- **New poses** a custom move needs are data too (joint rotations, the
+  same shape as `FighterVisual.POSES`), falling back to a generic pose.
+- **Online and replays:** `ContentHash` already covers moves and
+  characters, so mismatched files are already caught. Either refuse the
+  match, or send the missing character over the bulk channel (JSON is
+  small; a `.glb` can be a few MB). Replays name the character's hash.
+- **Web:** no folder to drop files into: upload through a browser file
+  picker, or bundled packs.
+- **An authoring kit:** one example character, the Blender template
+  (`tools/blender/build_fighter.py` as the reference for part names and
+  palette slots), the list of poses and a guide to the move fields.
+  `tools/matchup_sim.tscn` can double as a check that flags a broken
+  character.
+- **Limit:** behaviour is what `MoveData` can express. MUGEN-style
+  scripts (its state files) are out: `JsRuntime` exists, but scripts
+  would call libm math (non-deterministic across platforms), need their
+  state saved for every rollback and cost time on every resimulated
+  frame. Mods get more power as the move vocabulary grows, which the
+  built-in roster needs anyway.
+- **Order:** (1) data-only characters on the shared model, with colours
+  and proportions; (2) a `.glb` and poses per character; (3) sending them
+  online; scripting never. With stage 4, a mod can also be a single
+  technique added to the pool rather than a whole character.
+
 ## Your decisions so far
 
 | Question | Your answer | Now |
 |---|---|---|
 | Soft hitstun | approved | **withdrawn by me**: BT3 does not work that way (phase 0) |
 | Longer rounds | approved | stands (stage 1) |
-| String loadouts | yes | stands (stage 4) |
+| String loadouts | yes | stands (stage 4; design written 2026-11-24) |
+| (2026-11-24) Custom characters from files, like MUGEN | add to the roadmap | stage 5, proposal |
 | Co-op and online stay on the old core until a switch-over | yes | moot for now: stage 1 changes the shared core, so every mode gets it; `matchup_sim` and `coop_sim` rerun after |
 | I may drive the games | yes | done for BT3 (headless); not yet for God Hand |
 | God Hand enemies guard after how many hits | random, 1 to 4 | recorded in god_hand_sauce.md |
@@ -165,6 +258,9 @@ Borrowed from how BT3 is organised (structure, not code), under our rules
 - **A reaction table**: reaction id → action, with its rules in one place
   (mash speeds it up, counts toward anti-loop, stun length, crashes).
 - **Follow-up tables** keyed by the victim's reaction.
+- **Strings as lists of slots** (a step counter and the slot's record),
+  not moves that name their successor, so stage 4's loadouts and stage 5's
+  custom characters need no further core change.
 - Frame data stays numbers in the record (we have no skeletal animation).
 - A per-fighter time scale in the sim for victim slow-motion.
 - The `Fighter` public contract is kept so CPU, HUD, VFX and camera keep

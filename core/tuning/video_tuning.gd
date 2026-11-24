@@ -20,6 +20,9 @@ extends Resource
 ## VideoSettings.Shadows: 0 off, 1 low, 2 high.
 @export var default_shadow_quality: int = 2
 @export var default_ui_scale: float = 1.0
+## Pixel look: 3D drawn at 1/n of the view's pixels, scaled up unfiltered
+## (one of pixel_size_options; 1 = off).
+@export var default_pixel_size: int = 1
 
 @export_group("Options")
 ## Window size presets offered in windowed mode (sizes larger than the
@@ -38,6 +41,8 @@ extends Resource
 ## Max FPS choices; 0 = unlimited.
 @export var max_fps_options: PackedInt32Array = [60, 120, 144, 165, 240, 0]
 @export var ui_scale_steps: PackedFloat32Array = [0.75, 0.85, 1.0, 1.15, 1.25, 1.5]
+## Pixel look sizes (screen pixels per 3D pixel); 1 = off.
+@export var pixel_size_options: PackedInt32Array = [1, 2, 3, 4]
 
 @export_group("Shadows")
 ## Directional shadow atlas size per quality (index = Shadows; off unused).

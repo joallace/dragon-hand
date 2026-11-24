@@ -57,10 +57,26 @@ func apply_audio() -> void:
 
 
 ## 3D render scale and upscaler for a viewport that renders the match.
+## The pixel look (configure_view_container) replaces both: render scale
+## 100% so its big pixels aren't filtered twice.
 func configure_viewport(vp: Viewport) -> void:
-	vp.scaling_3d_mode = video.scaling_mode() if PlatformCaps.fsr() else Viewport.SCALING_3D_MODE_BILINEAR
-	vp.scaling_3d_scale = video.render_scale
+	var pixel := video.pixel_size > 1
+	vp.scaling_3d_mode = video.scaling_mode() if PlatformCaps.fsr() and not pixel \
+			else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = 1.0 if pixel else video.render_scale
 	vp.fsr_sharpness = Tuning.video.fsr_sharpness
+
+
+## Pixel look for a match view's container: its SubViewport renders at
+## 1/pixel_size of the container's pixels and is drawn unfiltered. MSAA is
+## off then (hard pixel edges are the look, and it saves the cost).
+func configure_view_container(c: SubViewportContainer) -> void:
+	var n := maxi(video.pixel_size, 1)
+	c.stretch_shrink = n
+	c.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if n > 1 else CanvasItem.TEXTURE_FILTER_PARENT_NODE
+	for vp in c.get_children():
+		if vp is SubViewport:
+			(vp as SubViewport).msaa_3d = Viewport.MSAA_DISABLED if n > 1 else Viewport.MSAA_2X
 
 
 func shadows_enabled() -> bool:

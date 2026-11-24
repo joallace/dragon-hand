@@ -41,6 +41,7 @@ var fps_sel: OptionSelector
 var smooth_sel: OptionSelector
 var shadow_sel: OptionSelector
 var ui_sel: OptionSelector
+var pixel_sel: OptionSelector
 
 ## Staged display values (applied after the debounce).
 var pending_mode := 0
@@ -109,6 +110,11 @@ func _ready() -> void:
 	smooth_sel.value_changed.connect(func(i: int) -> void:
 		Settings.video.motion_smoothing = i == 1
 		_apply_now())
+	pixel_sel = _selector("Pixel look", _pixel_labels(), t.pixel_size_options.find(v.pixel_size),
+			"Draw the 3D in big crisp pixels (pixel art style). Larger = chunkier pixels and faster.")
+	pixel_sel.value_changed.connect(func(i: int) -> void:
+		Settings.video.set_pixel_size(Tuning.video.pixel_size_options[i])
+		_apply_now())
 	shadow_sel = _selector("Shadows", SHADOW_LABELS, v.shadow_quality, "Sun shadow quality.")
 	shadow_sel.value_changed.connect(func(i: int) -> void:
 		Settings.video.set_shadow_quality(i)
@@ -130,6 +136,13 @@ func _selector(text: String, labels: Array, index: int, help: String) -> OptionS
 	var s := MenuHelpers.selector(text, PackedStringArray(labels), maxi(index, 0))
 	add_row(s, help)
 	return s
+
+
+func _pixel_labels() -> PackedStringArray:
+	var out := PackedStringArray()
+	for n in Tuning.video.pixel_size_options:
+		out.append(OFF_ON[0] if n <= 1 else "%dx" % n)
+	return out
 
 
 func _size_labels() -> PackedStringArray:
@@ -170,12 +183,16 @@ func _sync_rows() -> void:
 	smooth_sel.index = 1 if v.motion_smoothing else 0
 	shadow_sel.index = v.shadow_quality
 	ui_sel.index = maxi(t.ui_scale_steps.find(v.ui_scale), 0)
+	pixel_sel.index = maxi(t.pixel_size_options.find(v.pixel_size), 0)
 	var windowed := pending_mode == VideoSettings.WindowMode.WINDOWED
 	for c: Button in [size_sel, width_step, height_step]:
 		c.disabled = not windowed
 		var help := SIZE_HELP if c == size_sel else CUSTOM_HELP
 		c.set_meta(&"help", help if windowed else SIZE_DISABLED_HELP)
-	upscaler_sel.disabled = v.render_scale >= 1.0
+	# The pixel look renders at its own fixed fraction (Settings.configure_viewport).
+	var pixel := v.pixel_size > 1
+	render_sel.disabled = pixel
+	upscaler_sel.disabled = pixel or v.render_scale >= 1.0
 	relink()
 
 

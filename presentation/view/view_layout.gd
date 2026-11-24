@@ -18,7 +18,8 @@ extends Control
 ## not the window's pixels. So each container is sized to its panel times the
 ## window's canvas->pixel scale and drawn scaled back down: the 3D renders at
 ## native pixels, then Settings.configure_viewport() applies the player's
-## render scale + upscaler. Refit on panel resize, window resize and
+## render scale + upscaler and Settings.configure_view_container() the
+## pixel look (stretch_shrink + unfiltered upscale). Refit on panel resize, window resize and
 ## Settings.video_applied (UI scale changes the canvas scale).
 ##
 ## Also routes presentation events (MatchEventHub) to the cameras. In co-op
@@ -147,6 +148,7 @@ func _make_view(f: Fighter, half_width: bool, listener: bool, world: World3D) ->
 	vp.positional_shadow_atlas_size = 0
 	Settings.configure_viewport(vp)
 	container.add_child(vp)
+	Settings.configure_view_container(container)
 
 	var cam := FighterCamera.new()
 	cam.setup(f, half_width)
@@ -186,6 +188,7 @@ func _refit_all() -> void:
 
 func _on_video_applied() -> void:
 	for c: SubViewportContainer in _containers.values():
+		Settings.configure_view_container(c)
 		for vp in c.get_children():
 			if vp is SubViewport:
 				Settings.configure_viewport(vp)

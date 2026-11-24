@@ -130,6 +130,11 @@ func _test_duck_variants() -> void:
 
 ## Exact highest world-space y of every primitive mesh under `node`.
 func _highest(node: Node) -> float:
+	if _visual._skeleton != null:
+		var high_m := -INF
+		for p in FighterModel.posed_points(_visual._skeleton, _model_bones(node, true)):
+			high_m = maxf(high_m, p.y)
+		return high_m
 	var high := -INF
 	for mi in node.find_children("*", "MeshInstance3D", true, false):
 		var t: Transform3D = (mi as MeshInstance3D).global_transform
@@ -153,11 +158,29 @@ func _apply(id: StringName) -> void:
 	for j in FighterVisual.JOINTS:
 		(_visual._joints[j] as Node3D).rotation_degrees = pose.get(j, idle[j])
 	_visual._body.position = pose.get(&"root", idle[&"root"])
+	if _visual._skeleton != null:
+		FighterModel.sync_pose(_visual._skeleton, _visual._rig)
+
+
+## Skeleton bone indices of `node`'s joint (and the joints under it when
+## `deep`); `node` = the body = every bone.
+func _model_bones(node: Node, deep: bool) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for i in _visual._rig.size():
+		var n := _visual._rig[i]
+		if n == node or (deep and node.is_ancestor_of(n)):
+			out.append(i)
+	return out
 
 
 ## Exact lowest world-space y of every primitive mesh under `node` (only its
 ## own meshes, not child joints', when `deep` is false).
 func _lowest(node: Node, deep := true) -> float:
+	if _visual._skeleton != null:
+		var low_m := INF
+		for p in FighterModel.posed_points(_visual._skeleton, _model_bones(node, deep)):
+			low_m = minf(low_m, p.y)
+		return low_m
 	var low := INF
 	for mi in node.find_children("*", "MeshInstance3D", deep, false):
 		var t: Transform3D = (mi as MeshInstance3D).global_transform

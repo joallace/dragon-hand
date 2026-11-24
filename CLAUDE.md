@@ -135,7 +135,8 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   - `game.gd`: `Game` autoload, scene flow.
   - `settings/`: `Settings` autoload (presentation only, never read by the
     sim): `VideoSettings` (`user://video.cfg`: window mode/size, render
-    scale + upscaler, vsync, FPS cap, motion smoothing, shadows, UI scale;
+    scale + upscaler, vsync, FPS cap, motion smoothing, shadows, UI scale,
+    pixel look = `stretch_shrink` + nearest filter on the view containers;
     defaults/options in `data/tuning/video.tres`) and `AudioSettings`
     (`user://audio.cfg`: volume per bus; buses in `default_bus_layout.tres`).
     `apply_video()` -> window/renderer + `video_applied`; `ViewLayout` pulls
@@ -147,7 +148,15 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
 - `gameplay/` — `Fighter` (state machine, public contract in its header;
   `Targeting` picks/cycles its target),
   `CombatSystem`, `MoveData`, projectiles, `CharacterDef`/`CharacterRegistry`,
-  `FighterVisual` (placeholder primitives, read-only view of the fighter).
+  `FighterVisual` (read-only view of the fighter: code-posed joint rig; body =
+  `presentation/fighter/FighterModel`, the low-poly model merged into one
+  rigidly skinned mesh whose skeleton copies the rig each frame, toon +
+  outline shaders, palette slot in UV.x, blob shadow; primitives if the
+  model is missing). Model: `tools/blender/build_fighter.py`, run with
+  `~/opt/blender-5.3.0-linux-x64/blender --background --factory-startup
+  --python tools/blender/build_fighter.py -- [preview=<dir>]` (writes
+  `assets/models/fighter_brawler.glb`; never hand-edit it), then `--import`;
+  `visual_pose_test` checks the posed model against the floor.
   Fighter/projectile visuals are `SmoothedVisual`s (presentation/view):
   top_level, blended between the last two sim ticks (motion smoothing; the
   engine's physics interpolation stays off). Anything framing an entity on

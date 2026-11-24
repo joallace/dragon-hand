@@ -99,8 +99,13 @@ func _same_shader_key(a: BaseMaterial3D, b: BaseMaterial3D) -> bool:
 func _test_fighter_glow_keeps_shader() -> void:
 	var visual := FighterVisual.new()
 	add_child(visual)
-	_check(visual._mat.emission_enabled, "fighter body material has emission on from the start")
-	_check(is_zero_approx(visual._mat.emission_energy_multiplier), "fighter starts with no glow")
+	if visual._mat is ShaderMaterial:
+		# Toon model: glow is a shader uniform, the shader never changes.
+		var energy: Variant = (visual._mat as ShaderMaterial).get_shader_parameter(&"glow_energy")
+		_check(energy == null or is_zero_approx(energy), "fighter starts with no glow")
+	else:
+		_check(visual._mat.emission_enabled, "fighter body material has emission on from the start")
+		_check(is_zero_approx(visual._mat.emission_energy_multiplier), "fighter starts with no glow")
 	visual.queue_free()
 
 

@@ -1,9 +1,13 @@
 class_name FighterVisual
 extends SmoothedVisual
-## Placeholder humanoid built from primitive meshes, posed in code. Strictly
-## read-only on the Fighter (its parent): reads state/pose each frame and
-## listens to its `event` signal for flashes. Never touches sim state.
-## Follows the fighter with motion smoothing (SmoothedVisual).
+## Humanoid posed in code: a rig of joint nodes rotated toward named POSES.
+## The body is the low-poly model (FighterModel: one rigidly skinned mesh
+## whose skeleton copies the rig every frame, toon shaded and outlined), or
+## primitive meshes on the joints when the model is unavailable. A blob
+## shadow sits under it. Strictly read-only on the Fighter (its parent):
+## reads state/pose each frame and listens to its `event` signal for
+## flashes. Never touches sim state. Follows the fighter with motion
+## smoothing (SmoothedVisual).
 ##
 ## Rotation convention: limbs hang along -Y; +X rotation swings a limb
 ## forward (toward -Z = toward the opponent). Angles in degrees.
@@ -23,6 +27,8 @@ const CHARGE_GLOW_FULL_COLOR := Color(1.0, 1.0, 0.85)
 const CHARGE_GLOW_ENERGY := 1.6
 ## How far the belly sphere sits ahead of the torso, in belly radii.
 const BELLY_FORWARD := 0.45
+## Meta on meshes VfxManager.afterimage() must not copy (the blob shadow).
+const NO_AFTERIMAGE := &"no_afterimage"
 
 ## Named poses: joint -> rotation (deg). "root" = body offset (m).
 ## Missing joints fall back to &"idle".
@@ -145,12 +151,12 @@ const POSES := {
 	&"launched": {&"torso": Vector3(-35, 0, 0), &"head": Vector3(-30, 0, 0), &"hip_l": Vector3(30, 0, 0),
 		&"hip_r": Vector3(15, 0, 0), &"sh_l": Vector3(60, 0, -60), &"sh_r": Vector3(60, 0, 60),
 		&"spin": Vector3(40, 0, 0)},
-	&"knockdown": {&"spin": Vector3(88, 0, 0), &"root": Vector3(0, -0.73, 0), &"torso": Vector3.ZERO,
+	&"knockdown": {&"spin": Vector3(88, 0, 0), &"root": Vector3(0, -0.715, 0), &"torso": Vector3.ZERO,
 		&"head": Vector3.ZERO, &"sh_l": Vector3(196, 0, -20),
 		&"sh_r": Vector3(196, 0, 20), &"el_l": Vector3(0, 0, 0), &"el_r": Vector3(0, 0, 0),
 		&"hip_l": Vector3(-7, 0, -10), &"hip_r": Vector3(-7, 0, 10), &"kn_l": Vector3(0, 0, 0), &"kn_r": Vector3(0, 0, 0)},
 	&"wakeup": {&"torso": Vector3(40, 0, 0), &"hip_l": Vector3(90, 0, 0), &"kn_l": Vector3(-90, 0, 0),
-		&"hip_r": Vector3(-45, 0, 0), &"kn_r": Vector3(-45, 0, 0), &"root": Vector3(0, -0.45, 0)},
+		&"hip_r": Vector3(-45, 0, 0), &"kn_r": Vector3(-45, 0, 0), &"root": Vector3(0, -0.435, 0)},
 	&"dash": {&"torso": Vector3(30, 0, 0), &"sh_l": Vector3(-45, 0, -10), &"sh_r": Vector3(-45, 0, 10),
 		&"el_l": Vector3(30, 0, 0), &"el_r": Vector3(30, 0, 0)},
 	# Dash startup (crouched push-off) and end lag (braking, leaning back).
@@ -267,7 +273,16 @@ var _joints: Dictionary = {}  # StringName -> Node3D
 var _current: Dictionary = {}  # StringName -> Vector3 (deg)
 var _root_offset: Vector3 = Vector3.ZERO
 var _body: Node3D
-var _mat: StandardMaterial3D
+## Glowing material: the model's toon material or the primitives' body colour.
+var _mat: Material
+## Rig nodes in creation order (parents first): the model's bones.
+var _rig: Array[Node3D] = []
+var _skeleton: Skeleton3D
+var _shadow: MeshInstance3D
+## Per fighter (its fade); the shader and mesh are shared.
+var _shadow_mat: ShaderMaterial
+var _shadow_fade := -1.0
+static var _shadow_mesh: PlaneMesh
 var _aura: MeshInstance3D
 var _flash_left: float = 0.0
 var _time: float = 0.0
@@ -303,6 +318,9 @@ func _process(delta: float) -> void:
 	_root_offset = _root_offset.lerp(root_target, k)
 	_body.position = _root_offset * _body.scale.y
 	_apply_procedural()
+	if _skeleton != null:
+		FighterModel.sync_pose(_skeleton, _rig)
+	_update_shadow()
 	_update_flash(delta)
 	_update_aura()
 	_update_fx(delta)
@@ -426,16 +444,40 @@ func _add_rot(j: StringName, deg_x: float) -> void:
 func _update_flash(delta: float) -> void:
 	if _flash_left > 0.0:
 		_flash_left -= delta
-		_mat.emission = Color.WHITE
-		_mat.emission_energy_multiplier = 2.0 * (_flash_left / FLASH_TIME)
+		_set_glow(Color.WHITE, 2.0 * (_flash_left / FLASH_TIME))
 	elif _fighter.is_charging_strike():
 		var r := _fighter.charge_ratio()
-		_mat.emission = CHARGE_GLOW_COLOR.lerp(CHARGE_GLOW_FULL_COLOR, r)
-		_mat.emission_energy_multiplier = CHARGE_GLOW_ENERGY * r
+		_set_glow(CHARGE_GLOW_COLOR.lerp(CHARGE_GLOW_FULL_COLOR, r), CHARGE_GLOW_ENERGY * r)
 	else:
 		var invuln := _fighter.is_invulnerable() and _fighter.current_state_name() != &"ko"
-		_mat.emission = Color(0.6, 0.8, 1.0)
-		_mat.emission_energy_multiplier = 0.4 if invuln else 0.0
+		_set_glow(Color(0.6, 0.8, 1.0), 0.4 if invuln else 0.0)
+
+
+func _set_glow(color: Color, energy: float) -> void:
+	if _mat is ShaderMaterial:
+		FighterModel.set_glow(_mat, color, energy)
+	elif _mat is StandardMaterial3D:
+		var m := _mat as StandardMaterial3D
+		m.emission = color
+		m.emission_energy_multiplier = energy
+
+
+## Blob shadow: on the floor under the drawn body, smaller and fainter as
+## the fighter rises.
+func _update_shadow() -> void:
+	var v := Tuning.vfx
+	var at := global_position
+	var height := maxf(at.y, 0.0)
+	var k := 1.0 / (1.0 + height * v.blob_shadow_height_falloff)
+	_shadow.visible = _body.visible
+	_shadow.global_position = Vector3(at.x, v.blob_shadow_lift, at.z)
+	var r := v.blob_shadow_radius * maxf(_body.scale.x, _body.scale.z) * k
+	_shadow.scale = Vector3(r, 1.0, r)
+	# The shader writes ALPHA, so GeometryInstance3D.transparency wouldn't apply.
+	var fade := maxf(1.0 - k, _fade)
+	if not is_equal_approx(fade, _shadow_fade):
+		_shadow_fade = fade
+		_shadow_mat.set_shader_parameter(&"fade", fade)
 
 
 func _update_aura() -> void:
@@ -486,60 +528,33 @@ func _update_fx(delta: float) -> void:
 # --- construction -------------------------------------------------------------
 
 func _build() -> void:
-	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = _fighter.tint() if _fighter else Color.WHITE
-	_mat.roughness = 0.6
-	# Glow (hit flash, charge, invulnerable) is emission energy only: toggling
-	# emission_enabled would swap the shader and recompile it (FxMaterials).
-	_mat.emission_enabled = true
-	_mat.emission_energy_multiplier = 0.0
-	var skin := StandardMaterial3D.new()
-	skin.albedo_color = Color(0.93, 0.78, 0.65)
-	var dark := StandardMaterial3D.new()
-	dark.albedo_color = (_fighter.tint() if _fighter else Color.GRAY).darkened(0.55)
-
+	var tint := _fighter.tint() if _fighter else Color.WHITE
 	_body = Node3D.new()
 	_body.name = "Body"
 	add_child(_body)
 	# Spin pivots around the hips so backflips/knockdowns rotate the whole body.
-	var spin := _joint(&"spin", _body, Vector3(0, 0.95, 0))
-	var hips := Node3D.new()
-	hips.position = Vector3(0, -0.95, 0)
-	spin.add_child(hips)
-	var pelvis := Node3D.new()
-	pelvis.position = Vector3(0, 0.95, 0)
-	hips.add_child(pelvis)
-
-	var torso := _joint(&"torso", pelvis, Vector3.ZERO)
-	_capsule(torso, Vector3(0, 0.33, 0), 0.22, 0.7, _mat)
-	var head := _joint(&"head", torso, Vector3(0, 0.68, 0))
-	_sphere(head, Vector3(0, 0.15, 0), 0.15, skin)
+	_build_rig()
 	var d: CharacterDef = _fighter.def if _fighter else null
-	if d != null and d.belly_radius > 0.0:
-		_sphere(torso, Vector3(0, 0.2, -d.belly_radius * BELLY_FORWARD), d.belly_radius, _mat)
-
-	for side in [-1.0, 1.0]:
-		var sfx := "_l" if side < 0.0 else "_r"
-		var sh := _joint(StringName("sh" + sfx), torso, Vector3(0.29 * side, 0.58, 0))
-		_capsule(sh, Vector3(0, -0.16, 0), 0.07, 0.34, _mat)
-		var el := _joint(StringName("el" + sfx), sh, Vector3(0, -0.32, 0))
-		_capsule(el, Vector3(0, -0.14, 0), 0.06, 0.3, skin)
-		_box(el, Vector3(0, -0.32, 0), Vector3(0.13, 0.13, 0.13), dark)
-
-		var hip := _joint(StringName("hip" + sfx), pelvis, Vector3(0.12 * side, 0, 0))
-		_capsule(hip, Vector3(0, -0.23, 0), 0.09, 0.48, dark)
-		var kn := _joint(StringName("kn" + sfx), hip, Vector3(0, -0.46, 0))
-		_capsule(kn, Vector3(0, -0.22, 0), 0.075, 0.46, dark)
-		_box(kn, Vector3(0, -0.46, -0.06), Vector3(0.12, 0.08, 0.24), _mat)
-
+	var path := Tuning.vfx.fighter_model_path
+	if FighterModel.available(path):
+		_mat = FighterModel.make_material(tint)
+		var extra := {}
+		if d != null and d.belly_radius > 0.0:
+			extra[&"belly"] = _belly_transform(d.belly_radius)
+		_skeleton = FighterModel.create(path, _rig, extra, _mat)
+	if _skeleton != null:
+		_body.add_child(_skeleton)
+	else:
+		_build_primitives(tint, d)
 	if d != null:
 		_body.scale = d.body_scale
+	_build_shadow()
 	_aura = MeshInstance3D.new()
 	var aura_mesh := SphereMesh.new()
 	aura_mesh.radius = 1.1
 	aura_mesh.height = 2.4
 	_aura.mesh = aura_mesh
-	var c := _mat.albedo_color.lightened(0.5)
+	var c := tint.lightened(0.5)
 	_aura.material_override = FxMaterials.make(FxMaterials.Kind.AURA, Color(c, 0.35))
 	_aura.position = Vector3(0, 1.0, 0) * _body.scale.y
 	_aura.scale = _body.scale
@@ -550,12 +565,88 @@ func _build() -> void:
 		_current[j] = POSES[&"idle"][j]
 
 
+## Joint nodes (no meshes): spin pivots around the hips so backflips and
+## knockdowns rotate the whole body.
+func _build_rig() -> void:
+	var spin := _joint(&"spin", _body, Vector3(0, 0.95, 0))
+	var hips := _node(&"hips", spin, Vector3(0, -0.95, 0))
+	var pelvis := _node(&"pelvis", hips, Vector3(0, 0.95, 0))
+	var torso := _joint(&"torso", pelvis, Vector3.ZERO)
+	_joint(&"head", torso, Vector3(0, 0.68, 0))
+	for side in [-1.0, 1.0]:
+		var sfx := "_l" if side < 0.0 else "_r"
+		var sh := _joint(StringName("sh" + sfx), torso, Vector3(0.29 * side, 0.58, 0))
+		_joint(StringName("el" + sfx), sh, Vector3(0, -0.32, 0))
+	for side in [-1.0, 1.0]:
+		var sfx := "_l" if side < 0.0 else "_r"
+		var hip := _joint(StringName("hip" + sfx), pelvis, Vector3(0.12 * side, 0, 0))
+		_joint(StringName("kn" + sfx), hip, Vector3(0, -0.46, 0))
+
+
+func _belly_transform(radius: float) -> Transform3D:
+	return Transform3D(Basis.from_scale(Vector3.ONE * radius), Vector3(0, 0.2, -radius * BELLY_FORWARD))
+
+
+## Placeholder body (no model): primitives on the rig's joints.
+func _build_primitives(tint: Color, d: CharacterDef) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = tint
+	mat.roughness = 0.6
+	# Glow (hit flash, charge, invulnerable) is emission energy only: toggling
+	# emission_enabled would swap the shader and recompile it (FxMaterials).
+	mat.emission_enabled = true
+	mat.emission_energy_multiplier = 0.0
+	_mat = mat
+	var skin := StandardMaterial3D.new()
+	skin.albedo_color = Color(0.93, 0.78, 0.65)
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = tint.darkened(0.55)
+	var torso: Node3D = _joints[&"torso"]
+	_capsule(torso, Vector3(0, 0.33, 0), 0.22, 0.7, mat)
+	_sphere(_joints[&"head"], Vector3(0, 0.15, 0), 0.15, skin)
+	if d != null and d.belly_radius > 0.0:
+		_sphere(torso, Vector3(0, 0.2, -d.belly_radius * BELLY_FORWARD), d.belly_radius, mat)
+	for sfx in ["_l", "_r"]:
+		_capsule(_joints[StringName("sh" + sfx)], Vector3(0, -0.16, 0), 0.07, 0.34, mat)
+		var el: Node3D = _joints[StringName("el" + sfx)]
+		_capsule(el, Vector3(0, -0.14, 0), 0.06, 0.3, skin)
+		_box(el, Vector3(0, -0.32, 0), Vector3(0.13, 0.13, 0.13), dark)
+		_capsule(_joints[StringName("hip" + sfx)], Vector3(0, -0.23, 0), 0.09, 0.48, dark)
+		var kn: Node3D = _joints[StringName("kn" + sfx)]
+		_capsule(kn, Vector3(0, -0.22, 0), 0.075, 0.46, dark)
+		_box(kn, Vector3(0, -0.46, -0.06), Vector3(0.12, 0.08, 0.24), mat)
+
+
+func _build_shadow() -> void:
+	var v := Tuning.vfx
+	_shadow_mat = ShaderMaterial.new()
+	_shadow_mat.shader = preload("res://presentation/fighter/blob_shadow.gdshader")
+	_shadow_mat.set_shader_parameter(&"opacity", v.blob_shadow_opacity)
+	if _shadow_mesh == null:
+		_shadow_mesh = PlaneMesh.new()
+		_shadow_mesh.size = Vector2(2.0, 2.0)  # unit radius; scaled per frame
+	_shadow = MeshInstance3D.new()
+	_shadow.name = "BlobShadow"
+	_shadow.mesh = _shadow_mesh
+	_shadow.material_override = _shadow_mat
+	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_shadow.top_level = true
+	_shadow.set_meta(NO_AFTERIMAGE, true)
+	add_child(_shadow)
+
+
 func _joint(id: StringName, parent: Node3D, at: Vector3) -> Node3D:
+	var n := _node(id, parent, at)
+	_joints[id] = n
+	return n
+
+
+func _node(id: StringName, parent: Node3D, at: Vector3) -> Node3D:
 	var n := Node3D.new()
 	n.name = String(id)
 	n.position = at
 	parent.add_child(n)
-	_joints[id] = n
+	_rig.append(n)
 	return n
 
 

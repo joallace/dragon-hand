@@ -120,6 +120,8 @@ func _test_video_model() -> void:
 	check(v.max_fps == t.default_max_fps, "unknown FPS cap -> default")
 	v.set_ui_scale(9.0)
 	check(v.ui_scale == t.ui_scale_steps[t.ui_scale_steps.size() - 1], "UI scale snaps into range")
+	v.set_pixel_size(7)
+	check(v.pixel_size == t.default_pixel_size, "unknown pixel size -> default")
 
 	v.path = VIDEO_CFG
 	v.set_window_mode(VideoSettings.WindowMode.BORDERLESS)
@@ -130,6 +132,7 @@ func _test_video_model() -> void:
 	v.set_max_fps(144)
 	v.motion_smoothing = false
 	v.set_shadow_quality(VideoSettings.Shadows.LOW)
+	v.set_pixel_size(t.pixel_size_options[t.pixel_size_options.size() - 1])
 	check(v.save() == OK, "video settings save")
 	var w := VideoSettings.load_from(VIDEO_CFG)
 	check(w.to_dict() == v.to_dict(), "video settings round-trip through the file")
@@ -139,6 +142,7 @@ func _test_video_model() -> void:
 	cf.set_value("video", "window_size", "big")
 	cf.set_value("video", "max_fps", 1000)
 	cf.set_value("video", "motion_smoothing", 1)
+	cf.set_value("video", "pixel_size", 0.5)
 	cf.save(VIDEO_CFG)
 	w = VideoSettings.load_from(VIDEO_CFG)
 	check(w.to_dict() == VideoSettings.new().to_dict(), "garbage values in the file fall back to defaults")
@@ -154,6 +158,8 @@ func _test_video_model() -> void:
 			"presets larger than the screen are hidden")
 	check(VideoSettings.presets_for(Vector2i.ZERO).size() == t.window_size_presets.size(),
 			"unknown screen -> every preset")
+
+	_test_pixel_container()
 
 	v.set_render_scale(1.0)
 	v.set_upscaler(VideoSettings.Upscaler.FSR1)
@@ -520,3 +526,30 @@ func _test_overlay_in_match() -> void:
 	await press(ev)
 	check(closed[0], "Esc / B closes the overlay")
 	await frames(2)
+
+
+## Pixel look: the view's SubViewport renders at 1/n, drawn unfiltered, no MSAA.
+func _test_pixel_container() -> void:
+	var saved := Settings.video.pixel_size
+	var c := SubViewportContainer.new()
+	c.stretch = true
+	var vp := SubViewport.new()
+	c.add_child(vp)
+	add_child(c)
+	c.size = Vector2(640, 360)
+	Settings.video.set_pixel_size(4)
+	Settings.configure_view_container(c)
+	check(c.stretch_shrink == 4 and c.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST
+			and vp.msaa_3d == Viewport.MSAA_DISABLED, "pixel look: shrink 4, nearest filter, no MSAA")
+	check(vp.size == Vector2i(160, 90), "pixel look renders the 3D at 1/4 size (got %s)" % vp.size)
+	var saved_scale := Settings.video.render_scale
+	Settings.video.set_render_scale(Tuning.video.render_scale_steps[0])
+	Settings.configure_viewport(vp)
+	check(is_equal_approx(vp.scaling_3d_scale, 1.0) and vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR,
+			"pixel look ignores render scale / FSR (no double filtering)")
+	Settings.video.set_render_scale(saved_scale)
+	Settings.video.set_pixel_size(1)
+	Settings.configure_view_container(c)
+	check(c.stretch_shrink == 1 and vp.msaa_3d == Viewport.MSAA_2X, "pixel look off restores full size + MSAA")
+	Settings.video.set_pixel_size(saved)
+	c.free()

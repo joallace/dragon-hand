@@ -114,3 +114,35 @@ extends Resource
 @export var material_warmup_radius: float = 0.001
 ## Size (m) of their custom AABB, so frustum culling never skips them.
 @export var material_warmup_cull_size: float = 10000.0
+
+@export_group("Fighter look")
+## Low-poly model (tools/blender/build_fighter.py); empty or missing = the
+## primitive placeholder body.
+@export var fighter_model_path: String = "res://assets/models/fighter_brawler.glb"
+## Fixed palette slots (FighterModel.Slot); PRIMARY comes from the fighter's
+## colour and PRIMARY_DARK is that darkened by primary_dark_amount.
+@export var primary_dark_amount: float = 0.45
+@export var skin_color: Color = Color(0.93, 0.74, 0.58)
+@export var cloth_color: Color = Color(0.16, 0.17, 0.24)
+@export var trim_color: Color = Color(0.95, 0.93, 0.86)
+@export var hair_color: Color = Color(0.09, 0.07, 0.1)
+@export var gold_color: Color = Color(0.95, 0.72, 0.2)
+@export var sole_color: Color = Color(0.22, 0.2, 0.2)
+## Toon light: N.L above threshold = lit, below = shade_floor of the light;
+## softness = half width of the step.
+@export var toon_threshold: float = 0.15
+@export var toon_softness: float = 0.03
+@export var toon_shade_floor: float = 0.35
+## Rim light added on silhouettes (fraction of the albedo).
+@export var toon_rim_strength: float = 0.35
+@export var toon_rim_power: float = 3.0
+## Inverted-hull outline (m, before body_scale; 0 = off).
+@export var outline_width: float = 0.014
+@export var outline_color: Color = Color(0.05, 0.04, 0.08)
+## Blob shadow under each fighter: radius (m) on the ground, opacity, and
+## how it shrinks/fades with height (scale = 1 / (1 + height * falloff)).
+@export var blob_shadow_radius: float = 0.55
+@export var blob_shadow_opacity: float = 0.45
+@export var blob_shadow_height_falloff: float = 0.35
+## Lift above the floor (m) against z-fighting.
+@export var blob_shadow_lift: float = 0.02

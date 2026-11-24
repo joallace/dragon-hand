@@ -3,6 +3,7 @@ extends Node
 ## sample) so a track can be checked by eye while tuning it. The track's
 ## raw target poses, without the springs. Needs a real window (no --headless):
 ##   godot res://tools/pose_sheet.tscn --resolution 320x240 -- out=<dir> [only=jab] [view=side|front34]
+## `poses=guard,duck,...` instead draws those static poses in one strip.
 ## Cells: u = 0 (load) .. 1 (contact, first active frame) .. 2 (recovery) .. 3.
 
 const US: Array[float] = [0.0, 0.5, 0.8, 1.0, 1.35, 2.0, 2.35, 2.7, 3.0]
@@ -34,6 +35,9 @@ func _ready() -> void:
 	for view: String in VIEWS:
 		if args.has("view") and args["view"] != view:
 			continue
+		if args.has("poses"):
+			await _static_strip(args["poses"].split(","), view, out)
+			continue
 		for pose: StringName in MoveTracks.TRACKS:
 			if args.has("only") and StringName(args["only"]) != pose:
 				continue
@@ -47,6 +51,19 @@ func _ready() -> void:
 			strip.save_png(path)
 			print("POSE_SHEET ", ProjectSettings.globalize_path(path))
 	get_tree().quit()
+
+
+## One strip of named static poses (FighterVisual.POSES / MoveTracks.KEY_POSES).
+func _static_strip(names: PackedStringArray, view: String, out: String) -> void:
+	_cam.position = VIEWS[view]
+	_cam.look_at(LOOK_AT)
+	var strip := Image.create(CELL.x * names.size(), CELL.y, false, Image.FORMAT_RGBA8)
+	for i in names.size():
+		_apply(MoveTracks.pose_of(StringName(names[i])))
+		strip.blit_rect(await _shot(), Rect2i(Vector2i.ZERO, CELL), Vector2i(CELL.x * i, 0))
+	var path := "%s/poses_%s.png" % [out, view]
+	strip.save_png(path)
+	print("POSE_SHEET ", ProjectSettings.globalize_path(path))
 
 
 func _build_stage() -> void:

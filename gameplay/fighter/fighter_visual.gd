@@ -42,7 +42,8 @@ const BELLY_FORWARD := 0.45
 ## Meta on meshes VfxManager.afterimage() must not copy (the blob shadow).
 const NO_AFTERIMAGE := &"no_afterimage"
 
-## Named poses: joint -> rotation (deg). "root" = body offset (m).
+## Named poses: joint -> rotation (deg). "root" = body offset (m). Attacks
+## are MoveTracks (KEY_POSES); these are states and the get-up strike.
 ## Missing joints fall back to &"idle".
 const POSES := {
 	&"idle": {
@@ -53,38 +54,6 @@ const POSES := {
 		&"hip_r": Vector3(-12, 0, 5), &"kn_r": Vector3(-15, 0, 0),
 		&"spin": Vector3.ZERO, &"root": Vector3(0, -0.04, 0),
 	},
-	&"kick_mid": {&"torso": Vector3(-15, -25, 0), &"hip_r": Vector3(95, 0, -10), &"kn_r": Vector3(-5, 0, 0),
-		&"hip_l": Vector3(-5, 0, 0), &"kn_l": Vector3(-15, 0, 0)},
-	&"kick_mid_windup": {&"torso": Vector3(0, 25, 0), &"hip_r": Vector3(70, 0, 0), &"kn_r": Vector3(-115, 0, 0),
-		&"kn_l": Vector3(-20, 0, 0)},
-	&"kick_low": {&"torso": Vector3(35, -20, 0), &"hip_l": Vector3(100, 0, 0), &"kn_l": Vector3(-130, 0, 0),
-		&"hip_r": Vector3(70, 0, -35), &"kn_r": Vector3(0, 0, 0), &"sh_l": Vector3(20, 0, -40),
-		&"root": Vector3(0, -0.45, 0)},
-	&"kick_low_windup": {&"torso": Vector3(30, 30, 0), &"hip_l": Vector3(90, 0, 0), &"kn_l": Vector3(-120, 0, 0),
-		&"hip_r": Vector3(40, 0, 0), &"kn_r": Vector3(-70, 0, 0), &"root": Vector3(0, -0.35, 0)},
-	&"charge_kick": {&"torso": Vector3(-20, -15, 0), &"hip_r": Vector3(110, 0, 0), &"kn_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(-5, 0, 0), &"kn_l": Vector3(-15, 0, 0), &"sh_l": Vector3(-30, 0, -20)},
-	&"charge_kick_windup": {&"torso": Vector3(5, 45, 0), &"hip_r": Vector3(85, 0, 0), &"kn_r": Vector3(-140, 0, 0),
-		&"kn_l": Vector3(-35, 0, 0), &"sh_l": Vector3(40, 0, -30), &"sh_r": Vector3(-30, 0, 30),
-		&"root": Vector3(0, -0.1, 0)},
-	&"finisher": {&"torso": Vector3(-20, -20, 0), &"sh_r": Vector3(165, 0, 0), &"el_r": Vector3(25, 0, 0),
-		&"root": Vector3(0, 0.12, 0)},
-	&"finisher_windup": {&"torso": Vector3(30, 20, 0), &"sh_r": Vector3(0, 0, 10), &"el_r": Vector3(130, 0, 0),
-		&"root": Vector3(0, -0.2, 0), &"kn_l": Vector3(-50, 0, 0), &"hip_l": Vector3(40, 0, 0)},
-	&"jump_kick": {&"torso": Vector3(-10, 0, 0), &"hip_r": Vector3(80, 0, 0), &"kn_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(-30, 0, 0), &"kn_l": Vector3(-95, 0, 0)},
-	# Diving kick: tucked, then one leg stabbed down-forward, leaning back.
-	&"dive_kick": {&"torso": Vector3(-20, 0, 0), &"hip_r": Vector3(40, 0, 0), &"kn_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(85, 0, 0), &"kn_l": Vector3(-115, 0, 0), &"sh_l": Vector3(-20, 0, -45),
-		&"sh_r": Vector3(-20, 0, 45)},
-	&"dive_kick_windup": {&"torso": Vector3(15, 0, 0), &"hip_l": Vector3(95, 0, 0), &"kn_l": Vector3(-125, 0, 0),
-		&"hip_r": Vector3(100, 0, 0), &"kn_r": Vector3(-130, 0, 0)},
-	# Duck kick: stays in the crouch and sweeps one leg out along the floor.
-	&"duck_kick": {&"torso": Vector3(40, -20, 0), &"hip_l": Vector3(110, 0, 0), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(80, 0, -25), &"kn_r": Vector3(0, 0, 0), &"sh_l": Vector3(25, 0, -40),
-		&"root": Vector3(0, -0.5, 0)},
-	&"duck_kick_windup": {&"torso": Vector3(45, 15, 0), &"hip_l": Vector3(110, 0, 0), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(105, 0, 0), &"kn_r": Vector3(-145, 0, 0), &"root": Vector3(0, -0.5, 0)},
 	# Get-up strike: pushes off the floor onto both hands, legs tucked...
 	&"getup_kick_windup": {&"torso": Vector3(70, 0, 0), &"head": Vector3(-35, 0, 0),
 		&"sh_l": Vector3(-40, 0, -15), &"el_l": Vector3(10, 0, 0),
@@ -98,21 +67,6 @@ const POSES := {
 		&"sh_r": Vector3(-45, 0, 10), &"el_r": Vector3(5, 0, 0),
 		&"hip_l": Vector3(100, 0, -15), &"kn_l": Vector3(-135, 0, 0),
 		&"hip_r": Vector3(10, 0, 80), &"kn_r": Vector3(0, 0, 0), &"root": Vector3(0, -0.5, 0)},
-	&"dash_punch": {&"torso": Vector3(35, -15, 0), &"sh_r": Vector3(90, 0, 0), &"el_r": Vector3(0, 0, 0),
-		&"sh_l": Vector3(-35, 0, -10), &"hip_l": Vector3(45, 0, 0), &"hip_r": Vector3(-35, 0, 0)},
-	# Belly bump: leans back with the arms out, gut thrust at the target.
-	&"belly_bump": {&"torso": Vector3(-25, 0, 0), &"head": Vector3(20, 0, 0), &"sh_l": Vector3(-30, 0, -45),
-		&"sh_r": Vector3(-30, 0, 45), &"hip_l": Vector3(35, 0, 0), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.06, 0)},
-	&"belly_bump_windup": {&"torso": Vector3(25, 0, 0), &"sh_l": Vector3(20, 0, -35), &"sh_r": Vector3(20, 0, 35),
-		&"kn_l": Vector3(-35, 0, 0), &"kn_r": Vector3(-35, 0, 0), &"root": Vector3(0, -0.15, 0)},
-	&"ki_blast": {&"torso": Vector3(0, -25, 0), &"sh_r": Vector3(90, 0, 0), &"el_r": Vector3(0, 0, 0)},
-	&"beam": {&"torso": Vector3(0, 0, 0), &"sh_l": Vector3(88, 0, 12), &"el_l": Vector3(0, 0, 0),
-		&"sh_r": Vector3(88, 0, -12), &"el_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(5, 0, -20), &"hip_r": Vector3(5, 0, 20), &"kn_l": Vector3(-25, 0, 0),
-		&"kn_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.12, 0)},
-	&"beam_windup": {&"torso": Vector3(0, 60, 0), &"sh_l": Vector3(-20, 0, -30), &"el_l": Vector3(100, 0, 0),
-		&"sh_r": Vector3(-30, 0, 20), &"el_r": Vector3(100, 0, 0), &"root": Vector3(0, -0.15, 0)},
 	# Duck low poses (DUCK_POSES, picked by Fighter.duck_variant()), after
 	# God Hand's three: a forward hunch behind raised forearms...
 	&"duck": {&"torso": Vector3(-50, 0, 0), &"head": Vector3(35, 0, 0),
@@ -196,12 +150,6 @@ const POSES := {
 		&"hip_l": Vector3(25, 0, 0), &"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(-25, 0, 0),
 		&"root": Vector3(0, -0.05, 0)},
 	# --- throws ----------------------------------------------------------------
-	&"throw": {&"torso": Vector3(25, 0, 0), &"sh_l": Vector3(95, 0, -15), &"el_l": Vector3(15, 0, 0),
-		&"sh_r": Vector3(95, 0, 15), &"el_r": Vector3(15, 0, 0),
-		&"hip_l": Vector3(35, 0, 0), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(-25, 0, 0)},
-	&"throw_windup": {&"torso": Vector3(5, 0, 0), &"sh_l": Vector3(50, 0, -40), &"el_l": Vector3(70, 0, 0),
-		&"sh_r": Vector3(50, 0, 40), &"el_r": Vector3(70, 0, 0),
-		&"kn_l": Vector3(-30, 0, 0), &"kn_r": Vector3(-30, 0, 0), &"root": Vector3(0, -0.05, 0)},
 	# THROW state: holding the victim (break window), then the toss.
 	&"throw_hold": {&"torso": Vector3(-10, 0, 0), &"sh_l": Vector3(80, 0, 12), &"el_l": Vector3(50, 0, 0),
 		&"sh_r": Vector3(80, 0, -12), &"el_r": Vector3(50, 0, 0),
@@ -221,37 +169,6 @@ const POSES := {
 		&"sh_l": Vector3(15, 0, -40), &"el_l": Vector3(100, 0, 0),
 		&"sh_r": Vector3(85, 0, 10), &"el_r": Vector3(70, 0, 0),
 		&"hip_l": Vector3(5, 0, -10), &"hip_r": Vector3(-5, 0, 10)},
-	# --- charged smash variants --------------------------------------------------
-	&"uppercut": {&"torso": Vector3(-20, -25, 0), &"head": Vector3(-15, 0, 0),
-		&"sh_r": Vector3(175, 0, 0), &"el_r": Vector3(20, 0, 0),
-		&"sh_l": Vector3(20, 0, -30), &"el_l": Vector3(90, 0, 0),
-		&"hip_l": Vector3(-10, 0, 0), &"hip_r": Vector3(15, 0, 0), &"kn_r": Vector3(-10, 0, 0),
-		&"root": Vector3(0, 0.15, 0)},
-	&"uppercut_windup": {&"torso": Vector3(35, 30, 0), &"sh_r": Vector3(-10, 0, 15), &"el_r": Vector3(110, 0, 0),
-		&"hip_l": Vector3(60, 0, 0), &"kn_l": Vector3(-80, 0, 0),
-		&"hip_r": Vector3(30, 0, 0), &"kn_r": Vector3(-60, 0, 0), &"root": Vector3(0, -0.1, 0)},
-	# Double-fisted overhead hammer.
-	&"hammer": {&"torso": Vector3(40, -10, 0), &"head": Vector3(10, 0, 0),
-		&"sh_l": Vector3(45, 0, 12), &"el_l": Vector3(10, 0, 0),
-		&"sh_r": Vector3(45, 0, -12), &"el_r": Vector3(10, 0, 0),
-		&"hip_l": Vector3(45, 0, 0), &"kn_l": Vector3(-45, 0, 0), &"hip_r": Vector3(-25, 0, 0),
-		&"root": Vector3(0, -0.11, 0)},
-	&"hammer_windup": {&"torso": Vector3(-25, 0, 0), &"head": Vector3(-15, 0, 0),
-		&"sh_l": Vector3(185, 0, 10), &"el_l": Vector3(30, 0, 0),
-		&"sh_r": Vector3(185, 0, -10), &"el_r": Vector3(30, 0, 0), &"root": Vector3(0, 0.05, 0)},
-	# Sideways back-fists (+torso Y turns the chest to the fighter's left).
-	&"smash_left": {&"torso": Vector3(0, 45, 0), &"head": Vector3(0, -20, 0),
-		&"sh_l": Vector3(90, 0, -60), &"el_l": Vector3(5, 0, 0),
-		&"sh_r": Vector3(40, 0, 20), &"el_r": Vector3(110, 0, 0),
-		&"hip_l": Vector3(20, 0, -15), &"kn_l": Vector3(-25, 0, 0)},
-	&"smash_left_windup": {&"torso": Vector3(5, -40, 0), &"sh_l": Vector3(80, 0, 40), &"el_l": Vector3(120, 0, 0),
-		&"kn_l": Vector3(-30, 0, 0), &"kn_r": Vector3(-30, 0, 0), &"root": Vector3(0, -0.05, 0)},
-	&"smash_right": {&"torso": Vector3(0, -45, 0), &"head": Vector3(0, 20, 0),
-		&"sh_r": Vector3(90, 0, 60), &"el_r": Vector3(5, 0, 0),
-		&"sh_l": Vector3(40, 0, -20), &"el_l": Vector3(110, 0, 0),
-		&"hip_r": Vector3(20, 0, 15), &"kn_r": Vector3(-25, 0, 0)},
-	&"smash_right_windup": {&"torso": Vector3(5, 40, 0), &"sh_r": Vector3(80, 0, -40), &"el_r": Vector3(120, 0, 0),
-		&"kn_l": Vector3(-30, 0, 0), &"kn_r": Vector3(-30, 0, 0), &"root": Vector3(0, -0.05, 0)},
 }
 ## Duck low pose per Fighter.duck_variant() (Fighter.DUCK_VARIANTS long).
 const DUCK_POSES: Array[StringName] = [&"duck", &"duck_curl", &"duck_wide"]

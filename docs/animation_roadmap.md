@@ -17,7 +17,7 @@ Ground rules carried over from the pilot:
 - Check by eye with `tools/pose_sheet.tscn` (strips); fit contacts with
   `tools/pose_fit.tscn`.
 
-## Step 1: fix the static poses + fitting tool
+## Step 1: fix the static poses + fitting tool (done)
 - Audit every pose still in `FighterVisual.POSES` (state poses: guard,
   hitstun, dash, charge, throw hold/toss, taunt, recoil, ducks, sways...)
   for the inverted lean; fix them, keeping the floor/duck tests green.
@@ -25,12 +25,12 @@ Ground rules carried over from the pilot:
 - `tools/pose_fit.tscn`: the pilot's throwaway fitter as a tool (searches a
   limb's angles to reach a move's hitbox, reports the floor offset).
 
-## Step 2: tracks for the remaining ground strikes
+## Step 2: tracks for the remaining ground strikes (done, with step 3)
 finisher (string ender / counter / rush finish), kick_mid, smash_left,
 smash_right, hammer, uppercut, charge_kick, kick_low (sweep), dash_punch
 (also the rush), belly_bump, throw. Contacts fitted and tested.
 
-## Step 3: tracks for air, floor and ki moves
+## Step 3: tracks for air, floor and ki moves (done)
 jump_kick, dive_kick (airborne: no floor check, contact only), duck_kick,
 getup_kick (keeps its procedural spin), ki_blast and beam (no hitbox: the
 hands aim at the spawn point; beam holds through its long recovery).

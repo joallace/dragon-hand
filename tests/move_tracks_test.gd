@@ -33,6 +33,7 @@ func _ready() -> void:
 	_test_contacts()
 	_test_feet()
 	_test_track_shape()
+	_test_all_moves_tracked()
 	_test_timeline()
 	_test_springs()
 	_visual.queue_free()
@@ -88,7 +89,8 @@ func _test_contacts() -> void:
 		var m := load(MOVES_DIR + String(c[1]) + ".tres") as MoveData
 		if not _check(m != null, "contact move %s exists" % c[1]):
 			continue
-		_check(MoveTracks.has_track(m.pose), "%s's pose %s has a track" % [m.id, m.pose])
+		if m.pose != &"":  # projectile shots: posed by the move that spawns them
+			_check(MoveTracks.has_track(m.pose), "%s's pose %s has a track" % [m.id, m.pose])
 		_apply(MoveTracks.KEY_POSES[id])
 		var d := _effector(_visual._joints, c[0]).distance_to(_hitbox_local(m))
 		_check(d <= CONTACT_TOLERANCE, "%s: %s on %s's hitbox (%.3f m off)" % [id, c[0], m.id, d])
@@ -98,9 +100,29 @@ func _test_feet() -> void:
 	_apply(FighterVisual.POSES[&"idle"])
 	var ref := _lowest()
 	for id: StringName in MoveTracks.KEY_POSES:
+		if _airborne(id):
+			continue
 		_apply(MoveTracks.KEY_POSES[id])
 		var low := _lowest()
 		_check(absf(low - ref) <= FLOOR_TOLERANCE, "%s feet planted (lowest %.3f, idle %.3f)" % [id, low, ref])
+
+
+## Key pose of an airborne track ("<track>_<key>").
+static func _airborne(id: StringName) -> bool:
+	for t in MoveTracks.AIRBORNE:
+		if String(id).begins_with(String(t) + "_"):
+			return true
+	return false
+
+
+## Every attack pose any move uses has a track (no static fallbacks left).
+func _test_all_moves_tracked() -> void:
+	for file in DirAccess.get_files_at(MOVES_DIR):
+		if file.get_extension() != "tres":
+			continue
+		var m := load(MOVES_DIR + file) as MoveData
+		if m != null and m.pose != &"":
+			_check(MoveTracks.has_track(m.pose), "move %s pose %s has a track" % [m.id, m.pose])
 
 
 func _test_track_shape() -> void:
@@ -117,7 +139,10 @@ func _test_track_shape() -> void:
 				contact_at = u
 			prev = u
 		_check(ok, "track %s: keys ordered in 0..3, poses defined" % pose)
-		_check(is_equal_approx(contact_at, 1.0), "track %s: contact pose on the first active frame" % pose)
+		if pose in MoveTracks.NO_CONTACT:
+			_check(contact_at < 0.0, "track %s: listed without contact, has none" % pose)
+		else:
+			_check(is_equal_approx(contact_at, 1.0), "track %s: contact pose on the first active frame" % pose)
 		_check(keys[-1][1] == &"idle", "track %s ends in idle" % pose)
 		var s := MoveTracks.sample(pose, 1.0, FighterVisual.POSES[&"idle"])
 		_check(s.size() == FighterVisual.POSES[&"idle"].size(), "track %s samples a full pose" % pose)

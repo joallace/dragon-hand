@@ -10,21 +10,20 @@ const LYING_PART_TOLERANCE := 0.05
 ## Get-up poses whose lowest point must touch the floor.
 const GROUNDED: Array[StringName] = [&"knockdown", &"wakeup"]
 ## Standing poses (feet planted) whose lowest point must stay within
-## FOOT_TOLERANCE of the floor (no sinking, no floating).
+## FOOT_TOLERANCE of the floor (no sinking, no floating). Attack key poses
+## are checked by tests/move_tracks_test.
 const STANDING: Array[StringName] = [
-	&"guard", &"guard_high", &"guard_low", &"counter_guard", &"recoil", &"throw",
-	&"throw_windup", &"throw_hold", &"throw_toss", &"taunt", &"uppercut_windup",
-	&"hammer", &"hammer_windup", &"smash_left", &"smash_left_windup", &"smash_right",
-	&"smash_right_windup", &"duck_kick", &"duck_kick_windup", &"dash_start", &"dash_stop",
+	&"guard", &"guard_high", &"guard_low", &"counter_guard", &"recoil",
+	&"throw_hold", &"throw_toss", &"taunt", &"dash_start", &"dash_stop",
 	&"charge_end", &"duck", &"duck_curl", &"duck_wide", &"getup_kick", &"getup_kick_windup",
 ]
 const FOOT_TOLERANCE := 0.12
 ## Highest point (m) a duck pose may reach: the original single duck pose's
 ## (the primitive rig's head can't get under FighterTuning.duck_height).
 const DUCK_MAX_TOP := 1.25
-## Attack poses that must have a "<pose>_windup" for their startup.
-const NEEDS_WINDUP: Array[StringName] = [&"throw", &"uppercut", &"hammer", &"smash_left", &"smash_right",
-	&"dive_kick", &"duck_kick", &"getup_kick"]
+## Static attack poses that must have a "<pose>_windup" for their startup
+## (the get-up strike's track keys them).
+const NEEDS_WINDUP: Array[StringName] = [&"getup_kick"]
 const MOVES_DIR := "res://data/moves/"
 
 var _ok := true

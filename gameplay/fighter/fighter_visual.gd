@@ -22,9 +22,21 @@ extends SmoothedVisual
 ## so +X tilts them BACK; torso +Y turns the chest left. Angles in degrees.
 
 const JOINTS: Array[StringName] = [
-	&"torso", &"head", &"sh_l", &"el_l", &"sh_r", &"el_r",
-	&"hip_l", &"kn_l", &"hip_r", &"kn_r", &"spin",
+	&"torso", &"chest", &"head", &"sh_l", &"el_l", &"wr_l", &"sh_r", &"el_r", &"wr_r",
+	&"hip_l", &"kn_l", &"an_l", &"hip_r", &"kn_r", &"an_r", &"spin",
 ]
+## Rig layout (m): the chest pivots CHEST_AT above the waist (torso joint),
+## the head and shoulders hang off the chest, wrists WRIST_AT below the
+## elbow, ankles ANKLE_AT below the knee. At zero chest/wrist/ankle angles
+## this is the old single-torso rig exactly (head 0.68, shoulders 0.58 up).
+const CHEST_AT := Vector3(0, 0.30, 0)
+const HEAD_AT := Vector3(0, 0.38, 0)
+const SHOULDER_AT := Vector3(0.29, 0.28, 0)
+const UPPER_ARM := 0.32
+const WRIST_AT := Vector3(0, -0.22, 0)
+const HIP_AT := Vector3(0.12, 0, 0)
+const THIGH := 0.46
+const ANKLE_AT := Vector3(0, -0.42, 0)
 ## Spring channel of the body offset (POSES' "root").
 const ROOT := &"root"
 ## States lying on / rising off the floor: no spring overshoot through it.
@@ -56,6 +68,7 @@ const POSES := {
 		&"sh_r": Vector3(35, 0, 10), &"el_r": Vector3(115, 0, 0),
 		&"hip_l": Vector3(15, 0, -5), &"kn_l": Vector3(-20, 0, 0),
 		&"hip_r": Vector3(-12, 0, 5), &"kn_r": Vector3(-15, 0, 0),
+		&"wr_l": Vector3.ZERO, &"wr_r": Vector3.ZERO,
 		&"spin": Vector3.ZERO, &"root": Vector3(0, -0.04, 0),
 	},
 	# Get-up strike: pushes off the floor onto both hands, legs tucked...
@@ -77,39 +90,39 @@ const POSES := {
 		&"sh_l": Vector3(110, 0, -15), &"el_l": Vector3(120, 0, 0),
 		&"sh_r": Vector3(100, 0, 15), &"el_r": Vector3(125, 0, 0),
 		&"hip_l": Vector3(110, 0, 0), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(100, 0, 0), &"kn_r": Vector3(-140, 0, 0), &"root": Vector3(0, -0.5, 0)},
+		&"hip_r": Vector3(100, 0, 0), &"kn_r": Vector3(-140, 0, 0), &"root": Vector3(0, -0.666, 0)},
 	# ...a deep curl dropping the head and shoulders off to the left...
 	&"duck_curl": {&"torso": Vector3(-55, 15, 25), &"head": Vector3(25, 0, 15),
 		&"sh_l": Vector3(35, 0, -10), &"el_l": Vector3(135, 0, 0),
 		&"sh_r": Vector3(95, 0, 25), &"el_r": Vector3(130, 0, 0),
 		&"hip_l": Vector3(100, 0, -15), &"kn_l": Vector3(-145, 0, 0),
-		&"hip_r": Vector3(115, 0, 10), &"kn_r": Vector3(-150, 0, 0), &"root": Vector3(0, -0.52, 0)},
+		&"hip_r": Vector3(115, 0, 10), &"kn_r": Vector3(-150, 0, 0), &"root": Vector3(0, -0.667, 0)},
 	# ...and a drop onto wide-spread knees.
 	&"duck_wide": {&"torso": Vector3(-45, 0, 0), &"head": Vector3(28, 0, 0),
 		&"sh_l": Vector3(40, 0, -30), &"el_l": Vector3(100, 0, 0),
 		&"sh_r": Vector3(40, 0, 30), &"el_r": Vector3(100, 0, 0),
 		&"hip_l": Vector3(85, 0, -35), &"kn_l": Vector3(-150, 0, 0),
-		&"hip_r": Vector3(85, 0, 35), &"kn_r": Vector3(-150, 0, 0), &"root": Vector3(0, -0.55, 0)},
-	&"sway_l": {&"torso": Vector3(-5, 0, 30), &"head": Vector3(0, 0, 15), &"root": Vector3(0, -0.1, 0)},
-	&"sway_r": {&"torso": Vector3(-5, 0, -30), &"head": Vector3(0, 0, -15), &"root": Vector3(0, -0.1, 0)},
+		&"hip_r": Vector3(85, 0, 35), &"kn_r": Vector3(-150, 0, 0), &"root": Vector3(0, -0.608, 0)},
+	&"sway_l": {&"torso": Vector3(-5, 0, 30), &"head": Vector3(0, 0, 15), &"root": Vector3(0, -0.04, 0)},
+	&"sway_r": {&"torso": Vector3(-5, 0, -30), &"head": Vector3(0, 0, -15), &"root": Vector3(0, -0.04, 0)},
 	# Sway start (StateTracks): ducked further under, knees giving.
 	&"sway_l_dip": {&"torso": Vector3(-10, 0, 42), &"head": Vector3(4, 0, 22),
 		&"sh_l": Vector3(60, 0, -20), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(55, 0, 25), &"el_r": Vector3(120, 0, 0),
 		&"hip_l": Vector3(30, 0, -12), &"kn_l": Vector3(-45, 0, 0), &"hip_r": Vector3(5, 0, 12), &"kn_r": Vector3(-40, 0, 0),
-		&"root": Vector3(0, -0.046, 0)},
+		&"root": Vector3(0, -0.1, 0)},
 	&"sway_r_dip": {&"torso": Vector3(-10, 0, -42), &"head": Vector3(4, 0, -22),
 		&"sh_l": Vector3(55, 0, -25), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(60, 0, 20), &"el_r": Vector3(120, 0, 0),
 		&"hip_l": Vector3(30, 0, -12), &"kn_l": Vector3(-45, 0, 0), &"hip_r": Vector3(5, 0, 12), &"kn_r": Vector3(-40, 0, 0),
-		&"root": Vector3(0, -0.046, 0)},
+		&"root": Vector3(0, -0.1, 0)},
 	# Backflip push-off and landing crouches (StateTracks).
 	&"backflip_load": {&"torso": Vector3(-15, 0, 0), &"head": Vector3(8, 0, 0),
 		&"sh_l": Vector3(-40, 0, -15), &"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(-40, 0, 15), &"el_r": Vector3(30, 0, 0),
 		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-75, 0, 0), &"hip_r": Vector3(40, 0, 5), &"kn_r": Vector3(-70, 0, 0),
-		&"root": Vector3(0, -0.14, 0)},
+		&"root": Vector3(0, -0.187, 0)},
 	&"backflip_land": {&"torso": Vector3(-20, 0, 0), &"head": Vector3(12, 0, 0),
 		&"sh_l": Vector3(40, 0, -35), &"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(40, 0, 35), &"el_r": Vector3(60, 0, 0),
 		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-75, 0, 0), &"hip_r": Vector3(40, 0, 5), &"kn_r": Vector3(-70, 0, 0),
-		&"root": Vector3(0, -0.14, 0)},
+		&"root": Vector3(0, -0.187, 0)},
 	&"backflip": {&"hip_l": Vector3(100, 0, 0), &"kn_l": Vector3(-120, 0, 0), &"hip_r": Vector3(100, 0, 0),
 		&"kn_r": Vector3(-120, 0, 0), &"sh_l": Vector3(150, 0, -20), &"sh_r": Vector3(150, 0, 20)},
 	&"guard": {&"torso": Vector3(-12, 0, 0), &"sh_l": Vector3(80, 0, -30), &"el_l": Vector3(115, 0, 0),
@@ -120,12 +133,12 @@ const POSES := {
 		&"el_l": Vector3(20, 0, 0), &"sh_r": Vector3(30, 0, 85), &"el_r": Vector3(20, 0, 0)},
 	&"charge": {&"torso": Vector3(6, 0, 0), &"head": Vector3(12, 0, 0), &"sh_l": Vector3(10, 0, -45),
 		&"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(10, 0, 45), &"el_r": Vector3(30, 0, 0),
-		&"hip_l": Vector3(0, 0, -15), &"hip_r": Vector3(0, 0, 15), &"root": Vector3(0, -0.08, 0)},
+		&"hip_l": Vector3(0, 0, -15), &"hip_r": Vector3(0, 0, 15), &"root": Vector3(0, -0.047, 0)},
 	# Ki charge start (StateTracks): gathering in before powering up.
 	&"charge_gather": {&"torso": Vector3(-20, 0, 0), &"head": Vector3(-8, 0, 0),
 		&"sh_l": Vector3(55, 0, 20), &"el_l": Vector3(130, 0, 0), &"sh_r": Vector3(55, 0, -20), &"el_r": Vector3(130, 0, 0),
 		&"hip_l": Vector3(20, 0, -12), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(10, 0, 12), &"kn_r": Vector3(-35, 0, 0),
-		&"root": Vector3(0, -0.041, 0)},
+		&"root": Vector3(0, -0.067, 0)},
 	# Hitstun by where the hit landed (FighterVisual hit zone): the head snaps
 	# back, a body blow folds the chest over, a low hit buckles a knee.
 	&"hitstun": {&"torso": Vector3(18, 0, 0), &"head": Vector3(20, 0, 0), &"sh_l": Vector3(-15, 0, -40),
@@ -133,11 +146,11 @@ const POSES := {
 	&"hitstun_body": {&"torso": Vector3(-32, 0, 0), &"head": Vector3(-6, 0, 0),
 		&"sh_l": Vector3(35, 0, 10), &"el_l": Vector3(105, 0, 0), &"sh_r": Vector3(35, 0, -10), &"el_r": Vector3(105, 0, 0),
 		&"hip_l": Vector3(25, 0, -5), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(0, 0, 5), &"kn_r": Vector3(-30, 0, 0),
-		&"root": Vector3(0, -0.032, 0.04)},
+		&"root": Vector3(0, -0.072, 0.04)},
 	&"hitstun_low": {&"torso": Vector3(-12, 0, -12), &"head": Vector3(10, 0, 8),
 		&"sh_l": Vector3(20, 0, -45), &"el_l": Vector3(50, 0, 0), &"sh_r": Vector3(20, 0, 45), &"el_r": Vector3(50, 0, 0),
 		&"hip_l": Vector3(55, 0, -8), &"kn_l": Vector3(-80, 0, 0), &"hip_r": Vector3(-10, 0, 8), &"kn_r": Vector3(-20, 0, 0),
-		&"root": Vector3(0, -0.04, 0)},
+		&"root": Vector3(0, -0.086, 0)},
 	&"launched": {&"torso": Vector3(0, 0, 0), &"head": Vector3(15, 0, 0), &"hip_l": Vector3(30, 0, 0),
 		&"hip_r": Vector3(15, 0, 0), &"sh_l": Vector3(60, 0, -60), &"sh_r": Vector3(60, 0, 60),
 		&"spin": Vector3(40, 0, 0)},
@@ -153,15 +166,15 @@ const POSES := {
 	&"dash_start": {&"head": Vector3(12, 0, 0), &"torso": Vector3(-20, 0, 0), &"sh_l": Vector3(-20, 0, -15), &"sh_r": Vector3(-20, 0, 15),
 		&"el_l": Vector3(45, 0, 0), &"el_r": Vector3(45, 0, 0), &"hip_l": Vector3(40, 0, 0),
 		&"kn_l": Vector3(-60, 0, 0), &"hip_r": Vector3(-10, 0, 0), &"kn_r": Vector3(-30, 0, 0),
-		&"root": Vector3(0, -0.04, 0)},
+		&"root": Vector3(0, -0.134, 0)},
 	&"dash_stop": {&"torso": Vector3(12, 0, 0), &"head": Vector3(-4, 0, 0), &"sh_l": Vector3(30, 0, -40),
 		&"el_l": Vector3(20, 0, 0), &"sh_r": Vector3(30, 0, 40), &"el_r": Vector3(20, 0, 0),
 		&"hip_l": Vector3(-30, 0, 0), &"kn_l": Vector3(-20, 0, 0), &"hip_r": Vector3(35, 0, 0),
-		&"kn_r": Vector3(-50, 0, 0), &"root": Vector3(0, -0.08, 0)},
+		&"kn_r": Vector3(-50, 0, 0), &"root": Vector3(0, -0.126, 0)},
 	# Ki charge release lag: exhaling, arms dropping out of the charge.
 	&"charge_end": {&"torso": Vector3(-10, 0, 0), &"head": Vector3(-8, 0, 0), &"sh_l": Vector3(5, 0, -20),
 		&"el_l": Vector3(20, 0, 0), &"sh_r": Vector3(5, 0, 20), &"el_r": Vector3(20, 0, 0),
-		&"hip_l": Vector3(0, 0, -10), &"hip_r": Vector3(0, 0, 10), &"root": Vector3(0, -0.02, 0)},
+		&"hip_l": Vector3(0, 0, -10), &"hip_r": Vector3(0, 0, 10), &"root": Vector3(0, -0.039, 0)},
 	&"jump": {&"hip_l": Vector3(70, 0, 0), &"kn_l": Vector3(-100, 0, 0), &"hip_r": Vector3(40, 0, 0),
 		&"kn_r": Vector3(-80, 0, 0)},
 	&"vanish_wait": {&"head": Vector3(0, 40, 0), &"torso": Vector3(-5, 20, 0)},
@@ -173,24 +186,24 @@ const POSES := {
 		&"sh_l": Vector3(35, 0, 12), &"el_l": Vector3(45, 0, 0),
 		&"sh_r": Vector3(35, 0, -12), &"el_r": Vector3(45, 0, 0),
 		&"hip_l": Vector3(75, 0, -8), &"kn_l": Vector3(-105, 0, 0),
-		&"hip_r": Vector3(40, 0, 8), &"kn_r": Vector3(-95, 0, 0), &"root": Vector3(0, -0.23, 0)},
+		&"hip_r": Vector3(40, 0, 8), &"kn_r": Vector3(-95, 0, 0), &"root": Vector3(0, -0.257, 0)},
 	# Counter stance: leaning in, lead palm out to catch the hit.
 	&"counter_guard": {&"torso": Vector3(-15, -20, 0), &"head": Vector3(10, 15, 0),
 		&"sh_l": Vector3(95, 0, -10), &"el_l": Vector3(30, 0, 0),
 		&"sh_r": Vector3(60, 0, 30), &"el_r": Vector3(120, 0, 0),
 		&"hip_l": Vector3(35, 0, 0), &"kn_l": Vector3(-40, 0, 0), &"hip_r": Vector3(-20, 0, 0),
-		&"root": Vector3(0, -0.08, 0)},
+		&"root": Vector3(0, -0.113, 0)},
 	# Pushed back off a guard / broken throw: rocked back, arms flung.
 	&"recoil": {&"torso": Vector3(25, 0, 0), &"head": Vector3(12, 0, 0),
 		&"sh_l": Vector3(-10, 0, -50), &"el_l": Vector3(40, 0, 0),
 		&"sh_r": Vector3(-10, 0, 50), &"el_r": Vector3(40, 0, 0),
 		&"hip_l": Vector3(25, 0, 0), &"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(-25, 0, 0),
-		&"root": Vector3(0, -0.05, 0)},
+		&"root": Vector3(0, -0.073, 0)},
 	# --- throws ----------------------------------------------------------------
 	# THROW state: holding the victim (break window), then the toss.
 	&"throw_hold": {&"torso": Vector3(-10, 0, 0), &"sh_l": Vector3(80, 0, 12), &"el_l": Vector3(50, 0, 0),
 		&"sh_r": Vector3(80, 0, -12), &"el_r": Vector3(50, 0, 0),
-		&"hip_l": Vector3(25, 0, 0), &"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(-15, 0, 0)},
+		&"hip_l": Vector3(25, 0, 0), &"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.073, 0)},
 	&"throw_toss": {&"torso": Vector3(25, -40, 0), &"head": Vector3(10, -10, 0),
 		&"sh_l": Vector3(160, 0, -20), &"el_l": Vector3(10, 0, 0),
 		&"sh_r": Vector3(160, 0, 20), &"el_r": Vector3(10, 0, 0),
@@ -235,6 +248,8 @@ var _anim_frame := 0.0
 var _anim_serial := -1
 ## StateTracks key being played (&"" when none).
 var _state_key := &""
+## The completed idle pose (springs fall back to it), built once in _build.
+var _rest: Dictionary = {}
 ## Where the last hit taken landed (HitZone): picks the hitstun pose.
 var _hit_zone := HitZone.HEAD
 ## Desyncs idle breathing between fighters (seconds).
@@ -275,7 +290,7 @@ func _process(delta: float) -> void:
 	_time += delta
 	_body.visible = not _fighter.is_vanished()
 	var a := Tuning.anim
-	var pose := _with_idle_motion(_target_pose())
+	var pose := _with_idle_motion(complete_pose(_target_pose()))
 	var st := _fighter.current_state_name()
 	var hz := a.spring_hz
 	var zeta := a.spring_damping
@@ -287,11 +302,12 @@ func _process(delta: float) -> void:
 	elif _fighter.attack_phase() == 1 or st == &"dodge":
 		hz = a.strike_spring_hz
 		zeta = a.strike_spring_damping
-	_springs.step(pose, POSES[&"idle"], delta, hz, zeta, a.max_substep, a.max_substeps)
+	_springs.step(pose, _rest, delta, hz, zeta, a.max_substep, a.max_substeps)
 	for j in JOINTS:
 		(_joints[j] as Node3D).rotation_degrees = _springs.value(j)
 	_body.position = _springs.value(ROOT) * _body.scale.y
 	_apply_head_lag()
+	_apply_wrist_lag()
 	_apply_procedural()
 	if _skeleton != null:
 		FighterModel.sync_pose(_skeleton, _rig)
@@ -386,6 +402,61 @@ func _apply_head_lag() -> void:
 	var m := a.head_lag_max_deg
 	var head: Node3D = _joints[&"head"]
 	head.rotation_degrees -= Vector3(clampf(lag.x, -m, m), clampf(lag.y, -m, m), clampf(lag.z, -m, m))
+
+
+## `pose` with the joints it leaves out filled in (Tuning.anim "Rig"): the
+## chest takes chest_twist_share of the torso twist (the waist keeps the
+## rest), each ankle flattens its boot against the floor. Poses and tracks
+## are written for the waist+chest as one torso; setting &"chest" or an
+## ankle explicitly opts out. Every pose goes through this (the visual,
+## tests and tools), so they all see the same body.
+static func complete_pose(pose: Dictionary) -> Dictionary:
+	var a := Tuning.anim
+	var idle: Dictionary = POSES[&"idle"]
+	var out := pose.duplicate()
+	if not pose.has(&"chest"):
+		var t: Vector3 = pose.get(&"torso", idle[&"torso"])
+		# Only the twist: the chest pivot sits on the waist's vertical axis, so
+		# splitting Y keeps the shoulders where the pose put them; splitting
+		# pitch/roll would curve the spine instead.
+		out[&"torso"] = Vector3(t.x, t.y * (1.0 - a.chest_twist_share), t.z)
+		out[&"chest"] = Vector3(0, t.y * a.chest_twist_share, 0)
+	for sfx in ["_l", "_r"]:
+		var an := StringName("an" + sfx)
+		if pose.has(an):
+			continue
+		var hip: Vector3 = pose.get(StringName("hip" + sfx), idle[StringName("hip" + sfx)])
+		var kn: Vector3 = pose.get(StringName("kn" + sfx), idle[StringName("kn" + sfx)])
+		out[an] = Vector3(clampf(-(hip.x + kn.x), -a.ankle_max_deg, a.ankle_max_deg), 0, 0)
+	return out
+
+
+## Every joint + root at rest (the completed idle pose): what a channel
+## missing from a target falls back to.
+static func rest_pose() -> Dictionary:
+	return complete_pose(POSES[&"idle"])
+
+
+## Snap straight to `pose` (completed; no springs, no overlays): tests and
+## tools that measure or render a pose.
+func snap_to_pose(pose: Dictionary) -> void:
+	var full := complete_pose(pose)
+	var rest := rest_pose()
+	for j in JOINTS:
+		(_joints[j] as Node3D).rotation_degrees = full.get(j, rest[j])
+	_body.position = full.get(ROOT, rest[ROOT])
+	if _skeleton != null:
+		FighterModel.sync_pose(_skeleton, _rig)
+
+
+## Wrists trail the forearm's swing, then catch up (a snap at the end).
+func _apply_wrist_lag() -> void:
+	var a := Tuning.anim
+	var m := a.wrist_lag_max_deg
+	for sfx in ["_l", "_r"]:
+		var lag := _springs.velocity(StringName("el" + sfx)) * a.wrist_lag
+		var wr: Node3D = _joints[StringName("wr" + sfx)]
+		wr.rotation_degrees -= Vector3(clampf(lag.x, -m, m), clampf(lag.y, -m, m), clampf(lag.z, -m, m))
 
 
 ## Maps a non-attack current_pose() to a POSES key (states sharing a name
@@ -663,9 +734,11 @@ func _build() -> void:
 	_aura.visible = false
 	add_child(_aura)
 
+	_rest = rest_pose()
+	var rest := _rest
 	for j in JOINTS:
-		_springs.reset(j, POSES[&"idle"][j])
-	_springs.reset(ROOT, POSES[&"idle"][ROOT])
+		_springs.reset(j, rest[j])
+	_springs.reset(ROOT, rest[ROOT])
 	_idle_phase = randf() / maxf(Tuning.anim.breath_hz, 0.01)
 
 
@@ -676,15 +749,18 @@ func _build_rig() -> void:
 	var hips := _node(&"hips", spin, Vector3(0, -0.95, 0))
 	var pelvis := _node(&"pelvis", hips, Vector3(0, 0.95, 0))
 	var torso := _joint(&"torso", pelvis, Vector3.ZERO)
-	_joint(&"head", torso, Vector3(0, 0.68, 0))
+	var chest := _joint(&"chest", torso, CHEST_AT)
+	_joint(&"head", chest, HEAD_AT)
 	for side in [-1.0, 1.0]:
 		var sfx := "_l" if side < 0.0 else "_r"
-		var sh := _joint(StringName("sh" + sfx), torso, Vector3(0.29 * side, 0.58, 0))
-		_joint(StringName("el" + sfx), sh, Vector3(0, -0.32, 0))
+		var sh := _joint(StringName("sh" + sfx), chest, Vector3(SHOULDER_AT.x * side, SHOULDER_AT.y, 0))
+		var el := _joint(StringName("el" + sfx), sh, Vector3(0, -UPPER_ARM, 0))
+		_joint(StringName("wr" + sfx), el, WRIST_AT)
 	for side in [-1.0, 1.0]:
 		var sfx := "_l" if side < 0.0 else "_r"
-		var hip := _joint(StringName("hip" + sfx), pelvis, Vector3(0.12 * side, 0, 0))
-		_joint(StringName("kn" + sfx), hip, Vector3(0, -0.46, 0))
+		var hip := _joint(StringName("hip" + sfx), pelvis, Vector3(HIP_AT.x * side, 0, 0))
+		var kn := _joint(StringName("kn" + sfx), hip, Vector3(0, -THIGH, 0))
+		_joint(StringName("an" + sfx), kn, ANKLE_AT)
 
 
 func _belly_transform(radius: float) -> Transform3D:
@@ -706,19 +782,20 @@ func _build_primitives(tint: Color, d: CharacterDef) -> void:
 	var dark := StandardMaterial3D.new()
 	dark.albedo_color = tint.darkened(0.55)
 	var torso: Node3D = _joints[&"torso"]
-	_capsule(torso, Vector3(0, 0.33, 0), 0.22, 0.7, mat)
+	_capsule(torso, Vector3(0, 0.18, 0), 0.2, 0.4, mat)
+	_capsule(_joints[&"chest"], Vector3(0, 0.15, 0), 0.22, 0.45, mat)
 	_sphere(_joints[&"head"], Vector3(0, 0.15, 0), 0.15, skin)
 	if d != null and d.belly_radius > 0.0:
 		_sphere(torso, Vector3(0, 0.2, -d.belly_radius * BELLY_FORWARD), d.belly_radius, mat)
 	for sfx in ["_l", "_r"]:
 		_capsule(_joints[StringName("sh" + sfx)], Vector3(0, -0.16, 0), 0.07, 0.34, mat)
 		var el: Node3D = _joints[StringName("el" + sfx)]
-		_capsule(el, Vector3(0, -0.14, 0), 0.06, 0.3, skin)
-		_box(el, Vector3(0, -0.32, 0), Vector3(0.13, 0.13, 0.13), dark)
+		_capsule(el, Vector3(0, -0.12, 0), 0.06, 0.26, skin)
+		_box(_joints[StringName("wr" + sfx)], Vector3(0, -0.10, 0), Vector3(0.13, 0.13, 0.13), dark)
 		_capsule(_joints[StringName("hip" + sfx)], Vector3(0, -0.23, 0), 0.09, 0.48, dark)
 		var kn: Node3D = _joints[StringName("kn" + sfx)]
-		_capsule(kn, Vector3(0, -0.22, 0), 0.075, 0.46, dark)
-		_box(kn, Vector3(0, -0.46, -0.06), Vector3(0.12, 0.08, 0.24), mat)
+		_capsule(kn, Vector3(0, -0.21, 0), 0.075, 0.44, dark)
+		_box(_joints[StringName("an" + sfx)], Vector3(0, -0.04, -0.06), Vector3(0.12, 0.08, 0.24), mat)
 
 
 func _build_shadow() -> void:

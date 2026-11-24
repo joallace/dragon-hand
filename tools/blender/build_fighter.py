@@ -42,19 +42,27 @@ PREVIEW = {
 }
 
 # --- joint layout: name -> (parent, pivot relative to the parent) ----------------
-# Mirrors FighterVisual's rig (pelvis 0.95 m up, shoulders, elbows, hips, knees).
-SHOULDER = (0.29, 0.58, 0.0)
+# Mirrors FighterVisual's rig (pelvis 0.95 m up; waist "torso" + "chest";
+# shoulders, elbows, wrists; hips, knees, ankles: CHEST_AT, HEAD_AT,
+# SHOULDER_AT, WRIST_AT, ANKLE_AT there).
+CHEST = (0.0, 0.30, 0.0)
+SHOULDER = (0.29, 0.28, 0.0)
+WRIST = (0.0, -0.22, 0.0)
+ANKLE = (0.0, -0.42, 0.0)
 JOINTS = {
     "pelvis": (None, (0.0, 0.95, 0.0)),
     "torso": ("pelvis", (0.0, 0.0, 0.0)),
-    "head": ("torso", (0.0, 0.68, 0.0)),
+    "chest": ("torso", CHEST),
+    "head": ("chest", (0.0, 0.38, 0.0)),
     "belly": ("torso", (0.0, 0.0, 0.0)),
 }
 for _side, _sfx in ((-1.0, "_l"), (1.0, "_r")):
-    JOINTS["sh" + _sfx] = ("torso", (SHOULDER[0] * _side, SHOULDER[1], 0.0))
+    JOINTS["sh" + _sfx] = ("chest", (SHOULDER[0] * _side, SHOULDER[1], 0.0))
     JOINTS["el" + _sfx] = ("sh" + _sfx, (0.0, -0.32, 0.0))
+    JOINTS["wr" + _sfx] = ("el" + _sfx, WRIST)
     JOINTS["hip" + _sfx] = ("pelvis", (0.12 * _side, 0.0, 0.0))
     JOINTS["kn" + _sfx] = ("hip" + _sfx, (0.0, -0.46, 0.0))
+    JOINTS["an" + _sfx] = ("kn" + _sfx, ANKLE)
 
 
 def gd(v):
@@ -166,13 +174,15 @@ def build_parts():
 
     t = parts["torso"]
     t.prism((0, 0.08, 0), (0, 0.34, 0), 0.17, 0.21, SKIN, sides=8, squash=0.8)  # waist
-    t.frustum(0.30, 0.66, (0.40, 0.31), (0.66, 0.40), PRIMARY, (0.0, 0.0, 0.015))  # chest (V)
     t.frustum(0.26, 0.31, (0.38, 0.27), (0.42, 0.29), PRIMARY_DARK)   # vest hem
-    t.frustum(0.38, 0.62, (0.10, 0.01), (0.20, 0.01), SKIN, (0.0, 0.0, -0.181))  # open collar V
-    t.prism((0, 0.62, 0.0), (0, 0.74, 0.0), 0.085, 0.075, SKIN, sides=6)  # neck
+
+    c = parts["chest"]  # coordinates from the chest pivot (CHEST above the waist)
+    c.frustum(0.0, 0.36, (0.40, 0.31), (0.66, 0.40), PRIMARY, (0.0, 0.0, 0.015))  # chest (V)
+    c.frustum(0.08, 0.32, (0.10, 0.01), (0.20, 0.01), SKIN, (0.0, 0.0, -0.181))  # open collar V
+    c.prism((0, 0.32, 0.0), (0, 0.44, 0.0), 0.085, 0.075, SKIN, sides=6)  # neck
     for side in (-1.0, 1.0):
-        t.blob((0.33 * side, 0.62, 0.0), (0.14, 0.12, 0.15), PRIMARY_DARK)  # shoulder pads
-        t.box((0.33 * side, 0.70, 0.0), (0.06, 0.03, 0.16), TRIM)            # pad stripe
+        c.blob((0.33 * side, 0.32, 0.0), (0.14, 0.12, 0.15), PRIMARY_DARK)  # shoulder pads
+        c.box((0.33 * side, 0.40, 0.0), (0.06, 0.03, 0.16), TRIM)            # pad stripe
 
     h = parts["head"]
     h.blob((0.0, 0.13, 0.0), (0.115, 0.13, 0.125), SKIN)               # skull
@@ -198,16 +208,18 @@ def build_parts():
         f = parts["el" + sfx]
         f.prism((0, 0.0, 0), (0, -0.22, 0), 0.08, 0.105, SKIN, sides=7)  # forearm (Popeye-ish)
         f.prism((0, -0.18, 0), (0, -0.26, 0), 0.112, 0.112, TRIM, sides=7)  # wrist wrap
-        f.frustum(-0.41, -0.25, (0.19, 0.17), (0.22, 0.19), PRIMARY_DARK)  # big fist
-        f.box((0.0, -0.30, -0.095), (0.22, 0.06, 0.03), TRIM)            # knuckle band
-        f.box((-0.115 * side, -0.31, -0.02), (0.05, 0.10, 0.08), PRIMARY_DARK)  # thumb
+        w = parts["wr" + sfx]  # from the wrist pivot (WRIST below the elbow)
+        w.frustum(-0.19, -0.03, (0.19, 0.17), (0.22, 0.19), PRIMARY_DARK)  # big fist
+        w.box((0.0, -0.08, -0.095), (0.22, 0.06, 0.03), TRIM)            # knuckle band
+        w.box((-0.115 * side, -0.09, -0.02), (0.05, 0.10, 0.08), PRIMARY_DARK)  # thumb
         th = parts["hip" + sfx]
         th.prism((0, 0.04, 0), (0, -0.44, 0), 0.125, 0.10, CLOTH, sides=7)  # baggy thigh
         sh = parts["kn" + sfx]
         sh.prism((0, 0.0, 0), (0, -0.30, 0), 0.10, 0.12, CLOTH, sides=7)  # flared pant leg
         sh.prism((0, -0.26, 0), (0, -0.42, 0), 0.11, 0.10, PRIMARY, sides=7)  # boot shaft
-        sh.frustum(-0.47, -0.35, (0.20, 0.30), (0.17, 0.22), PRIMARY, (0.0, 0.0, -0.05))  # boot
-        sh.box((0.0, -0.475, -0.055), (0.21, 0.035, 0.31), SOLE)        # sole (floor at -0.49)
+        ft = parts["an" + sfx]  # from the ankle pivot (ANKLE below the knee)
+        ft.frustum(-0.05, 0.07, (0.20, 0.30), (0.17, 0.22), PRIMARY, (0.0, 0.0, -0.05))  # boot
+        ft.box((0.0, -0.055, -0.055), (0.21, 0.035, 0.31), SOLE)        # sole (floor at -0.07)
         sh.box((0.0, -0.32, -0.105), (0.13, 0.03, 0.02), TRIM)         # boot strap
     return parts
 

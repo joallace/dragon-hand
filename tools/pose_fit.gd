@@ -44,17 +44,11 @@ func _ready() -> void:
 
 
 func _apply(pose: Dictionary) -> void:
-	var idle: Dictionary = FighterVisual.POSES[&"idle"]
-	for j in FighterVisual.JOINTS:
-		(_v._joints[j] as Node3D).rotation_degrees = pose.get(j, idle[j])
-	_v._body.position = pose.get(&"root", idle[&"root"])
-	if _v._skeleton != null:
-		FighterModel.sync_pose(_v._skeleton, _v._rig)
+	_v.snap_to_pose(pose)
 
 
 func _effector(j: StringName) -> Vector3:
-	var off := MoveTracks.FIST_OFFSET if String(j).begins_with("el") else MoveTracks.FOOT_OFFSET
-	return (_v._joints[j] as Node3D).global_transform * off
+	return MoveTracks.effector(_v._joints, j)
 
 
 func _lowest() -> float:

@@ -39,12 +39,12 @@ const KEY_POSES := {
 		&"sh_l": Vector3(95, 0, -25), &"el_l": Vector3(5, 0, 0),
 		&"sh_r": Vector3(55, 0, -8), &"el_r": Vector3(125, 0, 0),
 		&"hip_l": Vector3(24, 0, -5), &"kn_l": Vector3(-26, 0, 0),
-		&"hip_r": Vector3(-20, 0, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.05, -0.07)},
+		&"hip_r": Vector3(-20, 0, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.063, -0.07)},
 	&"jab_over": {&"torso": Vector3(-12, -36, 0), &"head": Vector3(7, 30, 0),
 		&"sh_l": Vector3(97, 0, -28), &"el_l": Vector3(0, 0, 0),
 		&"sh_r": Vector3(55, 0, -8), &"el_r": Vector3(125, 0, 0),
 		&"hip_l": Vector3(24, 0, -5), &"kn_l": Vector3(-26, 0, 0),
-		&"hip_r": Vector3(-20, 0, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.05, -0.09)},
+		&"hip_r": Vector3(-20, 0, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.063, -0.09)},
 	&"jab_back": {&"torso": Vector3(-8, -18, 0), &"head": Vector3(3, 18, 0),
 		&"sh_l": Vector3(70, 0, -10), &"el_l": Vector3(95, 0, 0),
 		&"sh_r": Vector3(50, 0, -8), &"el_r": Vector3(122, 0, 0),
@@ -60,17 +60,17 @@ const KEY_POSES := {
 		&"sh_r": Vector3(97, 0, 28), &"el_r": Vector3(5, 0, 0),
 		&"sh_l": Vector3(55, 0, 8), &"el_l": Vector3(125, 0, 0),
 		&"hip_l": Vector3(28, 0, -5), &"kn_l": Vector3(-32, 0, 0),
-		&"hip_r": Vector3(-14, 20, 5), &"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.05, -0.05)},
+		&"hip_r": Vector3(-14, 20, 5), &"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.078, -0.05)},
 	&"jab2_over": {&"torso": Vector3(-12, 40, 0), &"head": Vector3(7, -34, 0),
 		&"sh_r": Vector3(99, 0, 32), &"el_r": Vector3(0, 0, 0),
 		&"sh_l": Vector3(55, 0, 8), &"el_l": Vector3(125, 0, 0),
 		&"hip_l": Vector3(28, 0, -5), &"kn_l": Vector3(-32, 0, 0),
-		&"hip_r": Vector3(-14, 25, 5), &"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.05, -0.07)},
+		&"hip_r": Vector3(-14, 25, 5), &"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.078, -0.07)},
 	&"jab2_back": {&"torso": Vector3(-8, 15, 0), &"head": Vector3(3, -12, 0),
 		&"sh_r": Vector3(70, 0, 10), &"el_r": Vector3(95, 0, 0),
 		&"sh_l": Vector3(50, 0, 0), &"el_l": Vector3(122, 0, 0),
 		&"hip_l": Vector3(22, 0, -5), &"kn_l": Vector3(-26, 0, 0),
-		&"hip_r": Vector3(-14, 10, 5), &"kn_r": Vector3(-14, 0, 0), &"root": Vector3(0, -0.05, -0.03)},
+		&"hip_r": Vector3(-14, 10, 5), &"kn_r": Vector3(-14, 0, 0), &"root": Vector3(0, -0.057, -0.03)},
 	# --- hook: right, elbow out level, whole body turns through ---------------
 	&"hook_load": {&"torso": Vector3(-6, -25, 0), &"head": Vector3(0, 20, 0),
 		&"sh_r": Vector3(0, -20, 80), &"el_r": Vector3(100, 0, 0),
@@ -81,38 +81,38 @@ const KEY_POSES := {
 		&"sh_r": Vector3(6, 22, 85), &"el_r": Vector3(60, 0, 0),
 		&"sh_l": Vector3(55, 0, 8), &"el_l": Vector3(125, 0, 0),
 		&"hip_l": Vector3(26, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-12, 25, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.05, -0.06)},
+		&"hip_r": Vector3(-12, 25, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.071, -0.06)},
 	&"hook_over": {&"torso": Vector3(-9, 56, 0), &"head": Vector3(7, -42, 0),
 		&"sh_r": Vector3(6, 28, 85), &"el_r": Vector3(56, 0, 0),
 		&"sh_l": Vector3(55, 0, 8), &"el_l": Vector3(125, 0, 0),
 		&"hip_l": Vector3(26, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-12, 30, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.05, -0.07)},
+		&"hip_r": Vector3(-12, 30, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.071, -0.07)},
 	&"hook_back": {&"torso": Vector3(-8, 18, 0), &"head": Vector3(3, -12, 0),
 		&"sh_r": Vector3(50, 0, 20), &"el_r": Vector3(110, 0, 0),
 		&"sh_l": Vector3(50, 0, 0), &"el_l": Vector3(122, 0, 0),
 		&"hip_l": Vector3(22, 0, -5), &"kn_l": Vector3(-26, 0, 0),
-		&"hip_r": Vector3(-14, 10, 5), &"kn_r": Vector3(-14, 0, 0), &"root": Vector3(0, -0.05, -0.03)},
+		&"hip_r": Vector3(-14, 10, 5), &"kn_r": Vector3(-14, 0, 0), &"root": Vector3(0, -0.057, -0.03)},
 	# --- kick: right front kick, chambered knee, leaning back for balance -----
 	&"kick_load": {&"torso": Vector3(10, -8, 0), &"head": Vector3(-8, 8, 0),
 		&"sh_l": Vector3(35, 0, -30), &"el_l": Vector3(80, 0, 0),
 		&"sh_r": Vector3(10, 0, 25), &"el_r": Vector3(70, 0, 0),
 		&"hip_r": Vector3(100, 0, 0), &"kn_r": Vector3(-120, 0, 0),
-		&"hip_l": Vector3(-4, 0, -4), &"kn_l": Vector3(-18, 0, 0), &"root": Vector3(0, -0.03, 0.0)},
+		&"hip_l": Vector3(-4, 0, -4), &"kn_l": Vector3(-18, 0, 0), &"root": Vector3(0, -0.055, 0.0)},
 	&"kick_hit": {&"torso": Vector3(14, -8, 0), &"head": Vector3(-12, 8, 0),
 		&"sh_l": Vector3(35, 0, -30), &"el_l": Vector3(70, 0, 0),
 		&"sh_r": Vector3(-15, 0, 25), &"el_r": Vector3(60, 0, 0),
 		&"hip_r": Vector3(93, 0, -1), &"kn_r": Vector3(-5, 0, 0),
-		&"hip_l": Vector3(-6, 0, -4), &"kn_l": Vector3(-14, 0, 0), &"root": Vector3(0, -0.02, -0.05)},
+		&"hip_l": Vector3(-6, 0, -4), &"kn_l": Vector3(-14, 0, 0), &"root": Vector3(0, -0.051, -0.05)},
 	&"kick_over": {&"torso": Vector3(18, -10, 0), &"head": Vector3(-15, 10, 0),
 		&"sh_l": Vector3(40, 0, -35), &"el_l": Vector3(65, 0, 0),
 		&"sh_r": Vector3(-20, 0, 30), &"el_r": Vector3(55, 0, 0),
 		&"hip_r": Vector3(97, 0, -1), &"kn_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(-6, 0, -4), &"kn_l": Vector3(-14, 0, 0), &"root": Vector3(0, -0.02, -0.06)},
+		&"hip_l": Vector3(-6, 0, -4), &"kn_l": Vector3(-14, 0, 0), &"root": Vector3(0, -0.051, -0.06)},
 	&"kick_back": {&"torso": Vector3(8, -8, 0), &"head": Vector3(-6, 8, 0),
 		&"sh_l": Vector3(40, 0, -20), &"el_l": Vector3(95, 0, 0),
 		&"sh_r": Vector3(25, 0, 15), &"el_r": Vector3(100, 0, 0),
 		&"hip_r": Vector3(85, 0, 0), &"kn_r": Vector3(-105, 0, 0),
-		&"hip_l": Vector3(-4, 0, -4), &"kn_l": Vector3(-18, 0, 0), &"root": Vector3(0, -0.03, -0.02)},
+		&"hip_l": Vector3(-4, 0, -4), &"kn_l": Vector3(-18, 0, 0), &"root": Vector3(0, -0.055, -0.02)},
 	# --- heavy: rear power punch to the body, lead hand measures, deep lunge ---
 	&"heavy_load": {&"torso": Vector3(-2, -40, 0), &"head": Vector3(0, 30, 0),
 		&"sh_r": Vector3(-25, 0, 25), &"el_r": Vector3(120, 0, 0),
@@ -120,75 +120,75 @@ const KEY_POSES := {
 		&"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-35, 0, 0),
 		&"hip_r": Vector3(-5, 0, 5), &"kn_r": Vector3(-40, 0, 0), &"root": Vector3(0, -0.062, 0.06)},
 	&"heavy_hit": {&"torso": Vector3(-16, 40, 0), &"head": Vector3(10, -32, 0),
-		&"sh_r": Vector3(41, 0, 42), &"el_r": Vector3(64, 0, 0),
+		&"sh_r": Vector3(44, 0, 42), &"el_r": Vector3(86, 0, 0),
 		&"sh_l": Vector3(30, 0, -15), &"el_l": Vector3(115, 0, 0),
 		&"hip_l": Vector3(48, 0, -5), &"kn_l": Vector3(-55, 0, 0),
-		&"hip_r": Vector3(-35, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.13, -0.08)},
+		&"hip_r": Vector3(-35, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.179, -0.08)},
 	&"heavy_over": {&"torso": Vector3(-20, 50, 0), &"head": Vector3(12, -38, 0),
 		&"sh_r": Vector3(44, 0, 40), &"el_r": Vector3(58, 0, 0),
 		&"sh_l": Vector3(25, 0, -15), &"el_l": Vector3(118, 0, 0),
 		&"hip_l": Vector3(50, 0, -5), &"kn_l": Vector3(-58, 0, 0),
-		&"hip_r": Vector3(-37, 24, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.14, -0.1)},
+		&"hip_r": Vector3(-37, 24, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.192, -0.1)},
 	&"heavy_back": {&"torso": Vector3(-8, 15, 0), &"head": Vector3(4, -12, 0),
 		&"sh_r": Vector3(45, 0, 20), &"el_r": Vector3(100, 0, 0),
 		&"sh_l": Vector3(50, 0, -10), &"el_l": Vector3(115, 0, 0),
 		&"hip_l": Vector3(30, 0, -5), &"kn_l": Vector3(-40, 0, 0),
-		&"hip_r": Vector3(-20, 8, 5), &"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.068, -0.03)},
+		&"hip_r": Vector3(-20, 8, 5), &"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.091, -0.03)},
 	# --- finisher: lunging overhand right (string ender, counter, rush finish) ---
 	&"finisher_load": {&"torso": Vector3(-10, -45, 0), &"head": Vector3(0, 35, 0),
 		&"sh_l": Vector3(60, 0, -15), &"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(-30, 0, 20),
 		&"el_r": Vector3(115, 0, 0), &"hip_l": Vector3(30, 0, -5), &"kn_l": Vector3(-50, 0, 0),
-		&"hip_r": Vector3(-5, 0, 5), &"kn_r": Vector3(-45, 0, 0), &"root": Vector3(0, -0.088, 0.06)},
+		&"hip_r": Vector3(-5, 0, 5), &"kn_r": Vector3(-45, 0, 0), &"root": Vector3(0, -0.11, 0.06)},
 	&"finisher_hit": {&"torso": Vector3(-14, 38, 0), &"head": Vector3(10, -30, 0),
-		&"sh_l": Vector3(25, 0, -20), &"el_l": Vector3(115, 0, 0), &"sh_r": Vector3(92, 0, 24),
+		&"sh_l": Vector3(25, 0, -20), &"el_l": Vector3(115, 0, 0), &"sh_r": Vector3(103, 0, 18),
 		&"el_r": Vector3(5, 0, 0), &"hip_l": Vector3(50, 0, -5), &"kn_l": Vector3(-60, 0, 0),
-		&"hip_r": Vector3(-40, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.176, -0.04)},
+		&"hip_r": Vector3(-40, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.195, -0.04)},
 	&"finisher_over": {&"torso": Vector3(-18, 48, 0), &"head": Vector3(12, -38, 0),
 		&"sh_l": Vector3(25, 0, -20), &"el_l": Vector3(115, 0, 0), &"sh_r": Vector3(92, 0, 24),
 		&"el_r": Vector3(5, 0, 0), &"hip_l": Vector3(50, 0, -5), &"kn_l": Vector3(-60, 0, 0),
-		&"hip_r": Vector3(-40, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.176, -0.06)},
+		&"hip_r": Vector3(-40, 20, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.195, -0.06)},
 	&"finisher_back": {&"torso": Vector3(-10, 15, 0), &"head": Vector3(5, -10, 0),
 		&"sh_l": Vector3(45, 0, -10), &"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(50, 0, 15),
 		&"el_r": Vector3(100, 0, 0), &"hip_l": Vector3(30, 0, -5), &"kn_l": Vector3(-40, 0, 0),
-		&"hip_r": Vector3(-20, 8, 5), &"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.068, -0.05)},
+		&"hip_r": Vector3(-20, 8, 5), &"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.091, -0.05)},
 	# --- kick_mid: roundhouse; leg raised sideways so the knee hinges level ---
 	&"kick_mid_load": {&"torso": Vector3(10, -15, -12), &"head": Vector3(-8, 12, 10),
 		&"sh_l": Vector3(50, 0, -20), &"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(20, 0, 30),
 		&"el_r": Vector3(90, 0, 0), &"hip_l": Vector3(-4, -25, -4), &"kn_l": Vector3(-18, 0, 0),
-		&"hip_r": Vector3(0, 30, 85), &"kn_r": Vector3(-120, 0, 0), &"root": Vector3(0, -0.03, 0.0)},
-	&"kick_mid_hit": {&"torso": Vector3(18, 30, -20), &"head": Vector3(-14, -25, 15),
+		&"hip_r": Vector3(0, 30, 85), &"kn_r": Vector3(-120, 0, 0), &"root": Vector3(0, -0.055, 0.0)},
+	&"kick_mid_hit": {&"an_r": Vector3(30, 0, 0), &"torso": Vector3(18, 30, -20), &"head": Vector3(-14, -25, 15),
 		&"sh_l": Vector3(60, 0, -15), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(-25, 0, 35),
 		&"el_r": Vector3(40, 0, 0), &"hip_l": Vector3(-6, -35, -4), &"kn_l": Vector3(-12, 0, 0),
-		&"hip_r": Vector3(-34, 106, 90), &"kn_r": Vector3(-43, 0, 0), &"root": Vector3(0, -0.02, -0.04)},
-	&"kick_mid_over": {&"torso": Vector3(20, 40, -22), &"head": Vector3(-15, -32, 16),
+		&"hip_r": Vector3(-84, 93, 90), &"kn_r": Vector3(-37, 0, 0), &"root": Vector3(0, -0.046, -0.04)},
+	&"kick_mid_over": {&"an_r": Vector3(30, 0, 0), &"torso": Vector3(20, 40, -22), &"head": Vector3(-15, -32, 16),
 		&"sh_l": Vector3(60, 0, -15), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(-25, 0, 35),
 		&"el_r": Vector3(40, 0, 0), &"hip_l": Vector3(-6, -35, -4), &"kn_l": Vector3(-12, 0, 0),
-		&"hip_r": Vector3(-34, 106, 90), &"kn_r": Vector3(-43, 0, 0), &"root": Vector3(0, -0.02, -0.04)},
+		&"hip_r": Vector3(-34, 106, 90), &"kn_r": Vector3(-43, 0, 0), &"root": Vector3(0, -0.046, -0.04)},
 	&"kick_mid_back": {&"torso": Vector3(10, 10, -10), &"head": Vector3(-6, -5, 8),
 		&"sh_l": Vector3(50, 0, -15), &"el_l": Vector3(115, 0, 0), &"sh_r": Vector3(25, 0, 20),
 		&"el_r": Vector3(100, 0, 0), &"hip_l": Vector3(-4, -15, -4), &"kn_l": Vector3(-18, 0, 0),
-		&"hip_r": Vector3(0, 40, 80), &"kn_r": Vector3(-115, 0, 0), &"root": Vector3(0, -0.03, -0.02)},
+		&"hip_r": Vector3(0, 40, 80), &"kn_r": Vector3(-115, 0, 0), &"root": Vector3(0, -0.055, -0.02)},
 	# --- charge_kick: spinning back kick (the whole body turns on `spin`) ---
 	&"charge_kick_load": {&"spin": Vector3(0, -100, 0), &"torso": Vector3(-15, 0, 0),
 		&"head": Vector3(5, 70, 0), &"sh_l": Vector3(40, 0, -30), &"el_l": Vector3(100, 0, 0),
 		&"sh_r": Vector3(40, 0, 30), &"el_r": Vector3(100, 0, 0), &"hip_l": Vector3(10, 0, -4),
 		&"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(70, 0, 0), &"kn_r": Vector3(-125, 0, 0),
-		&"root": Vector3(0, -0.037, 0.0)},
-	&"charge_kick_hit": {&"spin": Vector3(0, -180, 0), &"torso": Vector3(-35, 0, 0),
+		&"root": Vector3(0, -0.055, 0.0)},
+	&"charge_kick_hit": {&"an_r": Vector3(0, 0, 0), &"spin": Vector3(0, -180, 0), &"torso": Vector3(-35, 0, 0),
+		&"head": Vector3(20, 60, 0), &"sh_l": Vector3(20, 0, -30), &"el_l": Vector3(90, 0, 0),
+		&"sh_r": Vector3(40, 0, 40), &"el_r": Vector3(90, 0, 0), &"hip_l": Vector3(-10, 0, -4),
+		&"kn_l": Vector3(-15, 0, 0), &"hip_r": Vector3(-107, 0, -13), &"kn_r": Vector3(-5, 0, 0),
+		&"root": Vector3(0, -0.07, 0.0)},
+	&"charge_kick_over": {&"an_r": Vector3(0, 0, 0), &"spin": Vector3(0, -180, 0), &"torso": Vector3(-40, 0, 0),
 		&"head": Vector3(20, 60, 0), &"sh_l": Vector3(20, 0, -30), &"el_l": Vector3(90, 0, 0),
 		&"sh_r": Vector3(40, 0, 40), &"el_r": Vector3(90, 0, 0), &"hip_l": Vector3(-10, 0, -4),
 		&"kn_l": Vector3(-15, 0, 0), &"hip_r": Vector3(-106, 0, -13), &"kn_r": Vector3(-5, 0, 0),
-		&"root": Vector3(0, -0.05, 0.0)},
-	&"charge_kick_over": {&"spin": Vector3(0, -180, 0), &"torso": Vector3(-40, 0, 0),
-		&"head": Vector3(20, 60, 0), &"sh_l": Vector3(20, 0, -30), &"el_l": Vector3(90, 0, 0),
-		&"sh_r": Vector3(40, 0, 40), &"el_r": Vector3(90, 0, 0), &"hip_l": Vector3(-10, 0, -4),
-		&"kn_l": Vector3(-15, 0, 0), &"hip_r": Vector3(-106, 0, -13), &"kn_r": Vector3(-5, 0, 0),
-		&"root": Vector3(0, -0.05, 0.0)},
+		&"root": Vector3(0, -0.07, 0.0)},
 	&"charge_kick_back": {&"spin": Vector3(0, -90, 0), &"torso": Vector3(-10, 0, 0),
 		&"head": Vector3(5, 50, 0), &"sh_l": Vector3(40, 0, -20), &"el_l": Vector3(105, 0, 0),
 		&"sh_r": Vector3(40, 0, 20), &"el_r": Vector3(105, 0, 0), &"hip_l": Vector3(5, 0, -4),
 		&"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(60, 0, 0), &"kn_r": Vector3(-110, 0, 0),
-		&"root": Vector3(0, -0.032, 0.0)},
+		&"root": Vector3(0, -0.05, 0.0)},
 	# --- smash_right: wide back-fist out to the right ---
 	&"smash_right_load": {&"torso": Vector3(-6, 40, 0), &"head": Vector3(4, -30, 0),
 		&"sh_l": Vector3(55, 0, 0), &"el_l": Vector3(115, 0, 0), &"sh_r": Vector3(80, 0, -40),
@@ -227,53 +227,53 @@ const KEY_POSES := {
 	&"hammer_load": {&"torso": Vector3(18, 0, 0), &"head": Vector3(-12, 0, 0), &"sh_l": Vector3(185, 0, 10),
 		&"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(185, 0, -10), &"el_r": Vector3(30, 0, 0),
 		&"hip_l": Vector3(5, 0, -5), &"kn_l": Vector3(-8, 0, 0), &"hip_r": Vector3(-5, 0, 5),
-		&"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.039, 0.03)},
+		&"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.025, 0.03)},
 	&"hammer_hit": {&"torso": Vector3(-40, 0, 0), &"head": Vector3(30, 0, 0), &"sh_l": Vector3(90, 0, 25),
 		&"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(90, 0, -25), &"el_r": Vector3(60, 0, 0),
 		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-50, 0, 0), &"hip_r": Vector3(-25, 0, 5),
-		&"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.12, -0.06)},
+		&"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.16, -0.06)},
 	&"hammer_over": {&"torso": Vector3(-46, 0, 0), &"head": Vector3(30, 0, 0), &"sh_l": Vector3(45, 0, 15),
 		&"el_l": Vector3(25, 0, 0), &"sh_r": Vector3(45, 0, -15), &"el_r": Vector3(25, 0, 0),
 		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-50, 0, 0), &"hip_r": Vector3(-25, 0, 5),
-		&"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.111, -0.07)},
+		&"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.16, -0.07)},
 	&"hammer_back": {&"torso": Vector3(-15, 0, 0), &"head": Vector3(10, 0, 0), &"sh_l": Vector3(50, 0, -10),
 		&"el_l": Vector3(100, 0, 0), &"sh_r": Vector3(50, 0, 10), &"el_r": Vector3(100, 0, 0),
 		&"hip_l": Vector3(30, 0, -5), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(-15, 0, 5),
-		&"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.052, -0.03)},
+		&"kn_r": Vector3(-18, 0, 0), &"root": Vector3(0, -0.086, -0.03)},
 	# --- uppercut: from a deep crouch, rising through it ---
 	&"uppercut_load": {&"torso": Vector3(-22, -30, 0), &"head": Vector3(15, 25, 0),
 		&"sh_l": Vector3(60, 0, -10), &"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(5, 0, 10),
 		&"el_r": Vector3(115, 0, 0), &"hip_l": Vector3(40, 0, -5), &"kn_l": Vector3(-60, 0, 0),
-		&"hip_r": Vector3(15, 0, 5), &"kn_r": Vector3(-55, 0, 0), &"root": Vector3(0, -0.067, 0.02)},
+		&"hip_r": Vector3(15, 0, 5), &"kn_r": Vector3(-55, 0, 0), &"root": Vector3(0, -0.136, 0.02)},
 	&"uppercut_hit": {&"torso": Vector3(-4, 20, 0), &"head": Vector3(2, -18, 0), &"sh_l": Vector3(30, 0, -25),
 		&"el_l": Vector3(100, 0, 0), &"sh_r": Vector3(93, 0, 6), &"el_r": Vector3(33, 0, 0),
 		&"hip_l": Vector3(10, 0, -5), &"kn_l": Vector3(-10, 0, 0), &"hip_r": Vector3(-15, 15, 5),
-		&"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.045, -0.1)},
+		&"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.03, -0.1)},
 	&"uppercut_over": {&"torso": Vector3(2, 28, 0), &"head": Vector3(-2, -24, 0),
 		&"sh_l": Vector3(30, 0, -25), &"el_l": Vector3(100, 0, 0), &"sh_r": Vector3(150, 0, 10),
 		&"el_r": Vector3(50, 0, 0), &"hip_l": Vector3(10, 0, -5), &"kn_l": Vector3(-10, 0, 0),
-		&"hip_r": Vector3(-15, 15, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.045, -0.1)},
+		&"hip_r": Vector3(-15, 15, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.03, -0.1)},
 	&"uppercut_back": {&"torso": Vector3(-4, 10, 0), &"head": Vector3(4, -8, 0), &"sh_l": Vector3(45, 0, -10),
 		&"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(80, 0, 15), &"el_r": Vector3(110, 0, 0),
 		&"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(-12, 5, 5),
-		&"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.04, -0.03)},
+		&"kn_r": Vector3(-15, 0, 0), &"root": Vector3(0, -0.052, -0.03)},
 	# --- kick_low: crouching sweep, lead hand down for balance ---
 	&"kick_low_load": {&"torso": Vector3(-35, 15, 0), &"head": Vector3(30, -10, 0),
 		&"sh_l": Vector3(60, 0, -20), &"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(50, 0, 20),
 		&"el_r": Vector3(90, 0, 0), &"hip_l": Vector3(100, 0, -5), &"kn_l": Vector3(-130, 0, 0),
-		&"hip_r": Vector3(95, 0, 10), &"kn_r": Vector3(-130, 0, 0), &"root": Vector3(0, -0.544, 0.0)},
+		&"hip_r": Vector3(95, 0, 10), &"kn_r": Vector3(-130, 0, 0), &"root": Vector3(0, -0.602, 0.0)},
 	&"kick_low_hit": {&"torso": Vector3(-30, -20, 0), &"head": Vector3(25, 15, 0),
 		&"sh_l": Vector3(70, 0, -25), &"el_l": Vector3(10, 0, 0), &"sh_r": Vector3(40, 0, 35),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(100, 0, -5), &"kn_l": Vector3(-135, 0, 0),
-		&"hip_r": Vector3(85, 0, -1), &"kn_r": Vector3(0, 0, 0), &"root": Vector3(0, -0.584, -0.03)},
+		&"hip_r": Vector3(92, 0, -1), &"kn_r": Vector3(-2, 0, 0), &"root": Vector3(0, -0.642, -0.03)},
 	&"kick_low_over": {&"torso": Vector3(-30, -28, 0), &"head": Vector3(25, 20, 0),
 		&"sh_l": Vector3(70, 0, -25), &"el_l": Vector3(10, 0, 0), &"sh_r": Vector3(40, 0, 35),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(100, 0, -5), &"kn_l": Vector3(-135, 0, 0),
-		&"hip_r": Vector3(85, 0, -1), &"kn_r": Vector3(0, 0, 0), &"root": Vector3(0, -0.584, -0.03)},
+		&"hip_r": Vector3(85, 0, -1), &"kn_r": Vector3(0, 0, 0), &"root": Vector3(0, -0.642, -0.03)},
 	&"kick_low_back": {&"torso": Vector3(-25, 0, 0), &"head": Vector3(20, 0, 0), &"sh_l": Vector3(60, 0, -20),
 		&"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(50, 0, 20), &"el_r": Vector3(90, 0, 0),
 		&"hip_l": Vector3(100, 0, -5), &"kn_l": Vector3(-130, 0, 0), &"hip_r": Vector3(95, 0, 10),
-		&"kn_r": Vector3(-130, 0, 0), &"root": Vector3(0, -0.544, 0.0)},
+		&"kn_r": Vector3(-130, 0, 0), &"root": Vector3(0, -0.602, 0.0)},
 	# --- dash_punch: running lunge punch (also the rush) ---
 	&"dash_punch_load": {&"torso": Vector3(-25, -25, 0), &"head": Vector3(18, 20, 0),
 		&"sh_l": Vector3(60, 0, -10), &"el_l": Vector3(100, 0, 0), &"sh_r": Vector3(-30, 0, 20),
@@ -282,32 +282,32 @@ const KEY_POSES := {
 	&"dash_punch_hit": {&"torso": Vector3(-22, 30, 0), &"head": Vector3(16, -26, 0),
 		&"sh_l": Vector3(-20, 0, -20), &"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(113, 0, 15),
 		&"el_r": Vector3(5, 0, 0), &"hip_l": Vector3(50, 0, -5), &"kn_l": Vector3(-55, 0, 0),
-		&"hip_r": Vector3(-45, 15, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.221, -0.02)},
+		&"hip_r": Vector3(-45, 15, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.19, -0.02)},
 	&"dash_punch_over": {&"torso": Vector3(-25, 37, 0), &"head": Vector3(18, -31, 0),
 		&"sh_l": Vector3(-20, 0, -20), &"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(113, 0, 15),
 		&"el_r": Vector3(5, 0, 0), &"hip_l": Vector3(50, 0, -5), &"kn_l": Vector3(-55, 0, 0),
-		&"hip_r": Vector3(-45, 15, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.221, -0.02)},
+		&"hip_r": Vector3(-45, 15, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.19, -0.02)},
 	&"dash_punch_back": {&"torso": Vector3(-15, 10, 0), &"head": Vector3(10, -8, 0),
 		&"sh_l": Vector3(40, 0, -10), &"el_l": Vector3(105, 0, 0), &"sh_r": Vector3(55, 0, 15),
 		&"el_r": Vector3(100, 0, 0), &"hip_l": Vector3(30, 0, -5), &"kn_l": Vector3(-35, 0, 0),
-		&"hip_r": Vector3(-20, 5, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.08, -0.05)},
+		&"hip_r": Vector3(-20, 5, 5), &"kn_r": Vector3(-20, 0, 0), &"root": Vector3(0, -0.086, -0.05)},
 	# --- belly_bump: gut thrust, arms flung back (Bulk) ---
 	&"belly_bump_load": {&"torso": Vector3(-25, 0, 0), &"head": Vector3(20, 0, 0),
 		&"sh_l": Vector3(20, 0, -35), &"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(20, 0, 35),
 		&"el_r": Vector3(60, 0, 0), &"hip_l": Vector3(25, 0, -5), &"kn_l": Vector3(-40, 0, 0),
-		&"hip_r": Vector3(10, 0, 5), &"kn_r": Vector3(-40, 0, 0), &"root": Vector3(0, -0.039, 0.04)},
+		&"hip_r": Vector3(10, 0, 5), &"kn_r": Vector3(-40, 0, 0), &"root": Vector3(0, -0.08, 0.04)},
 	&"belly_bump_hit": {&"torso": Vector3(25, 0, 0), &"head": Vector3(-15, 0, 0),
 		&"sh_l": Vector3(-30, 0, -50), &"el_l": Vector3(20, 0, 0), &"sh_r": Vector3(-30, 0, 50),
 		&"el_r": Vector3(20, 0, 0), &"hip_l": Vector3(35, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-25, 0, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.076, -0.12)},
+		&"hip_r": Vector3(-25, 0, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.108, -0.12)},
 	&"belly_bump_over": {&"torso": Vector3(30, 0, 0), &"head": Vector3(-15, 0, 0),
 		&"sh_l": Vector3(-30, 0, -50), &"el_l": Vector3(20, 0, 0), &"sh_r": Vector3(-30, 0, 50),
 		&"el_r": Vector3(20, 0, 0), &"hip_l": Vector3(35, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-25, 0, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.076, -0.14)},
+		&"hip_r": Vector3(-25, 0, 5), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, -0.108, -0.14)},
 	&"belly_bump_back": {&"torso": Vector3(5, 0, 0), &"head": Vector3(0, 0, 0), &"sh_l": Vector3(30, 0, -30),
 		&"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(30, 0, 30), &"el_r": Vector3(60, 0, 0),
 		&"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(-10, 0, 5),
-		&"kn_r": Vector3(-10, 0, 0), &"root": Vector3(0, -0.036, -0.04)},
+		&"kn_r": Vector3(-10, 0, 0), &"root": Vector3(0, -0.052, -0.04)},
 	# --- throw: two-handed grab ---
 	&"throw_load": {&"torso": Vector3(-8, 0, 0), &"head": Vector3(5, 0, 0), &"sh_l": Vector3(50, 0, -45),
 		&"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(50, 0, 45), &"el_r": Vector3(60, 0, 0),
@@ -315,7 +315,7 @@ const KEY_POSES := {
 	&"throw_hit": {&"torso": Vector3(-20, 0, 0), &"head": Vector3(14, 0, 0), &"sh_l": Vector3(66, 0, 28),
 		&"el_l": Vector3(14, 0, 0), &"sh_r": Vector3(66, 0, -28), &"el_r": Vector3(14, 0, 0),
 		&"hip_l": Vector3(35, 0, -5), &"kn_l": Vector3(-40, 0, 0), &"hip_r": Vector3(-25, 0, 5),
-		&"kn_r": Vector3(-10, 0, 0), &"root": Vector3(0, -0.07, -0.06)},
+		&"kn_r": Vector3(-10, 0, 0), &"root": Vector3(0, -0.108, -0.06)},
 	&"throw_back": {&"torso": Vector3(-5, 0, 0), &"head": Vector3(4, 0, 0), &"sh_l": Vector3(40, 0, -15),
 		&"el_l": Vector3(90, 0, 0), &"sh_r": Vector3(40, 0, 15), &"el_r": Vector3(90, 0, 0),
 		&"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(-12, 0, 5),
@@ -325,11 +325,11 @@ const KEY_POSES := {
 		&"el_l": Vector3(90, 0, 0), &"sh_r": Vector3(40, 0, 30), &"el_r": Vector3(90, 0, 0),
 		&"hip_l": Vector3(90, 0, -5), &"kn_l": Vector3(-120, 0, 0), &"hip_r": Vector3(95, 0, 5),
 		&"kn_r": Vector3(-125, 0, 0), &"root": Vector3(0, 0.0, 0.0)},
-	&"jump_kick_hit": {&"torso": Vector3(15, 0, 0), &"head": Vector3(-10, 0, 0), &"sh_l": Vector3(20, 0, -45),
+	&"jump_kick_hit": {&"an_r": Vector3(25, 0, 0), &"torso": Vector3(15, 0, 0), &"head": Vector3(-10, 0, 0), &"sh_l": Vector3(20, 0, -45),
 		&"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(-20, 0, 40), &"el_r": Vector3(60, 0, 0),
 		&"hip_l": Vector3(80, 0, -5), &"kn_l": Vector3(-120, 0, 0), &"hip_r": Vector3(71, 0, -1),
 		&"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, 0.0, 0.0)},
-	&"jump_kick_over": {&"torso": Vector3(18, 0, 0), &"head": Vector3(-12, 0, 0),
+	&"jump_kick_over": {&"an_r": Vector3(25, 0, 0), &"torso": Vector3(18, 0, 0), &"head": Vector3(-12, 0, 0),
 		&"sh_l": Vector3(20, 0, -45), &"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(-20, 0, 40),
 		&"el_r": Vector3(60, 0, 0), &"hip_l": Vector3(80, 0, -5), &"kn_l": Vector3(-120, 0, 0),
 		&"hip_r": Vector3(71, 0, -1), &"kn_r": Vector3(-5, 0, 0), &"root": Vector3(0, 0.0, 0.0)},
@@ -353,46 +353,46 @@ const KEY_POSES := {
 	&"dive_kick_back": {&"torso": Vector3(-10, 0, 0), &"head": Vector3(8, 0, 0), &"sh_l": Vector3(40, 0, -25),
 		&"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(40, 0, 25), &"el_r": Vector3(80, 0, 0),
 		&"hip_l": Vector3(60, 0, -5), &"kn_l": Vector3(-80, 0, 0), &"hip_r": Vector3(50, 0, 5),
-		&"kn_r": Vector3(-70, 0, 0), &"root": Vector3(0, -0.2, 0.0)},
+		&"kn_r": Vector3(-70, 0, 0), &"root": Vector3(0, -0.213, 0.0)},
 	# --- duck_kick: stays in the crouch, sweeps a leg out along the floor ---
 	&"duck_kick_load": {&"torso": Vector3(-40, 15, 0), &"head": Vector3(30, -10, 0),
 		&"sh_l": Vector3(60, 0, -20), &"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(60, 0, 20),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(110, 0, -5), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(105, 0, 5), &"kn_r": Vector3(-145, 0, 0), &"root": Vector3(0, -0.634, 0.0)},
+		&"hip_r": Vector3(105, 0, 5), &"kn_r": Vector3(-145, 0, 0), &"root": Vector3(0, -0.698, 0.0)},
 	&"duck_kick_hit": {&"torso": Vector3(-35, -20, 0), &"head": Vector3(28, 15, 0),
 		&"sh_l": Vector3(70, 0, -25), &"el_l": Vector3(10, 0, 0), &"sh_r": Vector3(45, 0, 30),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(110, 0, -5), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(88, 0, -1), &"kn_r": Vector3(-3, 0, 0), &"root": Vector3(0, -0.652, -0.03)},
+		&"hip_r": Vector3(88, 0, -1), &"kn_r": Vector3(-3, 0, 0), &"root": Vector3(0, -0.698, -0.03)},
 	&"duck_kick_over": {&"torso": Vector3(-35, -28, 0), &"head": Vector3(28, 20, 0),
 		&"sh_l": Vector3(70, 0, -25), &"el_l": Vector3(10, 0, 0), &"sh_r": Vector3(45, 0, 30),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(110, 0, -5), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(88, 0, -1), &"kn_r": Vector3(-3, 0, 0), &"root": Vector3(0, -0.652, -0.03)},
+		&"hip_r": Vector3(88, 0, -1), &"kn_r": Vector3(-3, 0, 0), &"root": Vector3(0, -0.698, -0.03)},
 	&"duck_kick_back": {&"torso": Vector3(-40, 15, 0), &"head": Vector3(30, -10, 0),
 		&"sh_l": Vector3(60, 0, -20), &"el_l": Vector3(80, 0, 0), &"sh_r": Vector3(60, 0, 20),
 		&"el_r": Vector3(80, 0, 0), &"hip_l": Vector3(110, 0, -5), &"kn_l": Vector3(-140, 0, 0),
-		&"hip_r": Vector3(105, 0, 5), &"kn_r": Vector3(-145, 0, 0), &"root": Vector3(0, -0.634, 0.0)},
+		&"hip_r": Vector3(105, 0, 5), &"kn_r": Vector3(-145, 0, 0), &"root": Vector3(0, -0.698, 0.0)},
 	# --- ki_blast: hand drawn to the hip, palm thrust at the spawn point ---
 	&"ki_blast_load": {&"torso": Vector3(-6, -35, 0), &"head": Vector3(4, 30, 0),
 		&"sh_l": Vector3(60, 0, -15), &"el_l": Vector3(100, 0, 0), &"sh_r": Vector3(-25, 0, 20),
 		&"el_r": Vector3(110, 0, 0), &"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-10, 0, 5), &"kn_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.047, 0.02)},
+		&"hip_r": Vector3(-10, 0, 5), &"kn_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.057, 0.02)},
 	&"ki_blast_back": {&"torso": Vector3(-8, 10, 0), &"head": Vector3(5, -8, 0), &"sh_l": Vector3(45, 0, -10),
 		&"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(60, 0, 15), &"el_r": Vector3(90, 0, 0),
 		&"hip_l": Vector3(20, 0, -5), &"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(-14, 5, 5),
 		&"kn_r": Vector3(-14, 0, 0), &"root": Vector3(0, -0.05, -0.02)},
 	&"ki_blast_shot": {&"torso": Vector3(-10, 30, 0), &"head": Vector3(8, -25, 0),
-		&"sh_l": Vector3(40, 0, -20), &"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(82, 0, 29),
+		&"sh_l": Vector3(40, 0, -20), &"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(87, 0, 27),
 		&"el_r": Vector3(5, 0, 0), &"hip_l": Vector3(25, 0, -5), &"kn_l": Vector3(-30, 0, 0),
-		&"hip_r": Vector3(-20, 10, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.05, -0.04)},
+		&"hip_r": Vector3(-20, 10, 5), &"kn_r": Vector3(-8, 0, 0), &"root": Vector3(0, -0.068, -0.04)},
 	# --- beam: hands cupped at the hip, then both palms out, held ---
 	&"beam_load": {&"torso": Vector3(-4, 60, 0), &"head": Vector3(4, -50, 0), &"sh_l": Vector3(40, 0, 40),
 		&"el_l": Vector3(110, 0, 0), &"sh_r": Vector3(-30, 0, 20), &"el_r": Vector3(100, 0, 0),
 		&"hip_l": Vector3(5, 0, -20), &"kn_l": Vector3(-30, 0, 0), &"hip_r": Vector3(5, 0, 20),
-		&"kn_r": Vector3(-30, 0, 0), &"root": Vector3(0, -0.06, 0.0)},
+		&"kn_r": Vector3(-30, 0, 0), &"root": Vector3(0, -0.087, 0.0)},
 	&"beam_shot": {&"torso": Vector3(-8, 0, 0), &"head": Vector3(6, 0, 0), &"sh_l": Vector3(86, 0, 29),
 		&"el_l": Vector3(10, 0, 0), &"sh_r": Vector3(86, 0, -29), &"el_r": Vector3(10, 0, 0),
 		&"hip_l": Vector3(5, 0, -20), &"kn_l": Vector3(-25, 0, 0), &"hip_r": Vector3(5, 0, 20),
-		&"kn_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.061, 0.0)},
+		&"kn_r": Vector3(-25, 0, 0), &"root": Vector3(0, -0.074, 0.0)},
 }
 
 ## Move pose -> keys [u, pose, ease].
@@ -515,9 +515,10 @@ const TRACKS := {
 	],
 }
 
-## Contact poses -> [striking joint, the move whose hitbox it must reach].
-## The fist sits FIST_OFFSET below its elbow joint, the foot FOOT_OFFSET
-## below its knee joint (the rig's segment lengths).
+## Contact poses -> [striking limb, the move whose hitbox it must reach].
+## The limb is named by its elbow / knee; the point measured is the fist
+## (FIST_OFFSET from the wrist) or the ball of the foot (FOOT_OFFSET from
+## the ankle): effector().
 const CONTACTS := {
 	&"jab_hit": [&"el_l", &"brawler_jab1"],
 	&"jab2_hit": [&"el_r", &"brawler_jab2"],
@@ -546,8 +547,16 @@ const CONTACTS := {
 const NO_CONTACT: Array[StringName] = [&"belly_bump", &"getup_kick"]
 ## Tracks played in the air: their key poses aren't held to the floor.
 const AIRBORNE: Array[StringName] = [&"jump_kick", &"dive_kick"]
-const FIST_OFFSET := Vector3(0, -0.30, 0)
-const FOOT_OFFSET := Vector3(0, -0.46, -0.06)
+const FIST_OFFSET := Vector3(0, -0.08, 0)
+const FOOT_OFFSET := Vector3(0, -0.04, -0.06)
+
+
+## World point of a limb's striking end: `limb` is an elbow (el_l/el_r: the
+## fist) or a knee (kn_l/kn_r: the foot); `joints` = FighterVisual._joints.
+static func effector(joints: Dictionary, limb: StringName) -> Vector3:
+	var arm := String(limb).begins_with("el")
+	var end := StringName(String(limb).replace("el_", "wr_").replace("kn_", "an_"))
+	return (joints[end] as Node3D).global_transform * (FIST_OFFSET if arm else FOOT_OFFSET)
 
 
 static func has_track(pose: StringName) -> bool:
@@ -582,23 +591,27 @@ static func sample(pose: StringName, u: float, base: Dictionary) -> Dictionary:
 
 
 ## Keys [t, pose, ease] (ascending t) sampled at `u` (StateTracks too).
+## Every key is completed (FighterVisual.complete_pose) before blending, so
+## joints a key sets that `base` lacks (an explicit ankle or chest) survive
+## and the result is already complete.
 static func sample_keys(keys: Array, u: float, base: Dictionary) -> Dictionary:
+	var full_base := FighterVisual.complete_pose(base)
 	var i := 0
 	while i < keys.size() and float(keys[i][0]) <= u:
 		i += 1
 	if i == 0:
-		return _full(pose_of(keys[0][1]), base)
+		return _full(FighterVisual.complete_pose(pose_of(keys[0][1])), full_base)
 	if i >= keys.size():
-		return _full(pose_of(keys[-1][1]), base)
+		return _full(FighterVisual.complete_pose(pose_of(keys[-1][1])), full_base)
 	var a: Array = keys[i - 1]
 	var b: Array = keys[i]
 	var s := (u - float(a[0])) / maxf(float(b[0]) - float(a[0]), 0.0001)
 	var k := ease(clampf(s, 0.0, 1.0), float(b[2]))
-	var pa := pose_of(a[1])
-	var pb := pose_of(b[1])
+	var pa := FighterVisual.complete_pose(pose_of(a[1]))
+	var pb := FighterVisual.complete_pose(pose_of(b[1]))
 	var out := {}
-	for j: StringName in base:
-		out[j] = (pa.get(j, base[j]) as Vector3).lerp(pb.get(j, base[j]), k)
+	for j: StringName in full_base:
+		out[j] = (pa.get(j, full_base[j]) as Vector3).lerp(pb.get(j, full_base[j]), k)
 	return out
 
 

@@ -98,12 +98,7 @@ func _build_stage() -> void:
 
 
 func _apply(pose: Dictionary) -> void:
-	var idle: Dictionary = FighterVisual.POSES[&"idle"]
-	for j in FighterVisual.JOINTS:
-		(_visual._joints[j] as Node3D).rotation_degrees = pose.get(j, idle[j])
-	_visual._body.position = pose.get(&"root", idle[&"root"])
-	if _visual._skeleton != null:
-		FighterModel.sync_pose(_visual._skeleton, _visual._rig)
+	_visual.snap_to_pose(pose)
 
 
 func _shot() -> Image:

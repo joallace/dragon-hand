@@ -51,17 +51,11 @@ func _check(cond: bool, label: String) -> bool:
 
 
 func _apply(pose: Dictionary) -> void:
-	var idle: Dictionary = FighterVisual.POSES[&"idle"]
-	for j in FighterVisual.JOINTS:
-		(_visual._joints[j] as Node3D).rotation_degrees = pose.get(j, idle[j])
-	_visual._body.position = pose.get(&"root", idle[&"root"])
-	if _visual._skeleton != null:
-		FighterModel.sync_pose(_visual._skeleton, _visual._rig)
+	_visual.snap_to_pose(pose)
 
 
 static func _effector(joints: Dictionary, j: StringName) -> Vector3:
-	var off := MoveTracks.FIST_OFFSET if String(j).begins_with("el") else MoveTracks.FOOT_OFFSET
-	return (joints[j] as Node3D).global_transform * off
+	return MoveTracks.effector(joints, j)
 
 
 ## Hitbox center in the visual's space (fighter space +z = visual -Z).
@@ -95,6 +89,16 @@ func _test_contacts() -> void:
 		_apply(MoveTracks.KEY_POSES[id])
 		var d := _effector(_visual._joints, c[0]).distance_to(_hitbox_local(m))
 		_check(d <= CONTACT_TOLERANCE, "%s: %s on %s's hitbox (%.3f m off)" % [id, c[0], m.id, d])
+		# As played: every track keying this pose on its first active frame,
+		# sampled there (what the visual shows, not the raw key).
+		for track: StringName in MoveTracks.TRACKS:
+			for k: Array in MoveTracks.TRACKS[track]:
+				if k[1] != id or not is_equal_approx(float(k[0]), 1.0):
+					continue
+				_apply(MoveTracks.sample(track, 1.0, FighterVisual.POSES[&"idle"]))
+				var dp := _effector(_visual._joints, c[0]).distance_to(_hitbox_local(m))
+				_check(dp <= CONTACT_TOLERANCE, "track %s as played reaches %s's hitbox (%.3f m off)"
+					% [track, m.id, dp])
 
 
 func _test_feet() -> void:
@@ -131,7 +135,7 @@ func _test_state_tracks() -> void:
 			prev = float(k[0])
 		_check(ok, "state track %s: keys ordered in 0..1, poses defined" % key)
 		var s := StateTracks.sample(key, 1e6, Tuning.fighter, FighterVisual.POSES[&"idle"])
-		_check(s.size() == FighterVisual.POSES[&"idle"].size(), "state track %s holds a full pose past its end" % key)
+		_check(s.size() == FighterVisual.rest_pose().size(), "state track %s holds a full pose past its end" % key)
 	_check(StateTracks.key_for(&"dodge", &"sway_l") == &"sway_l", "a sway dodge plays its track")
 	_check(StateTracks.key_for(&"dodge", &"duck") == &"", "ducks keep their variant poses")
 	_check(StateTracks.key_for(&"dodge", &"backflip", Fighter.DodgeKind.AIR_TECH) == &"",
@@ -170,7 +174,7 @@ func _test_track_shape() -> void:
 			_check(is_equal_approx(contact_at, 1.0), "track %s: contact pose on the first active frame" % pose)
 		_check(keys[-1][1] == &"idle", "track %s ends in idle" % pose)
 		var s := MoveTracks.sample(pose, 1.0, FighterVisual.POSES[&"idle"])
-		_check(s.size() == FighterVisual.POSES[&"idle"].size(), "track %s samples a full pose" % pose)
+		_check(s.size() == FighterVisual.rest_pose().size(), "track %s samples a full pose" % pose)
 
 
 func _test_timeline() -> void:

@@ -50,6 +50,8 @@ func _ready() -> void:
 	_apply(&"knockdown")
 	for j in [&"torso", &"hip_l", &"hip_r", &"sh_l", &"sh_r"]:
 		var low := _lowest(_visual._joints[j], j != &"torso")
+		if j == &"torso":  # the body: waist and chest bones, not the limbs on them
+			low = minf(low, _lowest(_visual._joints[&"chest"], false))
 		_check(low >= -GROUND_TOLERANCE and low <= LYING_PART_TOLERANCE,
 			"knockdown %s on the floor (lowest y %.3f)" % [j, low])
 	# Getting up, the planted foot and the kneeling leg both touch the floor.
@@ -156,13 +158,7 @@ func _highest(node: Node) -> float:
 
 ## Snap the visual straight to a named pose (no blending).
 func _apply(id: StringName) -> void:
-	var pose: Dictionary = FighterVisual.POSES[id]
-	var idle: Dictionary = FighterVisual.POSES[&"idle"]
-	for j in FighterVisual.JOINTS:
-		(_visual._joints[j] as Node3D).rotation_degrees = pose.get(j, idle[j])
-	_visual._body.position = pose.get(&"root", idle[&"root"])
-	if _visual._skeleton != null:
-		FighterModel.sync_pose(_visual._skeleton, _visual._rig)
+	_visual.snap_to_pose(FighterVisual.POSES[id])
 
 
 ## Skeleton bone indices of `node`'s joint (and the joints under it when

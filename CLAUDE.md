@@ -303,6 +303,15 @@ console. Web costs to remember: `Resource.duplicate()` on a material ~0.3 ms,
 per-hit effects are pooled (`VfxManager`, `FxMaterials`). Measured costs,
 fixes done and open web/mobile optimizations: `docs/web_performance.md`.
 
+Fighter animation (`docs/animation_roadmap.md`): attacks are `MoveTracks`
+keyframes on the move's startup/active/recovery, states `StateTracks`, every
+pose completed by `FighterVisual.complete_pose` (chest twist, flat feet) and
+sprung (`Tuning.anim`). On this rig torso/head +X tilts BACK. Author with
+`tools/pose_fit.tscn` (headless: floor offset + hitbox contact per pose;
+`mode=fit` solves a limb onto a move's hitbox) and `tools/pose_sheet.tscn`
+(needs a window: pose strips as PNG); `tests/move_tracks_test` holds contacts
+and planted feet.
+
 `tools/arena_preview.tscn`: screenshots a stage from fixed spots, or a CPU
 match on it with `match=1` (needs a window; add `--rendering-method
 gl_compatibility` for the web renderer): `godot res://tools/arena_preview.tscn

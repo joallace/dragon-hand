@@ -40,6 +40,19 @@ extends Resource
 @export var walk_torso_twist_deg: float = 6.0
 @export var walk_bob: float = 0.025
 
+@export_group("Rig")
+## Share of a pose's torso twist (Y) given to the chest joint (the rest stays
+## on the waist) when the pose doesn't set the chest: the two spring apart,
+## so the hips lead and the chest follows through.
+@export var chest_twist_share: float = 0.55
+## Ankles not set by a pose flatten the boot against the floor (cancel hip +
+## knee pitch), at most this far (a raised kick leg pulls the toes back).
+@export var ankle_max_deg: float = 40.0
+## Wrists trail the forearm (seconds of elbow angular velocity), the fist
+## whipping through at the end of a strike.
+@export var wrist_lag: float = 0.02
+@export var wrist_lag_max_deg: float = 35.0
+
 @export_group("Follow-through")
 ## The head trails the torso: seconds of torso angular velocity it lags by.
 @export var head_lag: float = 0.03

@@ -41,7 +41,7 @@ dodges (sways, duck, backflip), dash start/travel/stop, guard enter, hitstun
 by height and side (head snap vs body fold), launch -> fall -> knockdown ->
 wakeup, charge enter/loop/release, taunt, throw hold/toss, thrown.
 
-## Step 5: richer rig (Blender model + rig joints)
+## Step 5: richer rig (Blender model + rig joints) (done: chest, wrists, ankles)
 Split torso into pelvis/spine/chest, add neck, wrists and ankles (maybe a
 clenched-fist bone). `tools/blender/build_fighter.py` + `FighterModel` bone
 mapping + `FighterVisual._build_rig`; new joints default to 0 so every pose

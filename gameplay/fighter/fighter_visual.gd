@@ -29,6 +29,10 @@ const JOINTS: Array[StringName] = [
 const ROOT := &"root"
 ## States lying on / rising off the floor: no spring overshoot through it.
 const GROUNDED_STATES: Array[StringName] = [&"knockdown", &"ko", &"downed", &"out", &"wakeup", &"revive"]
+## Where a hit landed on the victim (Tuning.anim hit_head/low_height).
+enum HitZone { HEAD, BODY, LOW }
+## Hitstun pose per HitZone.
+const HITSTUN_POSES: Array[StringName] = [&"hitstun", &"hitstun_body", &"hitstun_low"]
 ## States that breathe and shift their weight (Tuning.anim idle).
 const IDLE_STATES: Array[StringName] = [&"idle", &"walk", &"guard"]
 const FLASH_TIME := 0.12
@@ -88,6 +92,24 @@ const POSES := {
 		&"hip_r": Vector3(85, 0, 35), &"kn_r": Vector3(-150, 0, 0), &"root": Vector3(0, -0.55, 0)},
 	&"sway_l": {&"torso": Vector3(-5, 0, 30), &"head": Vector3(0, 0, 15), &"root": Vector3(0, -0.1, 0)},
 	&"sway_r": {&"torso": Vector3(-5, 0, -30), &"head": Vector3(0, 0, -15), &"root": Vector3(0, -0.1, 0)},
+	# Sway start (StateTracks): ducked further under, knees giving.
+	&"sway_l_dip": {&"torso": Vector3(-10, 0, 42), &"head": Vector3(4, 0, 22),
+		&"sh_l": Vector3(60, 0, -20), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(55, 0, 25), &"el_r": Vector3(120, 0, 0),
+		&"hip_l": Vector3(30, 0, -12), &"kn_l": Vector3(-45, 0, 0), &"hip_r": Vector3(5, 0, 12), &"kn_r": Vector3(-40, 0, 0),
+		&"root": Vector3(0, -0.046, 0)},
+	&"sway_r_dip": {&"torso": Vector3(-10, 0, -42), &"head": Vector3(4, 0, -22),
+		&"sh_l": Vector3(55, 0, -25), &"el_l": Vector3(120, 0, 0), &"sh_r": Vector3(60, 0, 20), &"el_r": Vector3(120, 0, 0),
+		&"hip_l": Vector3(30, 0, -12), &"kn_l": Vector3(-45, 0, 0), &"hip_r": Vector3(5, 0, 12), &"kn_r": Vector3(-40, 0, 0),
+		&"root": Vector3(0, -0.046, 0)},
+	# Backflip push-off and landing crouches (StateTracks).
+	&"backflip_load": {&"torso": Vector3(-15, 0, 0), &"head": Vector3(8, 0, 0),
+		&"sh_l": Vector3(-40, 0, -15), &"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(-40, 0, 15), &"el_r": Vector3(30, 0, 0),
+		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-75, 0, 0), &"hip_r": Vector3(40, 0, 5), &"kn_r": Vector3(-70, 0, 0),
+		&"root": Vector3(0, -0.14, 0)},
+	&"backflip_land": {&"torso": Vector3(-20, 0, 0), &"head": Vector3(12, 0, 0),
+		&"sh_l": Vector3(40, 0, -35), &"el_l": Vector3(60, 0, 0), &"sh_r": Vector3(40, 0, 35), &"el_r": Vector3(60, 0, 0),
+		&"hip_l": Vector3(45, 0, -5), &"kn_l": Vector3(-75, 0, 0), &"hip_r": Vector3(40, 0, 5), &"kn_r": Vector3(-70, 0, 0),
+		&"root": Vector3(0, -0.14, 0)},
 	&"backflip": {&"hip_l": Vector3(100, 0, 0), &"kn_l": Vector3(-120, 0, 0), &"hip_r": Vector3(100, 0, 0),
 		&"kn_r": Vector3(-120, 0, 0), &"sh_l": Vector3(150, 0, -20), &"sh_r": Vector3(150, 0, 20)},
 	&"guard": {&"torso": Vector3(-12, 0, 0), &"sh_l": Vector3(80, 0, -30), &"el_l": Vector3(115, 0, 0),
@@ -99,8 +121,23 @@ const POSES := {
 	&"charge": {&"torso": Vector3(6, 0, 0), &"head": Vector3(12, 0, 0), &"sh_l": Vector3(10, 0, -45),
 		&"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(10, 0, 45), &"el_r": Vector3(30, 0, 0),
 		&"hip_l": Vector3(0, 0, -15), &"hip_r": Vector3(0, 0, 15), &"root": Vector3(0, -0.08, 0)},
+	# Ki charge start (StateTracks): gathering in before powering up.
+	&"charge_gather": {&"torso": Vector3(-20, 0, 0), &"head": Vector3(-8, 0, 0),
+		&"sh_l": Vector3(55, 0, 20), &"el_l": Vector3(130, 0, 0), &"sh_r": Vector3(55, 0, -20), &"el_r": Vector3(130, 0, 0),
+		&"hip_l": Vector3(20, 0, -12), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(10, 0, 12), &"kn_r": Vector3(-35, 0, 0),
+		&"root": Vector3(0, -0.041, 0)},
+	# Hitstun by where the hit landed (FighterVisual hit zone): the head snaps
+	# back, a body blow folds the chest over, a low hit buckles a knee.
 	&"hitstun": {&"torso": Vector3(18, 0, 0), &"head": Vector3(20, 0, 0), &"sh_l": Vector3(-15, 0, -40),
 		&"el_l": Vector3(30, 0, 0), &"sh_r": Vector3(-15, 0, 40), &"el_r": Vector3(30, 0, 0)},
+	&"hitstun_body": {&"torso": Vector3(-32, 0, 0), &"head": Vector3(-6, 0, 0),
+		&"sh_l": Vector3(35, 0, 10), &"el_l": Vector3(105, 0, 0), &"sh_r": Vector3(35, 0, -10), &"el_r": Vector3(105, 0, 0),
+		&"hip_l": Vector3(25, 0, -5), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(0, 0, 5), &"kn_r": Vector3(-30, 0, 0),
+		&"root": Vector3(0, -0.032, 0.04)},
+	&"hitstun_low": {&"torso": Vector3(-12, 0, -12), &"head": Vector3(10, 0, 8),
+		&"sh_l": Vector3(20, 0, -45), &"el_l": Vector3(50, 0, 0), &"sh_r": Vector3(20, 0, 45), &"el_r": Vector3(50, 0, 0),
+		&"hip_l": Vector3(55, 0, -8), &"kn_l": Vector3(-80, 0, 0), &"hip_r": Vector3(-10, 0, 8), &"kn_r": Vector3(-20, 0, 0),
+		&"root": Vector3(0, -0.04, 0)},
 	&"launched": {&"torso": Vector3(0, 0, 0), &"head": Vector3(15, 0, 0), &"hip_l": Vector3(30, 0, 0),
 		&"hip_r": Vector3(15, 0, 0), &"sh_l": Vector3(60, 0, -60), &"sh_r": Vector3(60, 0, 60),
 		&"spin": Vector3(40, 0, 0)},
@@ -196,6 +233,10 @@ var _tracked := false
 ## charge holds) instead of looping.
 var _anim_frame := 0.0
 var _anim_serial := -1
+## StateTracks key being played (&"" when none).
+var _state_key := &""
+## Where the last hit taken landed (HitZone): picks the hitstun pose.
+var _hit_zone := HitZone.HEAD
 ## Desyncs idle breathing between fighters (seconds).
 var _idle_phase := 0.0
 var _body: Node3D
@@ -266,9 +307,15 @@ func _target_pose() -> Dictionary:
 	var m0 := f.current_move()
 	_tracked = m0 != null and MoveTracks.has_track(m0.pose)
 	if _tracked:
+		_state_key = &""
 		return _track_pose(m0)
 	_anim_serial = -1
 	var id := f.current_pose()
+	var skey := StateTracks.key_for(f.current_state_name(), id, f.dodge_kind())
+	if skey != &"":
+		_tracked = true
+		return _state_track_pose(skey)
+	_state_key = &""
 	if f.attack_phase() == 0:
 		var windup := StringName(String(id) + "_windup")
 		if POSES.has(windup):
@@ -281,7 +328,22 @@ func _target_pose() -> Dictionary:
 		if f.state_frame() > m.startup + m.active + m.recovery / 2:
 			return POSES[&"idle"]
 	var pose_id := pose_id_for(id, f.current_state_name(), f.state_frame(), f.tuning, f.duck_variant())
+	if pose_id == &"hitstun":
+		pose_id = HITSTUN_POSES[_hit_zone]
 	return POSES.get(pose_id, POSES[&"idle"])
+
+
+## Target of a state with a StateTracks track, on the same kind of smoothed
+## clock as the moves; it restarts on a new track or when the state starts
+## over (sway into sway: the frame drops back).
+func _state_track_pose(key: StringName) -> Dictionary:
+	var f := float(_fighter.state_frame())
+	var at := f - 1.0 + Engine.get_physics_interpolation_fraction() if SmoothedVisual.enabled else f
+	if key != _state_key or at < _anim_frame - 1.0:
+		_state_key = key
+		_anim_frame = at
+	_anim_frame = clampf(maxf(_anim_frame, at), f - 1.0, f)
+	return StateTracks.sample(key, _anim_frame, _fighter.tuning, POSES[&"idle"])
 
 
 ## Target of a tracked move: its track sampled at the smoothed frame.
@@ -486,6 +548,9 @@ func _on_event(kind: StringName, data: Dictionary) -> void:
 			if not blocked:
 				_flash_left = FLASH_TIME
 			_hit_reaction(data.get("position", _fighter.global_position), data.get("heavy", false), blocked)
+		&"ground_bounce":
+			if data.get("slot", -1) == _fighter.slot:
+				_bounce_reaction()
 		&"teleport", &"vanish", &"reappear":
 			_spawn_flash(data.get("position", _fighter.global_position))
 
@@ -493,17 +558,45 @@ func _on_event(kind: StringName, data: Dictionary) -> void:
 ## Hit taken: kick the springs so the body snaps away from the blow and
 ## settles into the hitstun pose (a blocked hit just rocks the guard).
 func _hit_reaction(at: Vector3, heavy: bool, blocked: bool) -> void:
-	# A rollback resim re-emits the hit: kick once (springs accumulate).
+	var a := Tuning.anim
+	var local := _fighter.global_transform.affine_inverse() * at
+	var height := local.y / maxf(_body.scale.y, 0.01)
+	# The zone is set even in a rollback resim: a hit first found there (a
+	# mispredicted remote attack) must still pick its hitstun pose.
+	if not blocked:
+		_hit_zone = HitZone.HEAD
+		if height < a.hit_low_height:
+			_hit_zone = HitZone.LOW
+		elif height < a.hit_head_height:
+			_hit_zone = HitZone.BODY
+	# A resim re-emits the hit: kick once (springs accumulate).
 	if _fighter.director != null and _fighter.director.resimulating:
 		return
-	var a := Tuning.anim
 	var k := (a.hit_heavy_scale if heavy else 1.0) * (a.hit_blocked_scale if blocked else 1.0)
+	var torso_scale := 1.0
+	if not blocked and _hit_zone == HitZone.LOW:
+		torso_scale = a.hit_low_torso_scale
+	elif not blocked and _hit_zone == HitZone.BODY:
+		torso_scale = a.hit_body_torso_scale
 	# A blow on the right (+x) drives that shoulder back: chest turns right (-Y).
-	var side := signf((_fighter.global_transform.affine_inverse() * at).x)
-	_springs.kick(&"torso", Vector3(a.hit_torso_impulse, -side * a.hit_twist_impulse, 0) * k)
+	var side := signf(local.x)
+	_springs.kick(&"torso", Vector3(a.hit_torso_impulse * torso_scale, -side * a.hit_twist_impulse, 0) * k)
 	_springs.kick(&"head", Vector3(a.hit_head_impulse, 0, 0) * k)
 	_springs.kick(&"sh_l", Vector3(-a.hit_arm_impulse, 0, -a.hit_arm_impulse) * k)
 	_springs.kick(&"sh_r", Vector3(-a.hit_arm_impulse, 0, a.hit_arm_impulse) * k)
+
+
+## Knocked down and bouncing off the floor: the body and limbs flop.
+func _bounce_reaction() -> void:
+	if _fighter.director != null and _fighter.director.resimulating:
+		return
+	var a := Tuning.anim
+	_springs.kick(&"torso", Vector3(-a.bounce_torso_impulse, 0, 0))
+	_springs.kick(&"head", Vector3(a.bounce_torso_impulse, 0, 0))
+	for j in [&"sh_l", &"sh_r", &"hip_l", &"hip_r"]:
+		_springs.kick(j, Vector3(a.bounce_limb_impulse, 0, 0))
+	for j in [&"kn_l", &"kn_r"]:
+		_springs.kick(j, Vector3(-a.bounce_limb_impulse, 0, 0))
 
 
 ## Expanding sphere flash at a world position (vanish/reappear).

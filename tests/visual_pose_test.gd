@@ -16,6 +16,8 @@ const STANDING: Array[StringName] = [
 	&"guard", &"guard_high", &"guard_low", &"counter_guard", &"recoil",
 	&"throw_hold", &"throw_toss", &"taunt", &"dash_start", &"dash_stop",
 	&"charge_end", &"duck", &"duck_curl", &"duck_wide", &"getup_kick", &"getup_kick_windup",
+	&"sway_l_dip", &"sway_r_dip", &"backflip_load", &"backflip_land", &"charge_gather",
+	&"hitstun", &"hitstun_body", &"hitstun_low",
 ]
 const FOOT_TOLERANCE := 0.12
 ## Highest point (m) a duck pose may reach: the original single duck pose's

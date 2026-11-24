@@ -55,3 +55,15 @@ extends Resource
 @export var hit_heavy_scale: float = 1.6
 ## Blocked hit: the same kick, scaled down (guard rocked).
 @export var hit_blocked_scale: float = 0.35
+## Where the hit landed, from the hit point's height above the victim's
+## feet (m, at body scale 1): above head height the head snaps back
+## (hitstun), below low height a knee buckles (hitstun_low), between = a
+## body blow folding the chest over (hitstun_body).
+@export var hit_head_height: float = 1.4
+@export var hit_low_height: float = 0.75
+## Torso kick per zone, times hit_torso_impulse (negative = folds forward).
+@export var hit_body_torso_scale: float = -0.8
+@export var hit_low_torso_scale: float = 0.3
+## A knocked-down fighter bouncing off the floor: the body and limbs flop.
+@export var bounce_torso_impulse: float = 600.0
+@export var bounce_limb_impulse: float = 700.0

@@ -31,6 +31,12 @@ func _ready() -> void:
 	_v = FighterVisual.new()
 	add_child(_v)
 	if args.get("mode", "report") == "fit":
+		var pose_ok := MoveTracks.KEY_POSES.has(StringName(args.get("pose", ""))) \
+				or FighterVisual.POSES.has(StringName(args.get("pose", "")))
+		if not pose_ok or not _move_exists(args.get("move", "")):
+			printerr("pose_fit: mode=fit needs pose=<key pose> and move=<data/moves id>")
+			get_tree().quit(1)
+			return
 		_fit(args)
 	else:
 		_report(args.get("only", ""))
@@ -66,6 +72,10 @@ func _lowest() -> float:
 static func _target(move_id: String) -> Vector3:
 	var m := load("res://data/moves/%s.tres" % move_id) as MoveData
 	return Vector3(m.hitbox_offset.x, m.hitbox_offset.y, -m.hitbox_offset.z)
+
+
+static func _move_exists(move_id: String) -> bool:
+	return move_id != "" and ResourceLoader.exists("res://data/moves/%s.tres" % move_id)
 
 
 func _report(only: String) -> void:

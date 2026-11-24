@@ -34,6 +34,7 @@ func _ready() -> void:
 	_test_feet()
 	_test_track_shape()
 	_test_all_moves_tracked()
+	_test_state_tracks()
 	_test_timeline()
 	_test_springs()
 	_visual.queue_free()
@@ -113,6 +114,30 @@ static func _airborne(id: StringName) -> bool:
 		if String(id).begins_with(String(t) + "_"):
 			return true
 	return false
+
+
+## State tracks: keys ordered in 0..1 on defined poses, a real tuning length,
+## and the right key per state.
+func _test_state_tracks() -> void:
+	for key: StringName in StateTracks.TRACKS:
+		var tr: Dictionary = StateTracks.TRACKS[key]
+		var f: Variant = tr["frames"]
+		_check(f is int or f in Tuning.fighter, "state track %s: length %s exists" % [key, f])
+		var prev := -1.0
+		var ok := true
+		for k: Array in tr["keys"]:
+			ok = ok and float(k[0]) >= prev and float(k[0]) <= 1.0
+			ok = ok and (MoveTracks.KEY_POSES.has(k[1]) or FighterVisual.POSES.has(k[1]))
+			prev = float(k[0])
+		_check(ok, "state track %s: keys ordered in 0..1, poses defined" % key)
+		var s := StateTracks.sample(key, 1e6, Tuning.fighter, FighterVisual.POSES[&"idle"])
+		_check(s.size() == FighterVisual.POSES[&"idle"].size(), "state track %s holds a full pose past its end" % key)
+	_check(StateTracks.key_for(&"dodge", &"sway_l") == &"sway_l", "a sway dodge plays its track")
+	_check(StateTracks.key_for(&"dodge", &"duck") == &"", "ducks keep their variant poses")
+	_check(StateTracks.key_for(&"dodge", &"backflip", Fighter.DodgeKind.AIR_TECH) == &"",
+		"an air tech keeps the static backflip tuck")
+	_check(StateTracks.key_for(&"charge", &"charge") == &"charge", "the ki charge plays its track")
+	_check(StateTracks.key_for(&"idle", &"idle") == &"", "idle has no state track")
 
 
 ## Every attack pose any move uses has a track (no static fallbacks left).
@@ -229,6 +254,7 @@ func _test_live_jab() -> void:
 	p2.event.connect(func(kind: StringName, data: Dictionary) -> void:
 		if kind == &"hit" and data.get("slot", -1) == p2.slot:
 			hit[0] = true)
+	v2._hit_zone = FighterVisual.HitZone.LOW  # the jab must set it
 	(d.sources[0] as ScriptedInput).press(0, B.LIGHT)
 	var best := INF
 	var move: MoveData = null
@@ -255,6 +281,16 @@ func _test_live_jab() -> void:
 	_check(move != null and move.pose == &"jab", "P1 threw the jab (%s)" % (move.id if move else "none"))
 	_check(best <= LIVE_TOLERANCE, "rendered jab fist reaches the live hitbox (%.3f m)" % best)
 	_check(hit[0] and kicked, "the hit kicks the victim's torso back")
+	_check(v2._hit_zone == FighterVisual.HitZone.HEAD, "a jab lands in the head zone (%d)" % v2._hit_zone)
+	# A kick's hit point (hitbox at 1.0 m) is a body blow, a sweep's a low hit.
+	var kick := load(MOVES_DIR + "brawler_kick.tres") as MoveData
+	var sweep := load(MOVES_DIR + "brawler_sweep.tres") as MoveData
+	v2._hit_reaction(p2.global_transform * Vector3(0, kick.hitbox_offset.y, 0), false, false)
+	_check(v2._hit_zone == FighterVisual.HitZone.BODY, "a kick lands in the body zone (%d)" % v2._hit_zone)
+	v2._hit_reaction(p2.global_transform * Vector3(0, sweep.hitbox_offset.y, 0), false, false)
+	_check(v2._hit_zone == FighterVisual.HitZone.LOW, "a sweep lands in the low zone (%d)" % v2._hit_zone)
+	_check(FighterVisual.pose_id_for(&"hitstun", &"hitstun", 0, Tuning.fighter) == &"hitstun"
+		and FighterVisual.HITSTUN_POSES.size() == FighterVisual.HitZone.size(), "one hitstun pose per zone")
 	_check(finite, "spring values stay finite")
 	d.queue_free()
 

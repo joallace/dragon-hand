@@ -35,7 +35,7 @@ jump_kick, dive_kick (airborne: no floor check, contact only), duck_kick,
 getup_kick (keeps its procedural spin), ki_blast and beam (no hitbox: the
 hands aim at the spawn point; beam holds through its long recovery).
 
-## Step 4: state tracks
+## Step 4: state tracks (done: sways, backflip, charge, hitstun zones, bounce)
 Generalize tracks to non-attack states on their own state-frame timeline:
 dodges (sways, duck, backflip), dash start/travel/stop, guard enter, hitstun
 by height and side (head snap vs body fold), launch -> fall -> knockdown ->

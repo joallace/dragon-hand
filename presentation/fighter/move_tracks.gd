@@ -578,7 +578,11 @@ static func pose_of(id: StringName) -> Dictionary:
 ## The pose dictionary (every FighterVisual joint + root) of track `pose`
 ## at timeline `u`; missing joints come from `base`.
 static func sample(pose: StringName, u: float, base: Dictionary) -> Dictionary:
-	var keys: Array = TRACKS[pose]
+	return sample_keys(TRACKS[pose], u, base)
+
+
+## Keys [t, pose, ease] (ascending t) sampled at `u` (StateTracks too).
+static func sample_keys(keys: Array, u: float, base: Dictionary) -> Dictionary:
 	var i := 0
 	while i < keys.size() and float(keys[i][0]) <= u:
 		i += 1

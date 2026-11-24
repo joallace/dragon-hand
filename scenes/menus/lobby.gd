@@ -44,9 +44,9 @@ extends Control
 ##   IP. Without online play (Net.online_available() false) the room bar and
 ##   the room actions are gone.
 ##
-## Local: `model` is this screen's own; the tabs switch Versus / Versus CPU /
-##   Co-op (see LobbyModel). The match starts after UiTheme join_start_delay
-##   seconds of everyone ready.
+## Local: `model` is this screen's own; the tabs switch Versus / Co-op (see
+##   LobbyModel; CPUs are seated in empty versus slots). The match starts
+##   after UiTheme join_start_delay seconds of everyone ready.
 ## Online: `model` is Net.room.model. The host applies commands directly; a
 ##   guest's commands go to the host (OnlineRoom.request) and the screen
 ##   redraws on every state broadcast. The host's countdown

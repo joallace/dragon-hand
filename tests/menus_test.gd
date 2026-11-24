@@ -229,22 +229,29 @@ func _test_join_screen() -> void:
 
 
 func _test_join_screen_cpu() -> void:
+	LobbyModel._memory = {}
+	# Change Setup after an old Versus CPU match: there's no such tab any more.
 	Lobby.pending_mode = MatchConfig.Mode.VERSUS_CPU
 	var j := spawn(Game.SCENE_LOBBY) as Lobby
 	j.auto_start = false
 	var requested: Array = []
 	j.match_requested.connect(func(c: MatchConfig) -> void: requested.append(c))
 	await frames(3)
-	var cpu := j.cpu_slot()
-	check(cpu == 1 and j.slots[cpu].state == Lobby.SlotState.READY, "CPU slot is pre-joined and ready")
-	check(j.model.seat_rows(cpu).has(Lobby.Row.CPU_LEVEL), "CPU mode offers a CPU level row on the CPU's card")
-	var start_level := j.slots[cpu].cpu_level
-	check(start_level == Tuning.cpu.clamp_level(-1) or LobbyModel._memory.has("cpu_level"), "CPU level starts at the default")
+	check(j.model.mode == MatchConfig.Mode.LOCAL_VERSUS and j._tab_buttons.size() == 2 and j.cpu_slot() < 0,
+			"Versus CPU opens as Versus (two tabs, no pre-seated CPU)")
 
 	await pad_tap(0, JOY_BUTTON_START)
-	check(j.slots[0].state == Lobby.SlotState.JOINED, "pad 0 joins the human slot")
+	check(j.slots[0].state == Lobby.SlotState.JOINED, "pad 0 joins the first slot")
 	await pad_tap(0, JOY_BUTTON_X)
-	check(j.focus_of(0) == cpu and (j._ui[cpu]["character"] as Label).text.begins_with("<"), "X puts the cursor on the CPU's fighter")
+	await pad_tap(0, JOY_BUTTON_A)
+	var cpu := j.cpu_slot()
+	check(cpu == 1 and j.slots[cpu].state == Lobby.SlotState.READY and j.focus_of(0) == cpu,
+			"X, A: a CPU seated in the next slot, ready")
+	var start_level := j.slots[cpu].cpu_level
+	check(start_level == Tuning.cpu.clamp_level(-1), "CPU level starts at the default")
+	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
+	check(j._focus[0]["row"] == Lobby.Row.CPU_CHARACTER and (j._ui[cpu]["character"] as Label).text.begins_with("<"),
+			"down: the CPU's fighter")
 	await pad_tap(0, JOY_BUTTON_DPAD_DOWN)
 	check(j._focus[0]["row"] == Lobby.Row.CPU_LEVEL, "next row is CPU level")
 	await pad_tap(0, JOY_BUTTON_DPAD_LEFT)
@@ -264,7 +271,7 @@ func _test_join_screen_cpu() -> void:
 	check(requested.size() == 1, "CPU match requested after countdown")
 	if requested.size() == 1:
 		var cfg: MatchConfig = requested[0]
-		check(cfg.mode == MatchConfig.Mode.VERSUS_CPU, "config mode VERSUS_CPU")
+		check(cfg.mode == MatchConfig.Mode.LOCAL_VERSUS and cfg.players.size() == 2, "config: versus, the player and the CPU")
 		check(cfg.players[1].input_kind == PlayerSlotConfig.InputKind.CPU
 				and cfg.players[1].cpu_level == Tuning.cpu.level_count() - 1, "config carries CPU and its level")
 		check(cfg.player_tag(1) == "CPU" and cfg.player_tag(0) == "P1", "player tags name the CPU")
@@ -298,12 +305,12 @@ func _test_join_screen_coop() -> void:
 	await pad_tap(2, JOY_BUTTON_LEFT_SHOULDER)
 	check(j.is_coop(), "LB: back to Co-op")
 	await key_tap(KEY_Q)
-	check(j.model.mode == MatchConfig.Mode.VERSUS_CPU and j._ui.size() == 2, "Q: the previous mode (Versus CPU, two cards)")
+	check(j.model.mode == MatchConfig.Mode.LOCAL_VERSUS and j._ui.size() == Tuning.net.max_fighters, "Q: the previous mode (Versus)")
 	await key_tap(KEY_E)
-	check(j.is_coop() and j._tab_buttons.size() == 3, "E: Co-op again")
+	check(j.is_coop() and j._tab_buttons.size() == 2, "E: Co-op again")
 	j._tab_buttons[0].pressed.emit()
 	check(j.model.mode == MatchConfig.Mode.LOCAL_VERSUS, "a tab can be clicked")
-	j._tab_buttons[2].pressed.emit()
+	j._tab_buttons[1].pressed.emit()
 	check(j.is_coop(), "and another")
 
 	await pad_tap(0, JOY_BUTTON_START)

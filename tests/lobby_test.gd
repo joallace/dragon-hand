@@ -75,44 +75,41 @@ func _test_model_stage() -> void:
 
 func _test_model_modes() -> void:
 	var m := LobbyModel.new(MatchConfig.Mode.LOCAL_VERSUS)
-	check(m.modes().size() == 3, "local lobby has three game modes")
+	check(m.modes() == ([MatchConfig.Mode.LOCAL_VERSUS, MatchConfig.Mode.COOP] as Array[MatchConfig.Mode]),
+			"local lobby's modes: Versus / Co-op (CPUs are seated in versus, no Versus CPU tab)")
+	check(LobbyModel.new(MatchConfig.Mode.VERSUS_CPU).mode == MatchConfig.Mode.LOCAL_VERSUS,
+			"a lobby asked for Versus CPU (an old match's mode) opens on Versus")
 	var a := m.join(Bindings.Kind.PAD, 0)
 	m.slots[a].char_index = 1
-	check(m.change_rule(LobbyModel.Row.MODE, 1) and m.mode == MatchConfig.Mode.VERSUS_CPU and m.cpu_slot() == 1,
-			"next mode -> Versus CPU adds the CPU slot")
-	check(m.seat_rows(1) == ([LobbyModel.Row.CPU_CHARACTER, LobbyModel.Row.CPU_LEVEL] as Array[int])
-			and m.seat_targets() == ([1] as Array[int]), "Versus CPU: the CPU's fighter and level are its seat rows")
+	check(m.change_rule(LobbyModel.Row.MODE, 1) and m.is_coop() and m.rule_rows().has(LobbyModel.Row.ENEMY_COUNT),
+			"next mode -> Co-op has the run rules")
 	check(m.slots[a].state == LobbyModel.SlotState.JOINED and m.slots[a].char_index == 1
 			and m.slots[a].device_id == 0, "joined human keeps slot, device and pick across a mode switch")
 	m.change_rule(LobbyModel.Row.MODE, 1)
-	check(m.is_coop() and m.rule_rows().has(LobbyModel.Row.ENEMY_COUNT), "next mode -> Co-op has the run rules")
-	m.change_rule(LobbyModel.Row.MODE, 1)
 	check(m.mode == MatchConfig.Mode.LOCAL_VERSUS and m.cpu_slot() < 0, "the modes wrap back to Versus")
-	check(m.change_rule(LobbyModel.Row.MODE, 2) and m.is_coop() and m.change_rule(LobbyModel.Row.MODE, -2)
-			and m.mode == MatchConfig.Mode.LOCAL_VERSUS and not m.change_rule(LobbyModel.Row.MODE, 3),
-			"a mode change can take several steps (a tab), and a full turn changes nothing")
+	check(m.change_rule(LobbyModel.Row.MODE, -1) and m.is_coop() and m.change_rule(LobbyModel.Row.MODE, 1)
+			and m.mode == MatchConfig.Mode.LOCAL_VERSUS and not m.change_rule(LobbyModel.Row.MODE, 2),
+			"the previous mode wraps too, and a full turn changes nothing")
 	check(not m.change_rule(LobbyModel.Row.ENEMY_COUNT, 1) and not m.change_rule(LobbyModel.Row.CHARACTER, 1),
 			"a rule the mode doesn't have can't be changed")
 	# A mode switch never drops a joined player.
 	var b := m.join(Bindings.Kind.PAD, 1)
 	m.command(b, LobbyModel.Cmd.CONFIRM)
 	check(m.change_rule(LobbyModel.Row.MODE, 1) and m.is_coop() and m.joined_humans() == 2,
-			"two players: the next mode skips Versus CPU (one human slot)")
+			"two players: both kept in Co-op")
 	check(m.slots[b].state == LobbyModel.SlotState.JOINED, "a mode switch un-readies")
 	check(m.change_rule(LobbyModel.Row.MODE, -1) and m.mode == MatchConfig.Mode.LOCAL_VERSUS and m.joined_humans() == 2,
-			"the previous mode skips it too")
-	m.set_mode(MatchConfig.Mode.COOP)
-	check(not m.change_rule(LobbyModel.Row.MODE, 2) and m.is_coop() and not m.mode_fits(MatchConfig.Mode.VERSUS_CPU),
-			"Versus CPU can't be picked directly with two players")
-	m.leave(a)
-	check(m.change_rule(LobbyModel.Row.MODE, 2) and m.mode == MatchConfig.Mode.VERSUS_CPU
-			and m.slots[0].state == LobbyModel.SlotState.JOINED and m.slots[0].device_id == 1,
-			"a lone player in slot 2 moves to Versus CPU's human slot")
-	m.command(0, LobbyModel.Cmd.CONFIRM)
-	check(m.change_seat(1, LobbyModel.Row.CPU_LEVEL, -1) and m.slots[0].state == LobbyModel.SlotState.JOINED,
-			"offline too, a seat change un-readies the players")
-	m.command(0, LobbyModel.Cmd.CONFIRM)
-	check(m.change_rule(LobbyModel.Row.ROUNDS, 1) and m.slots[0].state == LobbyModel.SlotState.JOINED,
+			"and back in Versus")
+	var cpu := m.first_free_slot()
+	m.command(a, LobbyModel.Cmd.CONFIRM)
+	check(m.change_seat(cpu, LobbyModel.Row.SEAT_TYPE, 1) and m.cpu_slot() == cpu
+			and m.slots[a].state == LobbyModel.SlotState.JOINED,
+			"versus seats a CPU in an empty slot; offline too, a seat change un-readies the players")
+	m.command(a, LobbyModel.Cmd.CONFIRM)
+	check(m.change_seat(cpu, LobbyModel.Row.CPU_LEVEL, -1) and m.slots[a].state == LobbyModel.SlotState.JOINED,
+			"so does the CPU's level")
+	m.command(a, LobbyModel.Cmd.CONFIRM)
+	check(m.change_rule(LobbyModel.Row.ROUNDS, 1) and m.slots[a].state == LobbyModel.SlotState.JOINED,
 			"and so does a rule change")
 	var o := LobbyModel.new(MatchConfig.Mode.ONLINE, true)
 	check(o.modes() == LobbyModel.ONLINE_MODES

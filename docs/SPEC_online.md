@@ -319,8 +319,9 @@ One screen for local and online: pads/keyboard join into free slots. Layout
 line, status, key hints.
 
 - **Mode tabs** (LB / RB, Q / E, or a click; the lobby's owner = anyone
-  offline, the host online): Versus / Versus CPU / Co-op offline, Versus /
-  Co-op online. They work before anyone has joined.
+  offline, the host online): Versus / Co-op, offline and online (a CPU
+  opponent is a CPU seated in an empty versus slot). They work before
+  anyone has joined.
 - **Cards**: a player's cursor never leaves their own card (fighter, colour,
   team). X (keyboard: the layout's HEAVY key) moves the owner's cursor to the
   next card with *seat rows*: an empty slot ("+ CPU"), a CPU (remove,

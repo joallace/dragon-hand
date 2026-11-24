@@ -15,12 +15,12 @@ extends RefCounted
 ##
 ## Modes: `mode` picks the slot layout (configure_for_mode):
 ##   LOCAL_VERSUS and ONLINE (versus over the network): Tuning.net.max_fighters
-##   HUMAN slots (team versus, SPEC_ONLINE.md §15 milestone 5); VERSUS_CPU
-##   [HUMAN, CPU] (the CPU slot is pre-joined and ready; its fighter and
-##   level are its seat rows); COOP min(max_humans, max_fighters)
+##   HUMAN slots (team versus, SPEC_ONLINE.md §15 milestone 5; CPUs are
+##   seated in empty slots); COOP min(max_humans, max_fighters)
 ##   optional HUMAN slots (SPEC.md §9 rows).
-## `change_rule(Row.MODE, dir)` switches between `modes()` (offline: the three
-## local modes; online: ONLINE and COOP).
+## `change_rule(Row.MODE, dir)` switches between `modes()` (offline:
+## LOCAL_VERSUS and COOP; online: ONLINE and COOP). A mode the lobby doesn't
+## list (VERSUS_CPU, still built by tools and tests) opens as the first one.
 ##
 ## Team versus (LOCAL_VERSUS / ONLINE, `team_mode()`): every slot has a team,
 ## TEAM_FFA (its own team) or a named team (TEAM_NAMES: A, B); each player
@@ -60,8 +60,7 @@ const EV_LEAVE := &"leave"
 const EV_JOIN := &"join"
 
 ## Offline modes, in MODE row order.
-const LOCAL_MODES: Array[MatchConfig.Mode] = [
-	MatchConfig.Mode.LOCAL_VERSUS, MatchConfig.Mode.VERSUS_CPU, MatchConfig.Mode.COOP]
+const LOCAL_MODES: Array[MatchConfig.Mode] = [MatchConfig.Mode.LOCAL_VERSUS, MatchConfig.Mode.COOP]
 const ONLINE_MODES: Array[MatchConfig.Mode] = [MatchConfig.Mode.ONLINE, MatchConfig.Mode.COOP]
 const MIN_ROUNDS := 1
 const MAX_ROUNDS := 5
@@ -130,7 +129,7 @@ func _init(p_mode: MatchConfig.Mode = MatchConfig.Mode.LOCAL_VERSUS, p_online :=
 	rounds_to_win = clampi(rules.rounds_to_win, MIN_ROUNDS, MAX_ROUNDS)
 	time_index = maxi(time_options.find(rules.round_time_seconds), 0)
 	online = p_online
-	set_mode(p_mode)
+	set_mode(p_mode if p_mode in modes() else modes()[0])
 
 
 ## Switch mode: rebuild the slot layout, keeping joined humans (and their
@@ -164,8 +163,6 @@ func set_mode(m: MatchConfig.Mode) -> void:
 func configure_for_mode() -> void:
 	var types: Array[int] = []
 	match mode:
-		MatchConfig.Mode.VERSUS_CPU:
-			types = [SlotType.HUMAN, SlotType.CPU]
 		MatchConfig.Mode.COOP:
 			for i in mini(Tuning.net.max_humans, Tuning.net.max_fighters):
 				types.append(SlotType.HUMAN)
@@ -205,8 +202,6 @@ func modes() -> Array[MatchConfig.Mode]:
 func mode_fits(m: MatchConfig.Mode) -> bool:
 	var places := Tuning.net.max_fighters
 	match m:
-		MatchConfig.Mode.VERSUS_CPU:
-			places = 1
 		MatchConfig.Mode.COOP:
 			places = mini(Tuning.net.max_humans, Tuning.net.max_fighters)
 	return joined_humans() <= places
@@ -214,8 +209,6 @@ func mode_fits(m: MatchConfig.Mode) -> bool:
 
 static func mode_name(m: MatchConfig.Mode) -> String:
 	match m:
-		MatchConfig.Mode.VERSUS_CPU:
-			return "Versus CPU"
 		MatchConfig.Mode.COOP:
 			return "Co-op"
 	return "Versus"
@@ -400,8 +393,7 @@ func rule_rows() -> Array[int]:
 
 ## Rows the lobby's owner can change on slot `idx`, top to bottom. Team
 ## versus: an empty slot can become a CPU (SEAT_TYPE), a CPU has its fighter,
-## level and team, and online a joined player has their team. Versus CPU:
-## the CPU's fighter and level. Co-op: the ally's place (ally_place) switches
+## level and team, and online a joined player has their team. Co-op: the ally's place (ally_place) switches
 ## the ally on and off and picks its fighter and level.
 func seat_rows(idx: int) -> Array[int]:
 	var r: Array[int] = []

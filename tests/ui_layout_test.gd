@@ -43,7 +43,7 @@ func _run_all(tag: String) -> void:
 	await _check_scene(Game.SCENE_CONTROLS, "controls screen (pad) " + tag)
 	await _check_controls_keyboard(tag)
 	await _check_controls_overlay(tag)
-	for m in [MatchConfig.Mode.LOCAL_VERSUS, MatchConfig.Mode.VERSUS_CPU, MatchConfig.Mode.COOP]:
+	for m in [MatchConfig.Mode.LOCAL_VERSUS, MatchConfig.Mode.COOP]:
 		await _check_join(m, tag)
 	await _check_results(tag)
 	await _check_online_coop_lobby(tag)
@@ -167,8 +167,7 @@ func _check_controls_overlay(tag: String) -> void:
 
 
 func _check_join(m: MatchConfig.Mode, tag: String) -> void:
-	var names := {MatchConfig.Mode.LOCAL_VERSUS: "versus", MatchConfig.Mode.VERSUS_CPU: "vs CPU",
-			MatchConfig.Mode.COOP: "co-op"}
+	var names := {MatchConfig.Mode.LOCAL_VERSUS: "versus", MatchConfig.Mode.COOP: "co-op"}
 	var what := "lobby %s " % names[m]
 	LobbyModel._memory = {}
 	LobbyModel._coop_memory = {}

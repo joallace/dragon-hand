@@ -126,12 +126,13 @@ func _test_light_string() -> void:
 	for i in range(0, 60, 4):
 		s.press(i, B.LIGHT)
 	var best := _max_combo(d, 0, 90)
-	_check(best >= 4, "4-hit light string combos (max combo %d)" % best)
-	# Finisher: light, then heavy -> knockdown.
+	_check(best >= 5, "5-hit light string combos (max combo %d)" % best)
+	# Finisher: light, then heavy -> heavy stagger, no fall (BT3).
 	d = _new_match()
 	_src(d, 0).press(0, B.LIGHT).press(8, B.HEAVY)
-	var down := _run_until(d, func() -> bool: return d.fighters[1].current_state_name() == &"knockdown", 60)
-	_check(down, "light -> heavy finisher knocks down")
+	var staggered := _run_until(d, func() -> bool: return _event_count(&"stagger", 1) == 1, 60)
+	_check(staggered and d.fighters[1].current_state_name() == &"guard_break" and _event_count(&"knockdown", 1) == 0,
+		"light -> heavy finisher staggers without a fall")
 	var reset := _run_until(d, func() -> bool: return d.fighters[0].combo_hits == 0, 200)
 	_check(reset, "combo resets after the victim recovers")
 
@@ -764,8 +765,8 @@ func _move_id(f: Fighter) -> StringName:
 
 
 func _test_strike_heights() -> void:
-	var cases := [[Vector2.ZERO, &"brawler_kick_mid"], [Vector2(0, 1), &"brawler_kick_high"],
-		[Vector2(0, -1), &"brawler_kick_low"]]
+	var cases := [[Vector2.ZERO, &"brawler_kick_mid"], [Vector2(0, 1), &"brawler_upper_hook"],
+		[Vector2(0, -1), &"brawler_sweep"]]
 	for c: Array in cases:
 		var d := _new_match()
 		_src(d, 0).stick(0, 1, c[0]).press(0, B.HEAVY)
@@ -774,16 +775,16 @@ func _test_strike_heights() -> void:
 	# In the light string, the HEAVY finisher follows the stick too.
 	var d := _new_match()
 	_src(d, 0).press(0, B.LIGHT).stick(8, 9, Vector2(0, -1)).press(8, B.HEAVY)
-	var low := _run_until(d, func() -> bool: return _move_id(d.fighters[0]) == &"brawler_finisher_low", 30)
-	_check(low, "light -> back + HEAVY = low finisher")
+	var low := _run_until(d, func() -> bool: return _move_id(d.fighters[0]) == &"brawler_sweep", 30)
+	_check(low, "light -> back + HEAVY = sweep")
 	var down := _run_until(d, func() -> bool: return d.fighters[1].current_state_name() == &"knockdown", 40)
-	_check(down, "low finisher trips")
+	_check(down, "sweep trips")
 	d = _new_match()
 	_src(d, 0).press(0, B.LIGHT).stick(8, 9, Vector2(0, 1)).press(8, B.HEAVY)
-	_check(_run_until(d, func() -> bool: return _move_id(d.fighters[0]) == &"brawler_finisher_high", 30),
-		"light -> forward + HEAVY = high finisher")
+	_check(_run_until(d, func() -> bool: return _move_id(d.fighters[0]) == &"brawler_upper_hook", 30),
+		"light -> forward + HEAVY = upper hook")
 	var launched := _run_until(d, func() -> bool: return d.fighters[1].global_position.y > 1.0, 60)
-	_check(launched, "high finisher launches")
+	_check(launched, "upper hook launches")
 
 
 ## A late duck (past its invulnerability) shrinks the hurtbox: high kicks
@@ -818,7 +819,9 @@ func _test_charge_strike_release() -> void:
 	var released := _run_until(d, func() -> bool: return _event_count(&"charge_release", 0) == 1, 30)
 	_check(released and is_zero_approx(_last_event(&"charge_release")["ratio"]), "early release fires uncharged")
 	_run_until(d, func() -> bool: return _event_count(&"hit", 1) > 0, 30)
-	_check(p2.current_state_name() == &"hitstun" and _event_count(&"stagger", 1) == 0, "weak charge strike: normal hitstun")
+	_check(p2.current_state_name() == &"guard_break" and _event_count(&"knockdown", 1) == 0,
+		"weak charge kick: the body blow's heavy stagger, no fall")
+	_check(p2._state_len == p1.def.move(&"brawler_charge_kick").stagger_frames, "uncharged: base stagger length")
 	var dmg := p2.tuning.max_health - p2.health
 	var base := p1.def.move(&"brawler_charge_kick").damage
 	_check(is_equal_approx(dmg, base), "uncharged damage is the base (%.1f)" % dmg)
@@ -974,6 +977,8 @@ func _test_combo_scaling() -> void:
 
 
 ## The same move landing twice in one combo pushes the victim out.
+## BT3 anti-loop is by reaction: plain hits may repeat, a special reaction
+## (MoveData.loop_group) taken twice in one segment pushes out.
 func _test_anti_loop_repeat() -> void:
 	var d := _new_match()
 	var p1 := d.fighters[0]
@@ -984,19 +989,33 @@ func _test_anti_loop_repeat() -> void:
 	p2._state_len = 500  # keep the victim reeling
 	_src(d, 0).press_at_tick(d.tick + 1, B.LIGHT)
 	_run_until(d, func() -> bool: return _event_count(&"hit", 1) == 2, 30)
-	_check(p2.current_state_name() == &"knockdown" and _event_count(&"knockdown", 1) == 1,
-		"repeated move in a combo pushes out into a knockdown")
-	# A teleport starts a fresh segment: the same string may follow.
+	_check(p2.current_state_name() == &"hitstun" and _event_count(&"knockdown", 1) == 0,
+		"a repeated plain hit isn't a loop")
+	# Jab -> gut punch (heavy stagger), jab again (follow-up on hit) -> gut punch again.
+	d = _new_match()
+	p1 = d.fighters[0]
+	p2 = d.fighters[1]
+	_src(d, 0).press(0, B.LIGHT).press(8, B.HEAVY)
+	_run_until(d, func() -> bool: return _event_count(&"stagger", 1) == 1, 40)
+	_check(_move_id(p1) == &"brawler_finisher_1", "jab -> HEAVY = the first position's finisher")
+	var at := d.tick
+	_src(d, 0).press_at_tick(at + 6, B.LIGHT).press_at_tick(at + 14, B.HEAVY)
+	_run_until(d, func() -> bool: return _event_count(&"hit", 1) == 4, 60)
+	_check(_event_count(&"hit", 1) == 4 and p2.current_state_name() == &"knockdown" and _event_count(&"knockdown", 1) == 1,
+		"the same special reaction twice in a combo pushes out into a knockdown")
+	# A teleport starts a fresh segment: the same reaction may follow.
 	d = _new_match()
 	p1 = d.fighters[0]
 	p2 = d.fighters[1]
 	p1.ki = p1.ki_max()
-	_src(d, 0).press(0, B.LIGHT).press(8, B.TELEPORT)
-	_run_until(d, func() -> bool: return p1.current_state_name() == &"teleport", 30)
+	_src(d, 0).press(0, B.LIGHT).press(8, B.HEAVY).press(26, B.TELEPORT)
+	_run_until(d, func() -> bool: return p1.current_state_name() == &"teleport", 50)
 	_run_until(d, func() -> bool: return p1.current_state_name() != &"teleport", 30)
-	_src(d, 0).press_at_tick(d.tick + 1, B.LIGHT)
-	_run_until(d, func() -> bool: return _event_count(&"hit", 1) == 2, 30)
-	_check(p2.current_state_name() == &"hitstun", "same move after a teleport still combos")
+	p2._state_len = 500
+	_src(d, 0).press_at_tick(d.tick + 1, B.LIGHT).press_at_tick(d.tick + 9, B.HEAVY)
+	_run_until(d, func() -> bool: return _event_count(&"hit", 1) == 4, 60)
+	_check(p2.current_state_name() == &"guard_break" and _event_count(&"knockdown", 1) == 0,
+		"same reaction after a teleport still staggers")
 
 
 ## Relaunching an airborne victim past the cap pushes out instead.

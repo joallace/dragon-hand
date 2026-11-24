@@ -27,6 +27,11 @@ var damage_mult: float = 1.0
 var guard_ki_mult: float = 1.0
 ## >0: a clean hit stuns (staggers) the victim this long instead of hitstun.
 var stun_frames: int = 0
+## The move's `knockdown` applies (false: a charge strike released below
+## its charge_knockdown_ratio).
+var knockdown_ok: bool = true
+## Anti-loop reaction key (MoveData.loop_group, &"" when the knockdown didn't apply).
+var loop_group: StringName = &""
 ## A blocked hit crashes the guard outright.
 var breaks_guard: bool = false
 ## Melee hitboxes (from the attacker's body) let a perfect duck stagger it.

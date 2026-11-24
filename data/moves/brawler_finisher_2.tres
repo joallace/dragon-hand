@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_m4h5p"]
+
+[resource]
+script = ExtResource("1_m4h5p")
+id = &"brawler_finisher_2"
+button = 2
+pose = &"kick_mid"
+startup = 10
+active = 4
+recovery = 24
+damage = 60.0
+hitstun = 30
+guard_stun = 18
+knockback = Vector3(0, 0, 5.5)
+stagger_frames = 28
+loop_group = &"push_back"
+guard_ki_cost = 35.0
+guard_results = Array[int]([3, 1, 1])
+is_heavy = true
+hitbox_offset = Vector3(0.1, 1.15, 0.9)
+hitbox_radius = 0.55
+lunge_speed = 3.0
+lunge_frames = 8
+cancel_start = 12
+cancel_end = 30
+cancel_into = Array[StringName]([&"brawler_jab1", &"brawler_upper_hook", &"brawler_sweep"])
+cancel_requires_hit = true
+special_cancelable = true
+charge_move = &"brawler_finisher_2_charged"
+hold_gate = true

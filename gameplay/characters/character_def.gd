@@ -15,15 +15,17 @@ extends Resource
 @export var moves: Array[MoveData] = []
 
 @export_group("Move roles")
-## LIGHT string in order; chained through each move's `cancel_into`.
+## LIGHT string in order (BT3 rush: the last step is the ender); chained
+## through each move's `cancel_into`, which also lists that position's HEAVY
+## finisher (MID) and the HIGH / LOW ones (picked by MoveData.height).
 @export var light_string: Array[StringName] = []
 ## Standalone HEAVY from neutral (mid); forward / back + HEAVY pick the
-## high / low variants (fall back to `heavy` when empty).
+## high / low variants (fall back to `heavy` when empty). The Brawler's are
+## also its mid-string forward / back finishers (upper hook, sweep).
 @export var heavy: StringName = &""
 @export var heavy_high: StringName = &""
 @export var heavy_low: StringName = &""
-## HEAVY after any light in the string (reached via `cancel_into`; directional
-## variants are more HEAVY moves in that list, picked by MoveData.height).
+## HEAVY after the full LIGHT string (the finisher that knocks down).
 @export var finisher: StringName = &""
 ## LIGHT while jumping.
 @export var jump_attack: StringName = &""

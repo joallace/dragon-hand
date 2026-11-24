@@ -43,6 +43,8 @@ const G_OVERHEAD := [PLAIN, PLAIN, UNBL]
 # Roster variants (_profiles) are derived from this character's moves.
 const BASE_PREFIX := "brawler_"
 # Frame numbers scaled together, so cancels and spawns stay in step.
+# BT3: charged smashes / finishers knock down from this charge ratio.
+const CHARGE_KNOCKDOWN := 0.3
 const FRAME_PROPS: Array[String] = ["startup", "recovery", "cancel_start", "cancel_end", "spawn_frame",
 	"charge_frame", "lunge_start"]
 
@@ -59,10 +61,16 @@ func _init() -> void:
 
 func _brawler() -> Resource:
 	var moves: Array = []
-	# --- LIGHT string: jab, jab, hook, kick; HEAVY after any = finisher ------
-	# The finisher is directional: stick forward / neutral / back = high / mid /
-	# low kick (Fighter picks by MoveData.height). Holding LIGHT charges.
-	var finishers: Array = [&"brawler_finisher_high", &"brawler_finisher", &"brawler_finisher_low"]
+	# --- X (LIGHT) string, BT3 rush: jab, jab, hook, kick, ender ----------------
+	# Plain hits never knock down. The ender (5th) staggers the victim back.
+	# Holding LIGHT charges a smash (see below).
+	# Y (HEAVY) mid-string, BT3 rush finishers: the string position picks the
+	# finisher (neutral stick); stick forward = upper hook (launcher, God Hand
+	# juggle), back = sweep, at any position (Fighter picks by MoveData.height).
+	# Only the finisher after the ender blows the victim away; the others
+	# stagger. Holding Y charges the finisher (it waits for the hold: hold_gate)
+	# and a charge >= 30% blows the victim away.
+	var dirs: Array = [&"brawler_upper_hook", &"brawler_sweep"]
 	var light_common := {
 		"button": LIGHT, "guard_results": G_LIGHT, "guard_stun": 10, "guard_ki_cost": 4.0, "hitbox_radius": 0.45,
 		"special_cancelable": true, "lunge_speed": 2.5, "lunge_frames": 6,
@@ -72,80 +80,111 @@ func _brawler() -> Resource:
 		"id": &"brawler_jab1", "pose": &"jab", "startup": 5, "active": 3, "recovery": 12,
 		"damage": 30.0, "hitstun": 20, "knockback": Vector3(0, 0, 1.5),
 		"hitbox_offset": Vector3(-0.15, 1.45, 0.85),
-		"cancel_start": 6, "cancel_end": 18, "cancel_into": [&"brawler_jab2"] + finishers,
+		"cancel_start": 6, "cancel_end": 18, "cancel_into": [&"brawler_jab2", &"brawler_finisher_1"] + dirs,
 	}))
 	moves.append(_mk(light_common, {
 		"id": &"brawler_jab2", "pose": &"jab2", "startup": 5, "active": 3, "recovery": 12,
 		"damage": 30.0, "hitstun": 20, "knockback": Vector3(0, 0, 1.5),
 		"hitbox_offset": Vector3(0.15, 1.45, 0.85),
-		"cancel_start": 6, "cancel_end": 18, "cancel_into": [&"brawler_hook"] + finishers,
+		"cancel_start": 6, "cancel_end": 18, "cancel_into": [&"brawler_hook", &"brawler_finisher_2"] + dirs,
 	}))
 	moves.append(_mk(light_common, {
 		"id": &"brawler_hook", "pose": &"hook", "startup": 7, "active": 3, "recovery": 14,
 		"damage": 40.0, "hitstun": 22, "knockback": Vector3(-0.5, 0, 2.0),
 		"hitbox_offset": Vector3(0.1, 1.4, 0.85), "hitbox_radius": 0.5,
-		"cancel_start": 8, "cancel_end": 22, "cancel_into": [&"brawler_kick"] + finishers,
+		"cancel_start": 8, "cancel_end": 22, "cancel_into": [&"brawler_kick", &"brawler_finisher_3"] + dirs,
 	}))
 	moves.append(_mk(light_common, {
 		"id": &"brawler_kick", "pose": &"kick", "startup": 9, "active": 4, "recovery": 18,
-		"damage": 55.0, "hitstun": 26, "knockback": Vector3(0, 0, 3.5), "guard_ki_cost": 8.0,
+		"damage": 45.0, "hitstun": 26, "knockback": Vector3(0, 0, 2.0), "guard_ki_cost": 8.0,
 		"hitbox_offset": Vector3(0.1, 1.0, 0.95), "hitbox_radius": 0.5,
-		"cancel_start": 10, "cancel_end": 26, "cancel_into": finishers,
+		"cancel_start": 10, "cancel_end": 26, "cancel_into": [&"brawler_ender", &"brawler_finisher_4"] + dirs,
 	}))
+	# Ender: heavy stagger and a real push back (BT3: ~6-9x a jab's push).
+	# Follow-ups only on hit.
+	moves.append(_mk(light_common, {
+		"id": &"brawler_ender", "pose": &"finisher", "startup": 10, "active": 4, "recovery": 24,
+		"damage": 55.0, "hitstun": 28, "stagger_frames": 34, "loop_group": &"ender",
+		"knockback": Vector3(0, 0, 4.5), "guard_ki_cost": 10.0, "guard_stun": 14, "is_heavy": true,
+		"hitbox_offset": Vector3(0, 1.3, 0.9), "hitbox_radius": 0.55, "lunge_speed": 3.5, "lunge_frames": 8,
+		"cancel_start": 11, "cancel_end": 32, "cancel_requires_hit": true,
+		"cancel_into": [&"brawler_finisher"] + dirs,
+	}))
+	# Finishers: after a landed one the string is over; follow-ups (a new
+	# string, upper hook, sweep, smash via a held jab, teleport) only on hit.
 	var finisher := {
-		"button": HEAVY, "guard_results": G_FIN_MID, "active": 4, "hitstun": 30, "knockdown": true, "is_heavy": true,
-		"guard_stun": 18, "guard_ki_cost": 35.0, "hitbox_radius": 0.55,
+		"button": HEAVY, "guard_results": G_FIN_MID, "active": 4, "hitstun": 30, "is_heavy": true,
+		"guard_stun": 18, "guard_ki_cost": 35.0, "hitbox_radius": 0.55, "hold_gate": true,
 		"lunge_speed": 3.0, "lunge_frames": 8, "special_cancelable": true,
 		"cancel_start": 12, "cancel_end": 30, "cancel_requires_hit": true,
+		"cancel_into": [&"brawler_jab1"] + dirs,
 	}
-	# High: launcher (juggle / teleport chase). Whiffs over a duck.
-	moves.append(_mk(finisher, {
-		"id": &"brawler_finisher_high", "pose": &"kick_high", "height": HIGH, "guard_results": G_FIN_HIGH,
-		"startup": 10, "recovery": 26, "damage": 70.0, "knockback": Vector3(0, 8.0, 2.0),
-		"hitbox_offset": Vector3(0.1, 1.65, 0.85), "hitbox_radius": 0.45,
-	}))
-	# Mid: blows the victim away.
-	moves.append(_mk(finisher, {
-		"id": &"brawler_finisher", "pose": &"kick_mid",
-		"startup": 10, "recovery": 26, "damage": 80.0, "knockback": Vector3(0, 6.0, 6.0),
-		"hitbox_offset": Vector3(0.1, 1.15, 0.9),
-	}))
-	# Low: sweep, short trip.
-	moves.append(_mk(finisher, {
-		"id": &"brawler_finisher_low", "pose": &"kick_low", "height": LOW, "guard_results": G_FIN_LOW,
-		"startup": 10, "recovery": 28, "damage": 70.0, "knockback": Vector3(0, 3.0, 2.0),
-		"hitbox_offset": Vector3(0.1, 0.35, 0.95), "hitbox_radius": 0.5, "guard_ki_cost": 25.0,
-	}))
-	# --- Standalone HEAVY: directional kicks (guard crushers). Holding charges --
-	var kick := {
-		"button": HEAVY, "guard_results": G_HEAVY_MID, "active": 4, "is_heavy": true, "special_cancelable": true,
-		"cancel_requires_hit": true, "charge_move": &"brawler_charge_kick",
+	# By position: gut punch (doubles them over), spin kick (pushes back),
+	# back-fist (spins them round), double axe (crumples), blow-away kick.
+	var by_position: Array[Dictionary] = [
+		{"id": &"brawler_finisher_1", "pose": &"heavy", "startup": 9, "recovery": 22, "damage": 50.0,
+			"stagger_frames": 30, "loop_group": &"heavy_stagger", "knockback": Vector3(0, 0, 1.0),
+			"hitbox_offset": Vector3(0.1, 1.2, 0.85)},
+		{"id": &"brawler_finisher_2", "pose": &"kick_mid", "startup": 10, "recovery": 24, "damage": 60.0,
+			"stagger_frames": 28, "loop_group": &"push_back", "knockback": Vector3(0, 0, 5.5),
+			"hitbox_offset": Vector3(0.1, 1.15, 0.9)},
+		{"id": &"brawler_finisher_3", "pose": &"smash_right", "startup": 10, "recovery": 24, "damage": 65.0,
+			"stagger_frames": 36, "loop_group": &"spin_stagger", "knockback": Vector3(2.0, 0, 1.5),
+			"hitbox_offset": Vector3(0.25, 1.35, 0.85)},
+		{"id": &"brawler_finisher_4", "pose": &"hammer", "startup": 11, "recovery": 26, "damage": 70.0,
+			"stagger_frames": 42, "loop_group": &"crumple", "knockback": Vector3(0, 0, 1.0),
+			"hitbox_offset": Vector3(0.1, 1.2, 0.9), "hitbox_radius": 0.6},
+		# After the full string: the only tapped finisher that knocks down.
+		{"id": &"brawler_finisher", "pose": &"charge_kick", "startup": 10, "recovery": 26, "damage": 85.0,
+			"knockdown": true, "loop_group": &"blow_away", "knockback": Vector3(0, 6.0, 6.5),
+			"hitbox_offset": Vector3(0.1, 1.15, 0.9)},
+	]
+	for p: Dictionary in by_position:
+		var charged_id := StringName(String(p["id"]) + "_charged")
+		moves.append(_mk(finisher, _over(p, {"charge_move": charged_id})))
+		moves.append(_mk(finisher, _charged(p, charged_id, Vector3(0, 5.0, 7.5))))
+	# Y + forward: upper hook (God Hand), launches for a floaty juggle; a jab
+	# out of it on hit starts the juggle. Whiffs over a duck.
+	var upper := {
+		"id": &"brawler_upper_hook", "pose": &"uppercut", "height": HIGH, "guard_results": G_HEAVY_HIGH,
+		"startup": 12, "recovery": 24, "damage": 65.0, "knockdown": true, "loop_group": &"launch",
+		"lunge_frames": 10, "guard_ki_cost": 30.0,
+		"knockback": Vector3(0, 8.5, 0.6), "hitbox_offset": Vector3(0.1, 1.65, 0.85), "hitbox_radius": 0.45,
+		"cancel_start": 13, "cancel_end": 36, "cancel_into": [&"brawler_jab1"],
 	}
-	moves.append(_mk(kick, {
-		"id": &"brawler_kick_high", "pose": &"kick_high", "height": HIGH, "guard_results": G_HEAVY_HIGH,
-		"startup": 13, "recovery": 22, "damage": 70.0, "hitstun": 30,
-		"knockback": Vector3(0, 6.5, 2.0), "knockdown": true, "guard_stun": 16, "guard_ki_cost": 30.0,
-		"hitbox_offset": Vector3(0.1, 1.65, 0.9), "hitbox_radius": 0.45,
-		"lunge_speed": 3.0, "lunge_frames": 10, "cancel_start": 15, "cancel_end": 32,
-	}))
-	moves.append(_mk(kick, {
-		"id": &"brawler_kick_mid", "pose": &"kick_mid",
-		"startup": 14, "recovery": 22, "damage": 90.0, "hitstun": 30,
-		"knockback": Vector3(0, 0, 7.0), "guard_stun": 20, "guard_ki_cost": 45.0,
+	moves.append(_mk(finisher, _over(upper, {"charge_move": &"brawler_upper_hook_charged"})))
+	moves.append(_mk(finisher, _over(_charged(upper, &"brawler_upper_hook_charged", Vector3(0, 10.5, 0.6)),
+		{"charge_knockdown_ratio": 0.0, "guard_results": G_KI_HIGH})))
+	# Y + back: sweep, trips them.
+	var sweep := {
+		"id": &"brawler_sweep", "pose": &"kick_low", "height": LOW, "guard_results": G_HEAVY_LOW,
+		"startup": 13, "recovery": 26, "damage": 60.0, "knockdown": true, "loop_group": &"trip",
+		"knockback": Vector3(0, 3.0, 1.5), "hitbox_offset": Vector3(0.1, 0.35, 0.95), "hitbox_radius": 0.5,
+		"guard_ki_cost": 25.0, "cancel_start": 14, "cancel_end": 32,
+		"cancel_into": [&"brawler_jab1", &"brawler_upper_hook"],
+	}
+	moves.append(_mk(finisher, _over(sweep, {"charge_move": &"brawler_sweep_charged"})))
+	moves.append(_mk(finisher, _over(_charged(sweep, &"brawler_sweep_charged", Vector3(0, 4.0, 3.0)),
+		{"charge_knockdown_ratio": 0.0, "guard_results": G_KI_LOW})))
+	# --- Y from neutral, close: body blow (God Hand style guard crusher, heavy
+	# stagger, no fall); forward / back = the upper hook / sweep above. Out of
+	# close range Y is a ki blast. Holding charges the kick (blows away >= 30%).
+	moves.append(_mk({}, {
+		"id": &"brawler_kick_mid", "button": HEAVY, "pose": &"kick_mid", "guard_results": G_HEAVY_MID,
+		"active": 4, "is_heavy": true, "special_cancelable": true, "hold_gate": true,
+		"charge_move": &"brawler_charge_kick",
+		"startup": 14, "recovery": 22, "damage": 75.0, "hitstun": 30, "stagger_frames": 36,
+		"loop_group": &"body_blow", "knockback": Vector3(0, 0, 2.5), "guard_stun": 20, "guard_ki_cost": 45.0,
 		"hitbox_offset": Vector3(0.1, 1.15, 0.95), "hitbox_radius": 0.55,
-		"lunge_speed": 4.0, "lunge_frames": 12, "cancel_start": 16, "cancel_end": 34,
-	}))
-	moves.append(_mk(kick, {
-		"id": &"brawler_kick_low", "pose": &"kick_low", "height": LOW, "guard_results": G_HEAVY_LOW,
-		"startup": 13, "recovery": 24, "damage": 65.0, "hitstun": 28,
-		"knockback": Vector3(0, 2.5, 1.5), "knockdown": true, "guard_stun": 14, "guard_ki_cost": 25.0,
-		"hitbox_offset": Vector3(0.1, 0.35, 0.95), "hitbox_radius": 0.5,
-		"lunge_speed": 2.5, "lunge_frames": 8, "cancel_start": 15, "cancel_end": 34,
+		"lunge_speed": 4.0, "lunge_frames": 12, "cancel_start": 16, "cancel_end": 34, "cancel_requires_hit": true,
+		"cancel_into": [&"brawler_jab1"] + dirs,
 	}))
 	# --- Charge strikes: hold at charge_frame, release early or at full -------
+	# BT3: a smash charged >= 30% blows away (launch / bounce / knock away by
+	# direction); below that it only hits.
 	var charged := {
 		"guard_results": G_KI, "active": 4, "is_heavy": true, "hitbox_radius": 0.55, "special_cancelable": true,
-		"cancel_requires_hit": true,
+		"cancel_requires_hit": true, "charge_knockdown_ratio": CHARGE_KNOCKDOWN,
 	}
 	# LIGHT charge = charged smash (BT3): released with the stick held it
 	# swaps to a directional variant sharing the same timing.
@@ -156,33 +195,38 @@ func _brawler() -> Resource:
 		"lunge_speed": 6.5, "lunge_start": 10, "lunge_frames": 8, "cancel_start": 22, "cancel_end": 40,
 	}
 	moves.append(_mk(charged, _over(smash, {
-		"id": &"brawler_charge_punch", "pose": &"heavy", "knockback": Vector3(0, 0, 4.5),
+		"id": &"brawler_charge_punch", "pose": &"heavy", "knockback": Vector3(0, 3.5, 6.5),
+		"knockdown": true, "loop_group": &"blow_away",
 		"smash_variants": [&"brawler_smash_up", &"brawler_smash_down", &"brawler_smash_left", &"brawler_smash_right"],
 	})))
 	# Forward: uppercut launcher.
 	moves.append(_mk(charged, _over(smash, {
 		"id": &"brawler_smash_up", "pose": &"uppercut", "height": HIGH, "guard_results": G_KI_HIGH,
-		"knockback": Vector3(0, 9.5, 1.5), "knockdown": true, "hitbox_offset": Vector3(0.1, 1.5, 0.85),
+		"knockback": Vector3(0, 9.5, 1.5), "knockdown": true, "loop_group": &"launch",
+		"hitbox_offset": Vector3(0.1, 1.5, 0.85),
 	})))
 	# Back: hammer blow, slams the victim into a ground bounce.
 	moves.append(_mk(charged, _over(smash, {
 		"id": &"brawler_smash_down", "pose": &"hammer", "height": LOW, "guard_results": G_KI_LOW,
-		"knockback": Vector3(0, -4.0, 1.0), "knockdown": true, "ground_bounce": true,
+		"knockback": Vector3(0, -4.0, 1.0), "knockdown": true, "ground_bounce": true, "loop_group": &"bounce",
 		"hitbox_offset": Vector3(0.1, 0.95, 0.9), "hitbox_radius": 0.6,
 	})))
 	# Sides: back-fist knocking the victim away to that side.
 	moves.append(_mk(charged, _over(smash, {
-		"id": &"brawler_smash_left", "pose": &"smash_left",
+		"id": &"brawler_smash_left", "pose": &"smash_left", "loop_group": &"knock_away",
 		"knockback": Vector3(-8.0, 1.5, 2.0), "knockdown": true, "hitbox_offset": Vector3(-0.25, 1.35, 0.85),
 	})))
 	moves.append(_mk(charged, _over(smash, {
-		"id": &"brawler_smash_right", "pose": &"smash_right",
+		"id": &"brawler_smash_right", "pose": &"smash_right", "loop_group": &"knock_away",
 		"knockback": Vector3(8.0, 1.5, 2.0), "knockdown": true, "hitbox_offset": Vector3(0.25, 1.35, 0.85),
 	})))
+	# Held Y body blow: no fall (not a smash); God Hand's converter instead,
+	# from FighterTuning.charge_stun_ratio it stuns (dizzy) for a follow-up.
 	moves.append(_mk(charged, {
 		"id": &"brawler_charge_kick", "pose": &"charge_kick", "startup": 20, "recovery": 26,
 		"charge_frame": 12, "charge_max_frames": 60, "charge_damage_mult": 2.0, "charge_guard_mult": 3.0,
-		"damage": 70.0, "hitstun": 28, "knockback": Vector3(0, 0, 6.0),
+		"damage": 70.0, "hitstun": 28, "stagger_frames": 36, "knockback": Vector3(0, 0, 6.0),
+		"loop_group": &"body_blow",
 		"guard_stun": 20, "guard_ki_cost": 20.0, "hitbox_offset": Vector3(0.1, 1.15, 0.95),
 		"lunge_speed": 7.0, "lunge_start": 12, "lunge_frames": 8, "cancel_start": 24, "cancel_end": 44,
 	}))
@@ -260,6 +304,22 @@ func _brawler() -> Resource:
 		"startup": 8, "active": 0, "recovery": 16, "damage": 0.0,
 		"spawn_kind": &"ki_blast", "spawn_frame": 8, "spawn_move": blast_hit,
 		"air_hang_frames": 14,  # fired while jumping: brief air stall
+		"hold_gate": true, "charge_move": &"brawler_ki_blast_charged",
+	}))
+	# Held (BLAST, or Y out of close range): BT3 charged ki blast, a bigger,
+	# slower ball that blows the victim away. Costs extra ki
+	# (FighterTuning.ki_blast_charge_extra_cost); the charge only times it.
+	var charged_hit := _mk({}, {
+		"id": &"brawler_ki_blast_charged_shot", "pose": &"", "active": 1, "damage": 60.0, "hitstun": 24,
+		"knockback": Vector3(0, 4.0, 6.0), "knockdown": true, "is_heavy": true, "guard_results": G_KI,
+		"guard_stun": 14, "guard_ki_cost": 20.0, "hitbox_offset": Vector3(0.2, 1.35, 0.8), "hitbox_radius": 0.5,
+		"travel_speed": 18.0, "lifetime_frames": 80, "ki_gain": -2.0,
+	})
+	_save_move(charged_hit)
+	moves.append(_mk({}, {
+		"id": &"brawler_ki_blast_charged", "button": BLAST, "pose": &"ki_blast",
+		"startup": 10, "active": 0, "recovery": 20, "damage": 0.0, "charge_frame": 3, "charge_max_frames": 30,
+		"spawn_kind": &"ki_blast", "spawn_frame": 10, "spawn_move": charged_hit, "air_hang_frames": 20,
 	}))
 	# --- Super 1: rush (auto combo when the first hit lands) -------------------
 	var rush := {"single_target": true, "grants_hit_ki": false, "guard_stun": 12, "guard_ki_cost": 15.0, "hitbox_radius": 0.55,
@@ -330,10 +390,10 @@ func _brawler() -> Resource:
 	for m: Resource in moves:
 		typed.append(load(m.resource_path))
 	d.moves = typed
-	d.light_string.assign([&"brawler_jab1", &"brawler_jab2", &"brawler_hook", &"brawler_kick"])
+	d.light_string.assign([&"brawler_jab1", &"brawler_jab2", &"brawler_hook", &"brawler_kick", &"brawler_ender"])
 	d.heavy = &"brawler_kick_mid"
-	d.heavy_high = &"brawler_kick_high"
-	d.heavy_low = &"brawler_kick_low"
+	d.heavy_high = &"brawler_upper_hook"
+	d.heavy_low = &"brawler_sweep"
 	d.finisher = &"brawler_finisher"
 	d.jump_attack = &"brawler_jump_kick"
 	d.jump_heavy = &"brawler_dive_kick"
@@ -491,6 +551,26 @@ func _mk(base: Dictionary, props: Dictionary) -> Resource:
 				v = res
 			m.set(k, v)
 	return m
+
+
+## Held-Y version of finisher `p` (BT3 charged rush finisher): reached through
+## `charge_move` once the hold gate sees the button held, it winds up again,
+## holds at charge_frame and blows the victim away (knockback `blow`) from
+## CHARGE_KNOCKDOWN; below that it hits like the tapped one.
+func _charged(p: Dictionary, id: StringName, blow: Vector3) -> Dictionary:
+	var c := p.duplicate()
+	c.merge({
+		"id": id, "hold_gate": false, "charge_frame": 4, "charge_max_frames": 45,
+		"startup": maxi(p["startup"], 8) + 4, "charge_damage_mult": 1.8, "charge_guard_mult": 2.5,
+		"knockdown": true, "knockback": blow,
+		"charge_knockdown_ratio": 0.0 if p.get("knockdown", false) else CHARGE_KNOCKDOWN,
+		"loop_group": &"blow_away" if not p.get("knockdown", false) else p["loop_group"],
+		"loop_group_weak": p["loop_group"],
+		"guard_results": G_KI, "lunge_start": 4,
+		"cancel_start": maxi(p["startup"], 8) + 6, "cancel_end": maxi(p["startup"], 8) + 24,
+	}, true)
+	c.erase("charge_move")
+	return c
 
 
 ## `base` overlaid with `props` (for a shared block inside a _mk group).

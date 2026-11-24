@@ -111,6 +111,14 @@ character.
 | Co-op and online stay on the old core until a switch-over | yes | moot for now: stage 1 changes the shared core, so every mode gets it; `matchup_sim` and `coop_sim` rerun after |
 | I may drive the games | yes | done for BT3 (headless); not yet for God Hand |
 | God Hand enemies guard after how many hits | random, 1 to 4 | recorded in god_hand_sauce.md |
+| (2026-11-23) Y mid-string | BT3 finisher by string position; fwd + Y = upper hook, back + Y = sweep | done |
+| Neutral Y in close range | melee heavy (body blow, stagger) + fwd / back variants; ki blast out of range | done |
+| Holding Y | BT3 charged finisher / charged heavy / charged ki blast | done |
+| When the victim falls | BT3 reactions: launchers, sweeps, smashes ≥30%, full-string finisher, throws | done |
+| X string length | 5 (BT3 ender) | done |
+| Frame data | structure first, BT3 frame-data pass later (stage 1) | stands |
+| Juggle | God Hand floaty fall + ground juggle hits | done |
+| After a tapped Y finisher | string ends; follow-ups only on hit | done |
 
 Earlier decisions stage 1 would reverse if stage 0 confirms them: guard
 vanish on string openers (→ on smashes and finishers), hitstop 4 / 8 on

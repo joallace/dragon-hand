@@ -18,6 +18,6 @@ lunge_speed = 2.5
 lunge_frames = 6
 cancel_start = 5
 cancel_end = 14
-cancel_into = Array[StringName]([&"sprite_hook", &"sprite_finisher_high", &"sprite_finisher", &"sprite_finisher_low"])
+cancel_into = Array[StringName]([&"sprite_hook", &"sprite_finisher_2", &"sprite_upper_hook", &"sprite_sweep"])
 special_cancelable = true
 charge_move = &"sprite_charge_punch"

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_8ngos"]
+
+[resource]
+script = ExtResource("1_8ngos")
+id = &"titan_finisher_4"
+button = 2
+pose = &"hammer"
+startup = 14
+active = 4
+recovery = 34
+damage = 91.0
+hitstun = 30
+guard_stun = 18
+knockback = Vector3(0, 0, 1)
+stagger_frames = 42
+loop_group = &"crumple"
+guard_ki_cost = 40.25
+guard_results = Array[int]([3, 1, 1])
+is_heavy = true
+hitbox_offset = Vector3(0.1, 1.32, 1.0979999)
+hitbox_radius = 0.732
+lunge_speed = 3.0
+lunge_frames = 8
+cancel_start = 16
+cancel_end = 39
+cancel_into = Array[StringName]([&"titan_jab1", &"titan_upper_hook", &"titan_sweep"])
+cancel_requires_hit = true
+special_cancelable = true
+charge_move = &"titan_finisher_4_charged"
+hold_gate = true

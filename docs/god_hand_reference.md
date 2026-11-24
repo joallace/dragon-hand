@@ -249,7 +249,8 @@ max 2 in a row.
 | Tension (ki) from taking damage, scaled by damage | ✗ flat +3 |
 | Taunts | ✅ TAUNT (RT): 50f, +1 ki bar when finished, ×1.25 damage taken meanwhile |
 | Roulette moves with opponent slow-mo | partial (ultimate freeze; no slow-mo) |
-| Floaty asymmetric launch gravity | ✗ (one gravity, 24 m/s²) |
+| Floaty asymmetric launch gravity | ✅ knocked-down fighters fall at 14.4 m/s² (0.6 of 24, GH's ratio); juggle hits pop them to ≥4.5 m/s with 0.35 of the horizontal push, cap 4 juggle hits |
+| Upper hook juggle starter | ✅ forward + Y (neutral or mid-string), launches; X follows up in the air |
 | Stun / dizzy + beatdown mash | partial (staggers, no mash) |
 | Mash meter for escapes | ✗ |
 | Guts (1 HP) rule | ✗ |

@@ -51,7 +51,19 @@ enum GuardResult { PLAIN, KI_GUARD, PUSH_OFF, PUSH_STOP, UNBLOCKABLE }
 ## Initial velocity given to the victim (m/s, attacker space: z pushes away).
 @export var knockback: Vector3 = Vector3(0, 0, 1.5)
 ## Victim is knocked down (launched with `knockback`, lands lying down).
+## Charge strikes only knock down from `charge_knockdown_ratio`.
 @export var knockdown: bool = false
+## >0: a clean hit that doesn't knock down staggers the victim this long
+## (BT3 heavy stagger: open, mash-shortened) instead of plain hitstun.
+@export var stagger_frames: int = 0
+## Anti-loop key (BT3): taking the same special reaction twice in one combo
+## segment turns the second into a push-out. Name the reaction the hit causes
+## (&"launch", &"trip", &"heavy_stagger"...); &"" = a plain hit, exempt.
+@export var loop_group: StringName = &""
+## Anti-loop key when a `knockdown` charge strike lands under its
+## charge_knockdown_ratio (the reaction it causes then, e.g. the tapped
+## finisher's stagger); &"" = exempt.
+@export var loop_group_weak: StringName = &""
 ## Ki drained from the defender when the guard result is KI_GUARD.
 @export var guard_ki_cost: float = 5.0
 ## GuardResult per guard pose, indexed by Height (MID, HIGH, LOW).
@@ -126,6 +138,11 @@ enum GuardResult { PLAIN, KI_GUARD, PUSH_OFF, PUSH_STOP, UNBLOCKABLE }
 ## Charge strike this move turns into when its button is held for
 ## FighterTuning.charge_hold_frames (outside the active frames).
 @export var charge_move: StringName = &""
+## BT3 tap vs hold: while the button that started the move is still held, the
+## move waits on the frame before its hit (or spawn) until the button is
+## released (the tapped move fires) or held long enough to become
+## `charge_move`. Without it a held button converts only after the hit.
+@export var hold_gate: bool = false
 ## Charge strikes only: directional smashes swapped in on release by the
 ## stick, in order [forward, back, left, right] (&"" = keep this move). They
 ## must share this move's charge_frame / charge_max_frames.
@@ -139,6 +156,9 @@ enum GuardResult { PLAIN, KI_GUARD, PUSH_OFF, PUSH_STOP, UNBLOCKABLE }
 ## Damage / guard damage multipliers at full charge (lerped from 1).
 @export var charge_damage_mult: float = 1.0
 @export var charge_guard_mult: float = 1.0
+## A `knockdown` charge strike only knocks down from this charge ratio (BT3:
+## smashes charged >= 30% blow away); below it the hit staggers / hitstuns.
+@export_range(0.0, 1.0) var charge_knockdown_ratio: float = 0.0
 
 @export_group("Spawning")
 ## &"ki_blast" or &"beam": entity spawned at `spawn_frame` using `spawn_move`

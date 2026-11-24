@@ -1,49 +1,60 @@
 [gd_resource type="Resource" script_class="CharacterDef" format=3]
 
-[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_nd7qg"]
-[ext_resource type="Resource" path="res://data/moves/brawler_jab1.tres" id="2_0i45j"]
-[ext_resource type="Resource" path="res://data/moves/brawler_jab2.tres" id="3_16aky"]
-[ext_resource type="Resource" path="res://data/moves/brawler_hook.tres" id="4_36apv"]
-[ext_resource type="Resource" path="res://data/moves/brawler_kick.tres" id="5_lpuxs"]
-[ext_resource type="Resource" path="res://data/moves/brawler_finisher_high.tres" id="6_fcam4"]
-[ext_resource type="Resource" path="res://data/moves/brawler_finisher.tres" id="7_ev1da"]
-[ext_resource type="Resource" path="res://data/moves/brawler_finisher_low.tres" id="8_mch8y"]
-[ext_resource type="Resource" path="res://data/moves/brawler_kick_high.tres" id="9_acbqa"]
-[ext_resource type="Resource" path="res://data/moves/brawler_kick_mid.tres" id="10_msp8g"]
-[ext_resource type="Resource" path="res://data/moves/brawler_kick_low.tres" id="11_klc2w"]
-[ext_resource type="Resource" path="res://data/moves/brawler_charge_punch.tres" id="12_3obpn"]
-[ext_resource type="Resource" path="res://data/moves/brawler_smash_up.tres" id="13_wvtf0"]
-[ext_resource type="Resource" path="res://data/moves/brawler_smash_down.tres" id="14_ula2c"]
-[ext_resource type="Resource" path="res://data/moves/brawler_smash_left.tres" id="15_c7yon"]
-[ext_resource type="Resource" path="res://data/moves/brawler_smash_right.tres" id="16_ry1r6"]
-[ext_resource type="Resource" path="res://data/moves/brawler_charge_kick.tres" id="17_2ff1g"]
-[ext_resource type="Resource" path="res://data/moves/brawler_jump_kick.tres" id="18_b3ocf"]
-[ext_resource type="Resource" path="res://data/moves/brawler_dive_kick.tres" id="19_1x88y"]
-[ext_resource type="Resource" path="res://data/moves/brawler_duck_kick.tres" id="20_860gg"]
-[ext_resource type="Resource" path="res://data/moves/brawler_getup_kick.tres" id="21_e6aja"]
-[ext_resource type="Resource" path="res://data/moves/brawler_dash_punch.tres" id="22_0e8cn"]
-[ext_resource type="Resource" path="res://data/moves/brawler_throw.tres" id="23_b6st7"]
-[ext_resource type="Resource" path="res://data/moves/brawler_counter.tres" id="24_kovkg"]
-[ext_resource type="Resource" path="res://data/moves/brawler_ki_blast.tres" id="25_e10vg"]
-[ext_resource type="Resource" path="res://data/moves/brawler_rush.tres" id="26_5vtb4"]
-[ext_resource type="Resource" path="res://data/moves/brawler_rush_2.tres" id="27_yaalf"]
-[ext_resource type="Resource" path="res://data/moves/brawler_rush_3.tres" id="28_wgf03"]
-[ext_resource type="Resource" path="res://data/moves/brawler_rush_4.tres" id="29_8ha0f"]
-[ext_resource type="Resource" path="res://data/moves/brawler_rush_finish.tres" id="30_65hh8"]
-[ext_resource type="Resource" path="res://data/moves/brawler_beam.tres" id="31_ltyo7"]
-[ext_resource type="Resource" path="res://data/moves/brawler_ultimate.tres" id="32_00n4v"]
-[ext_resource type="Script" path="res://gameplay/characters/character_def.gd" id="33_3opqv"]
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_3obpn"]
+[ext_resource type="Resource" path="res://data/moves/brawler_jab1.tres" id="2_wvtf0"]
+[ext_resource type="Resource" path="res://data/moves/brawler_jab2.tres" id="3_ula2c"]
+[ext_resource type="Resource" path="res://data/moves/brawler_hook.tres" id="4_c7yon"]
+[ext_resource type="Resource" path="res://data/moves/brawler_kick.tres" id="5_ry1r6"]
+[ext_resource type="Resource" path="res://data/moves/brawler_ender.tres" id="6_2ff1g"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_1.tres" id="7_b3ocf"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_1_charged.tres" id="8_1x88y"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_2.tres" id="9_860gg"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_2_charged.tres" id="10_e6aja"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_3.tres" id="11_0e8cn"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_3_charged.tres" id="12_b6st7"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_4.tres" id="13_kovkg"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_4_charged.tres" id="14_e10vg"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher.tres" id="15_5vtb4"]
+[ext_resource type="Resource" path="res://data/moves/brawler_finisher_charged.tres" id="16_yaalf"]
+[ext_resource type="Resource" path="res://data/moves/brawler_upper_hook.tres" id="17_wgf03"]
+[ext_resource type="Resource" path="res://data/moves/brawler_upper_hook_charged.tres" id="18_8ha0f"]
+[ext_resource type="Resource" path="res://data/moves/brawler_sweep.tres" id="19_65hh8"]
+[ext_resource type="Resource" path="res://data/moves/brawler_sweep_charged.tres" id="20_ltyo7"]
+[ext_resource type="Resource" path="res://data/moves/brawler_kick_mid.tres" id="21_00n4v"]
+[ext_resource type="Resource" path="res://data/moves/brawler_charge_punch.tres" id="22_3opqv"]
+[ext_resource type="Resource" path="res://data/moves/brawler_smash_up.tres" id="23_pt1ng"]
+[ext_resource type="Resource" path="res://data/moves/brawler_smash_down.tres" id="24_yyn72"]
+[ext_resource type="Resource" path="res://data/moves/brawler_smash_left.tres" id="25_axunq"]
+[ext_resource type="Resource" path="res://data/moves/brawler_smash_right.tres" id="26_2m6iv"]
+[ext_resource type="Resource" path="res://data/moves/brawler_charge_kick.tres" id="27_kn4wo"]
+[ext_resource type="Resource" path="res://data/moves/brawler_jump_kick.tres" id="28_5xg76"]
+[ext_resource type="Resource" path="res://data/moves/brawler_dive_kick.tres" id="29_7gy8f"]
+[ext_resource type="Resource" path="res://data/moves/brawler_duck_kick.tres" id="30_thb7i"]
+[ext_resource type="Resource" path="res://data/moves/brawler_getup_kick.tres" id="31_3vvv1"]
+[ext_resource type="Resource" path="res://data/moves/brawler_dash_punch.tres" id="32_7odbn"]
+[ext_resource type="Resource" path="res://data/moves/brawler_throw.tres" id="33_qwgdm"]
+[ext_resource type="Resource" path="res://data/moves/brawler_counter.tres" id="34_yok48"]
+[ext_resource type="Resource" path="res://data/moves/brawler_ki_blast.tres" id="35_a4awq"]
+[ext_resource type="Resource" path="res://data/moves/brawler_ki_blast_charged.tres" id="36_j3qne"]
+[ext_resource type="Resource" path="res://data/moves/brawler_rush.tres" id="37_khitp"]
+[ext_resource type="Resource" path="res://data/moves/brawler_rush_2.tres" id="38_6w4cm"]
+[ext_resource type="Resource" path="res://data/moves/brawler_rush_3.tres" id="39_4khei"]
+[ext_resource type="Resource" path="res://data/moves/brawler_rush_4.tres" id="40_3684w"]
+[ext_resource type="Resource" path="res://data/moves/brawler_rush_finish.tres" id="41_ai72i"]
+[ext_resource type="Resource" path="res://data/moves/brawler_beam.tres" id="42_yekqd"]
+[ext_resource type="Resource" path="res://data/moves/brawler_ultimate.tres" id="43_co8ge"]
+[ext_resource type="Script" path="res://gameplay/characters/character_def.gd" id="44_k7dic"]
 
 [resource]
-script = ExtResource("33_3opqv")
+script = ExtResource("44_k7dic")
 id = &"brawler"
 display_name = "Brawler"
 color = Color(0.85, 0.35, 0.15, 1)
-moves = Array[ExtResource("1_nd7qg")]([ExtResource("2_0i45j"), ExtResource("3_16aky"), ExtResource("4_36apv"), ExtResource("5_lpuxs"), ExtResource("6_fcam4"), ExtResource("7_ev1da"), ExtResource("8_mch8y"), ExtResource("9_acbqa"), ExtResource("10_msp8g"), ExtResource("11_klc2w"), ExtResource("12_3obpn"), ExtResource("13_wvtf0"), ExtResource("14_ula2c"), ExtResource("15_c7yon"), ExtResource("16_ry1r6"), ExtResource("17_2ff1g"), ExtResource("18_b3ocf"), ExtResource("19_1x88y"), ExtResource("20_860gg"), ExtResource("21_e6aja"), ExtResource("22_0e8cn"), ExtResource("23_b6st7"), ExtResource("24_kovkg"), ExtResource("25_e10vg"), ExtResource("26_5vtb4"), ExtResource("27_yaalf"), ExtResource("28_wgf03"), ExtResource("29_8ha0f"), ExtResource("30_65hh8"), ExtResource("31_ltyo7"), ExtResource("32_00n4v")])
-light_string = Array[StringName]([&"brawler_jab1", &"brawler_jab2", &"brawler_hook", &"brawler_kick"])
+moves = Array[ExtResource("1_3obpn")]([ExtResource("2_wvtf0"), ExtResource("3_ula2c"), ExtResource("4_c7yon"), ExtResource("5_ry1r6"), ExtResource("6_2ff1g"), ExtResource("7_b3ocf"), ExtResource("8_1x88y"), ExtResource("9_860gg"), ExtResource("10_e6aja"), ExtResource("11_0e8cn"), ExtResource("12_b6st7"), ExtResource("13_kovkg"), ExtResource("14_e10vg"), ExtResource("15_5vtb4"), ExtResource("16_yaalf"), ExtResource("17_wgf03"), ExtResource("18_8ha0f"), ExtResource("19_65hh8"), ExtResource("20_ltyo7"), ExtResource("21_00n4v"), ExtResource("22_3opqv"), ExtResource("23_pt1ng"), ExtResource("24_yyn72"), ExtResource("25_axunq"), ExtResource("26_2m6iv"), ExtResource("27_kn4wo"), ExtResource("28_5xg76"), ExtResource("29_7gy8f"), ExtResource("30_thb7i"), ExtResource("31_3vvv1"), ExtResource("32_7odbn"), ExtResource("33_qwgdm"), ExtResource("34_yok48"), ExtResource("35_a4awq"), ExtResource("36_j3qne"), ExtResource("37_khitp"), ExtResource("38_6w4cm"), ExtResource("39_4khei"), ExtResource("40_3684w"), ExtResource("41_ai72i"), ExtResource("42_yekqd"), ExtResource("43_co8ge")])
+light_string = Array[StringName]([&"brawler_jab1", &"brawler_jab2", &"brawler_hook", &"brawler_kick", &"brawler_ender"])
 heavy = &"brawler_kick_mid"
-heavy_high = &"brawler_kick_high"
-heavy_low = &"brawler_kick_low"
+heavy_high = &"brawler_upper_hook"
+heavy_low = &"brawler_sweep"
 finisher = &"brawler_finisher"
 jump_attack = &"brawler_jump_kick"
 jump_heavy = &"brawler_dive_kick"

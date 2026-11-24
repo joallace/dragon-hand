@@ -19,6 +19,6 @@ lunge_speed = 2.5
 lunge_frames = 6
 cancel_start = 9
 cancel_end = 26
-cancel_into = Array[StringName]([&"bulk_kick", &"bulk_finisher_high", &"bulk_finisher", &"bulk_finisher_low"])
+cancel_into = Array[StringName]([&"bulk_kick", &"bulk_finisher_3", &"bulk_upper_hook", &"bulk_sweep"])
 special_cancelable = true
 charge_move = &"bulk_charge_punch"

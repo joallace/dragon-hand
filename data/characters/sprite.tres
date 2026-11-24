@@ -1,50 +1,61 @@
 [gd_resource type="Resource" script_class="CharacterDef" format=3]
 
-[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_v575v"]
-[ext_resource type="Resource" path="res://data/moves/sprite_jab1.tres" id="2_uxu8h"]
-[ext_resource type="Resource" path="res://data/moves/sprite_jab2.tres" id="3_ckiip"]
-[ext_resource type="Resource" path="res://data/moves/sprite_hook.tres" id="4_rdupc"]
-[ext_resource type="Resource" path="res://data/moves/sprite_kick.tres" id="5_vqgxe"]
-[ext_resource type="Resource" path="res://data/moves/sprite_finisher_high.tres" id="6_l6gxm"]
-[ext_resource type="Resource" path="res://data/moves/sprite_finisher.tres" id="7_2840s"]
-[ext_resource type="Resource" path="res://data/moves/sprite_finisher_low.tres" id="8_76kn0"]
-[ext_resource type="Resource" path="res://data/moves/sprite_kick_high.tres" id="9_u50xi"]
-[ext_resource type="Resource" path="res://data/moves/sprite_kick_mid.tres" id="10_v8yuk"]
-[ext_resource type="Resource" path="res://data/moves/sprite_kick_low.tres" id="11_apasm"]
-[ext_resource type="Resource" path="res://data/moves/sprite_charge_punch.tres" id="12_guq5w"]
-[ext_resource type="Resource" path="res://data/moves/sprite_smash_up.tres" id="13_r1unj"]
-[ext_resource type="Resource" path="res://data/moves/sprite_smash_down.tres" id="14_la3rd"]
-[ext_resource type="Resource" path="res://data/moves/sprite_smash_left.tres" id="15_pgt2x"]
-[ext_resource type="Resource" path="res://data/moves/sprite_smash_right.tres" id="16_yu8fs"]
-[ext_resource type="Resource" path="res://data/moves/sprite_charge_kick.tres" id="17_xu415"]
-[ext_resource type="Resource" path="res://data/moves/sprite_jump_kick.tres" id="18_e4jk6"]
-[ext_resource type="Resource" path="res://data/moves/sprite_dive_kick.tres" id="19_jwxn2"]
-[ext_resource type="Resource" path="res://data/moves/sprite_duck_kick.tres" id="20_m7x16"]
-[ext_resource type="Resource" path="res://data/moves/sprite_getup_kick.tres" id="21_85k61"]
-[ext_resource type="Resource" path="res://data/moves/sprite_dash_punch.tres" id="22_s7q1s"]
-[ext_resource type="Resource" path="res://data/moves/sprite_throw.tres" id="23_kdu4v"]
-[ext_resource type="Resource" path="res://data/moves/sprite_counter.tres" id="24_l31ci"]
-[ext_resource type="Resource" path="res://data/moves/sprite_ki_blast.tres" id="25_3iibi"]
-[ext_resource type="Resource" path="res://data/moves/sprite_rush.tres" id="26_72u16"]
-[ext_resource type="Resource" path="res://data/moves/sprite_rush_2.tres" id="27_l8eft"]
-[ext_resource type="Resource" path="res://data/moves/sprite_rush_3.tres" id="28_h3fkn"]
-[ext_resource type="Resource" path="res://data/moves/sprite_rush_4.tres" id="29_ucqen"]
-[ext_resource type="Resource" path="res://data/moves/sprite_rush_finish.tres" id="30_hcjtb"]
-[ext_resource type="Resource" path="res://data/moves/sprite_beam.tres" id="31_dtqv4"]
-[ext_resource type="Resource" path="res://data/moves/sprite_ultimate.tres" id="32_c4o7q"]
-[ext_resource type="Script" path="res://gameplay/characters/character_def.gd" id="33_apv8m"]
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_guq5w"]
+[ext_resource type="Resource" path="res://data/moves/sprite_jab1.tres" id="2_r1unj"]
+[ext_resource type="Resource" path="res://data/moves/sprite_jab2.tres" id="3_la3rd"]
+[ext_resource type="Resource" path="res://data/moves/sprite_hook.tres" id="4_pgt2x"]
+[ext_resource type="Resource" path="res://data/moves/sprite_kick.tres" id="5_yu8fs"]
+[ext_resource type="Resource" path="res://data/moves/sprite_ender.tres" id="6_xu415"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_1.tres" id="7_e4jk6"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_1_charged.tres" id="8_jwxn2"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_2.tres" id="9_m7x16"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_2_charged.tres" id="10_85k61"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_3.tres" id="11_s7q1s"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_3_charged.tres" id="12_kdu4v"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_4.tres" id="13_l31ci"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_4_charged.tres" id="14_3iibi"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher.tres" id="15_72u16"]
+[ext_resource type="Resource" path="res://data/moves/sprite_finisher_charged.tres" id="16_l8eft"]
+[ext_resource type="Resource" path="res://data/moves/sprite_upper_hook.tres" id="17_h3fkn"]
+[ext_resource type="Resource" path="res://data/moves/sprite_upper_hook_charged.tres" id="18_ucqen"]
+[ext_resource type="Resource" path="res://data/moves/sprite_sweep.tres" id="19_hcjtb"]
+[ext_resource type="Resource" path="res://data/moves/sprite_sweep_charged.tres" id="20_dtqv4"]
+[ext_resource type="Resource" path="res://data/moves/sprite_kick_mid.tres" id="21_c4o7q"]
+[ext_resource type="Resource" path="res://data/moves/sprite_charge_punch.tres" id="22_apv8m"]
+[ext_resource type="Resource" path="res://data/moves/sprite_smash_up.tres" id="23_1k573"]
+[ext_resource type="Resource" path="res://data/moves/sprite_smash_down.tres" id="24_tpbya"]
+[ext_resource type="Resource" path="res://data/moves/sprite_smash_left.tres" id="25_a7qkf"]
+[ext_resource type="Resource" path="res://data/moves/sprite_smash_right.tres" id="26_mm8sb"]
+[ext_resource type="Resource" path="res://data/moves/sprite_charge_kick.tres" id="27_707qt"]
+[ext_resource type="Resource" path="res://data/moves/sprite_jump_kick.tres" id="28_edop6"]
+[ext_resource type="Resource" path="res://data/moves/sprite_dive_kick.tres" id="29_4aker"]
+[ext_resource type="Resource" path="res://data/moves/sprite_duck_kick.tres" id="30_myfcr"]
+[ext_resource type="Resource" path="res://data/moves/sprite_getup_kick.tres" id="31_o0wti"]
+[ext_resource type="Resource" path="res://data/moves/sprite_dash_punch.tres" id="32_a2vh7"]
+[ext_resource type="Resource" path="res://data/moves/sprite_throw.tres" id="33_rxf2e"]
+[ext_resource type="Resource" path="res://data/moves/sprite_counter.tres" id="34_jgjrq"]
+[ext_resource type="Resource" path="res://data/moves/sprite_ki_blast.tres" id="35_lrvsj"]
+[ext_resource type="Resource" path="res://data/moves/sprite_ki_blast_charged.tres" id="36_fc7pw"]
+[ext_resource type="Resource" path="res://data/moves/sprite_rush.tres" id="37_i7vbq"]
+[ext_resource type="Resource" path="res://data/moves/sprite_rush_2.tres" id="38_04c50"]
+[ext_resource type="Resource" path="res://data/moves/sprite_rush_3.tres" id="39_yovmx"]
+[ext_resource type="Resource" path="res://data/moves/sprite_rush_4.tres" id="40_82oy2"]
+[ext_resource type="Resource" path="res://data/moves/sprite_rush_finish.tres" id="41_ydu72"]
+[ext_resource type="Resource" path="res://data/moves/sprite_beam.tres" id="42_mjn16"]
+[ext_resource type="Resource" path="res://data/moves/sprite_ultimate.tres" id="43_hy3a0"]
+[ext_resource type="Script" path="res://gameplay/characters/character_def.gd" id="44_31vtg"]
 
 [resource]
-script = ExtResource("33_apv8m")
+script = ExtResource("44_31vtg")
 id = &"sprite"
 display_name = "Sprite"
 color = Color(0.9, 0.75, 0.2, 1)
 body_scale = Vector3(0.78, 0.8, 0.78)
-moves = Array[ExtResource("1_v575v")]([ExtResource("2_uxu8h"), ExtResource("3_ckiip"), ExtResource("4_rdupc"), ExtResource("5_vqgxe"), ExtResource("6_l6gxm"), ExtResource("7_2840s"), ExtResource("8_76kn0"), ExtResource("9_u50xi"), ExtResource("10_v8yuk"), ExtResource("11_apasm"), ExtResource("12_guq5w"), ExtResource("13_r1unj"), ExtResource("14_la3rd"), ExtResource("15_pgt2x"), ExtResource("16_yu8fs"), ExtResource("17_xu415"), ExtResource("18_e4jk6"), ExtResource("19_jwxn2"), ExtResource("20_m7x16"), ExtResource("21_85k61"), ExtResource("22_s7q1s"), ExtResource("23_kdu4v"), ExtResource("24_l31ci"), ExtResource("25_3iibi"), ExtResource("26_72u16"), ExtResource("27_l8eft"), ExtResource("28_h3fkn"), ExtResource("29_ucqen"), ExtResource("30_hcjtb"), ExtResource("31_dtqv4"), ExtResource("32_c4o7q")])
-light_string = Array[StringName]([&"sprite_jab1", &"sprite_jab2", &"sprite_hook", &"sprite_kick"])
+moves = Array[ExtResource("1_guq5w")]([ExtResource("2_r1unj"), ExtResource("3_la3rd"), ExtResource("4_pgt2x"), ExtResource("5_yu8fs"), ExtResource("6_xu415"), ExtResource("7_e4jk6"), ExtResource("8_jwxn2"), ExtResource("9_m7x16"), ExtResource("10_85k61"), ExtResource("11_s7q1s"), ExtResource("12_kdu4v"), ExtResource("13_l31ci"), ExtResource("14_3iibi"), ExtResource("15_72u16"), ExtResource("16_l8eft"), ExtResource("17_h3fkn"), ExtResource("18_ucqen"), ExtResource("19_hcjtb"), ExtResource("20_dtqv4"), ExtResource("21_c4o7q"), ExtResource("22_apv8m"), ExtResource("23_1k573"), ExtResource("24_tpbya"), ExtResource("25_a7qkf"), ExtResource("26_mm8sb"), ExtResource("27_707qt"), ExtResource("28_edop6"), ExtResource("29_4aker"), ExtResource("30_myfcr"), ExtResource("31_o0wti"), ExtResource("32_a2vh7"), ExtResource("33_rxf2e"), ExtResource("34_jgjrq"), ExtResource("35_lrvsj"), ExtResource("36_fc7pw"), ExtResource("37_i7vbq"), ExtResource("38_04c50"), ExtResource("39_yovmx"), ExtResource("40_82oy2"), ExtResource("41_ydu72"), ExtResource("42_mjn16"), ExtResource("43_hy3a0")])
+light_string = Array[StringName]([&"sprite_jab1", &"sprite_jab2", &"sprite_hook", &"sprite_kick", &"sprite_ender"])
 heavy = &"sprite_kick_mid"
-heavy_high = &"sprite_kick_high"
-heavy_low = &"sprite_kick_low"
+heavy_high = &"sprite_upper_hook"
+heavy_low = &"sprite_sweep"
 finisher = &"sprite_finisher"
 jump_attack = &"sprite_jump_kick"
 jump_heavy = &"sprite_dive_kick"

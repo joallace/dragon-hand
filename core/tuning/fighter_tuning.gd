@@ -43,6 +43,9 @@ extends Resource
 @export var dash_cooldown_frames: int = 10
 @export var jump_velocity: float = 7.5
 @export var gravity: float = 24.0
+## Gravity on a knocked-down fighter while falling (God Hand: launches rise
+## at ~11.7 m/s2 and fall at ~7.0, a 0.6 ratio): floaty juggles.
+@export var knockdown_fall_gravity: float = 14.4
 @export var body_radius: float = 0.45
 @export var turn_speed_deg: float = 720.0
 ## Turn speed while an attack tracks the opponent during startup. Slower than
@@ -214,7 +217,12 @@ extends Resource
 ## combo started or the attacker's last teleport) pushes the victim out into
 ## a knockdown instead of its normal reaction. So does a relaunch of an
 ## airborne victim beyond this many per segment.
-@export var juggle_max_relaunches: int = 2
+@export var juggle_max_relaunches: int = 4
+## Juggle hit (a clean hit on an airborne knocked-down fighter): the victim
+## pops up at least this fast (m/s)...
+@export var juggle_pop_velocity: float = 4.5
+## ...and its horizontal knockback is scaled by this, so it stays in reach.
+@export var juggle_knockback_mult: float = 0.35
 @export var loop_pushout_speed: float = 8.0
 
 @export_group("Strikes")
@@ -274,6 +282,9 @@ extends Resource
 @export var super2_cost_bars: float = 2.0
 @export var ultimate_cost_bars: float = 5.0
 @export var ki_blast_cost: float = 10.0
+## Extra ki paid when a held ki blast turns into the charged ki blast (BT3:
+## blast held); without it the plain blast fires.
+@export var ki_blast_charge_extra_cost: float = 15.0
 ## HEAVY from neutral farther than this (m) from the opponent fires a ki blast.
 @export var close_combat_range: float = 3.0
 ## Stick Y beyond this picks the forward (super2) / back (ultimate) SPECIAL.

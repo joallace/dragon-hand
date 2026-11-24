@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_321xx"]
+
+[resource]
+script = ExtResource("1_321xx")
+id = &"sprite_finisher_2_charged"
+button = 2
+pose = &"kick_mid"
+startup = 11
+active = 4
+recovery = 19
+damage = 50.4
+hitstun = 30
+guard_stun = 18
+knockback = Vector3(0, 5, 7.5)
+knockdown = true
+stagger_frames = 28
+loop_group = &"blow_away"
+loop_group_weak = &"push_back"
+guard_ki_cost = 29.75
+guard_results = Array[int]([1, 1, 1])
+is_heavy = true
+hitbox_offset = Vector3(0.1, 1.058, 0.81)
+hitbox_radius = 0.49500000000000005
+lunge_speed = 3.0
+lunge_start = 3
+lunge_frames = 8
+cancel_start = 13
+cancel_end = 27
+cancel_into = Array[StringName]([&"sprite_jab1", &"sprite_upper_hook", &"sprite_sweep"])
+cancel_requires_hit = true
+special_cancelable = true
+charge_frame = 3
+charge_max_frames = 45
+charge_damage_mult = 1.8
+charge_guard_mult = 2.5
+charge_knockdown_ratio = 0.3

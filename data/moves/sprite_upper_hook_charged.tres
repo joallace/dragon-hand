@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_jrv57"]
+
+[resource]
+script = ExtResource("1_jrv57")
+id = &"sprite_upper_hook_charged"
+button = 2
+pose = &"uppercut"
+height = 1
+startup = 13
+active = 4
+recovery = 19
+damage = 54.6
+hitstun = 30
+guard_stun = 18
+knockback = Vector3(0, 10.5, 0.6)
+knockdown = true
+loop_group = &"launch"
+loop_group_weak = &"launch"
+guard_ki_cost = 25.5
+guard_results = Array[int]([1, 1, 4])
+is_heavy = true
+hitbox_offset = Vector3(0.1, 1.518, 0.76500005)
+hitbox_radius = 0.405
+lunge_speed = 3.0
+lunge_start = 3
+lunge_frames = 10
+cancel_start = 14
+cancel_end = 29
+cancel_into = Array[StringName]([&"sprite_jab1"])
+cancel_requires_hit = true
+special_cancelable = true
+charge_frame = 3
+charge_max_frames = 45
+charge_damage_mult = 1.8
+charge_guard_mult = 2.5

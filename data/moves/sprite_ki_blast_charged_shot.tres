@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_hwmyb"]
+
+[resource]
+script = ExtResource("1_hwmyb")
+id = &"sprite_ki_blast_charged_shot"
+active = 1
+damage = 50.4
+hitstun = 24
+guard_stun = 14
+knockback = Vector3(0, 4, 6)
+knockdown = true
+guard_ki_cost = 17.0
+guard_results = Array[int]([1, 1, 1])
+is_heavy = true
+ki_gain = -2.0
+hitbox_offset = Vector3(0.2, 1.242, 0.72)
+travel_speed = 18.0
+lifetime_frames = 80

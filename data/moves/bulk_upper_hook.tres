@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://gameplay/combat/move_data.gd" id="1_7d47d"]
+
+[resource]
+script = ExtResource("1_7d47d")
+id = &"bulk_upper_hook"
+button = 2
+pose = &"uppercut"
+height = 1
+startup = 14
+active = 4
+recovery = 28
+damage = 65.0
+hitstun = 30
+guard_stun = 18
+knockback = Vector3(0, 8.5, 0.6)
+knockdown = true
+loop_group = &"launch"
+guard_ki_cost = 33.0
+guard_results = Array[int]([1, 2, 4])
+is_heavy = true
+hitbox_offset = Vector3(0.1, 1.65, 0.89250004)
+hitbox_radius = 0.47250000000000003
+lunge_speed = 3.0
+lunge_frames = 10
+armor_hits = 1
+cancel_start = 15
+cancel_end = 42
+cancel_into = Array[StringName]([&"bulk_jab1"])
+cancel_requires_hit = true
+special_cancelable = true
+charge_move = &"bulk_upper_hook_charged"
+hold_gate = true

@@ -54,15 +54,20 @@ func _check(cond: bool, label: String) -> bool:
 
 
 ## The top CPU notices the jab loop: its habit heat passes the read
-## threshold and it learns the re-press delay.
+## threshold and it learns the re-press delay. Checked over the run, not at
+## one tick: when the CPU knocks the looper down (upper hook), the looper's
+## mashed wake-up (get-up strike) is a new opener that cools the habit.
 func _test_learns() -> void:
 	var top := Tuning.cpu.level_count() - 1
 	var d := _new_match(top, 7, PatternInput.new(1, 26))
-	_steps(d, 900)
 	var brain := (d.sources[1] as CpuInput).brain
-	_check(brain._habit_move == &"brawler_jab1" and brain._habit_bias() >= Tuning.cpu.habit_read_heat
-			and brain._habit_delay >= 0,
-			"top CPU learns the jab habit (move %s, bias %.2f, delay %d)" % [brain._habit_move, brain._habit_bias(), brain._habit_delay])
+	var learned_ticks := 0
+	for t in 900:
+		_steps(d, 1)
+		if brain._habit_move == &"brawler_jab1" and brain._habit_bias() >= Tuning.cpu.habit_read_heat \
+				and brain._habit_delay >= 0:
+			learned_ticks += 1
+	_check(learned_ticks >= 200, "top CPU learns the jab habit (%d of 900 ticks)" % learned_ticks)
 
 
 ## Habit memory round-trips with the rest of the brain mid-pattern.

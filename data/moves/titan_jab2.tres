@@ -18,6 +18,6 @@ lunge_speed = 2.5
 lunge_frames = 6
 cancel_start = 8
 cancel_end = 23
-cancel_into = Array[StringName]([&"titan_hook", &"titan_finisher_high", &"titan_finisher", &"titan_finisher_low"])
+cancel_into = Array[StringName]([&"titan_hook", &"titan_finisher_2", &"titan_upper_hook", &"titan_sweep"])
 special_cancelable = true
 charge_move = &"titan_charge_punch"

@@ -38,6 +38,10 @@ func stick(from: int, to: int, v: Vector2) -> ScriptedInput:
 	return self
 
 
+func stick_at_tick(from_tick: int, to_tick: int, v: Vector2) -> ScriptedInput:
+	return stick(from_tick - start_tick, to_tick - start_tick, v)
+
+
 func flick(at: int, dir: InputFrame.Dodge) -> ScriptedInput:
 	_ensure(at + 1)
 	frames[at].dodge = dir

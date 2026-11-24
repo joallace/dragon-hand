@@ -138,6 +138,24 @@ is forced into a triple-speed auto rush and pays 0.1 bar.
   - up+blast / down+blast → two more finishers.
   - A landed ender auto-queues a follow-up (by height) past 40% of its
     animation; dash at 50% chases.
+- **Finisher table (third pass, 2026-11-23, from the attack decision table
+  documented in the decomp's `include/battle/btl_act_i.h` [V]):** a blast
+  press mid-string picks the finisher from a per-character parameter row
+  indexed by `(rush step + 4) mod 5`, i.e. by the position in the
+  current half of the string; the row holds five entries plus a sixth that
+  needs a flag. Up+blast and down+blast are separate rows (each can be
+  preceded by a vanish lead-in, also per character). The finisher actions
+  fire **on the blast release** (input 67), which is what makes them
+  chargeable. Rush held 6 frames @30 (12 at 60 Hz) + one of four directions
+  or none = the five smashes; the neutral one differs by string half (step
+  < 5). Blast tap vs held 6 @30 = ki blast vs charged ki blast. Follow-ups
+  (`BtlAct_DecideAttackFollow`) only while the "attack connected" flag is
+  up, and the table read depends on the victim's hit reaction. **Ours (same
+  date):** X = rush (5 steps, the 5th an ender that staggers back), Y
+  mid-string = that position's finisher, forward / back + Y = upper hook /
+  sweep at any position; holding Y waits before the hit and charges the
+  finisher (blows away from 30%); held Y out of close range = charged ki
+  blast. One string, not two halves.
 - **Rush vs rush:** a fighter who is mid-rush **auto-guards incoming rush
   hits** — trading rushes becomes a mutual block with chip, not a trade.
 - **Charged smash [V]:** full charge in 45 frames at base rate. The rate
@@ -284,10 +302,12 @@ smashes). These need PCSX2 measurements (see
 | Z-counter: guard-press window, HP-tightened, anti-mash, first hit only, 1 bar | ✅ (guard vanish) |
 | Vanish duel ping-pong | ✅ vanish battle (shrinking window, escalating cost) |
 | Combo scaling 4 free hits, −3%, floor 50% | ✅ |
-| Anti-loop push-back | ✅ (repeated move / relaunch cap → push-out) |
+| Anti-loop push-back | ✅ by reaction since 2026-11-23 (same special reaction twice per segment, or relaunch cap → push-out; plain hits exempt) |
 | Early get-up + directional rolls | ✅ (+ God Hand air tech) |
 | Dodge re-arm / buffered counterattack | ✅ (dodge chaining, queued attacks) |
-| Charged smashes | ✅ LIGHT charge = directional smash (forward launch, back ground bounce, sides knock away); no just-release, no momentum |
+| Charged smashes | ✅ LIGHT charge = directional smash (forward launch, back ground bounce, sides knock away); knock down only from 30% charge; no just-release, no momentum |
+| Rush string + blast finishers by position | ✅ X x5 (ender staggers back), Y = finisher of that position (stagger; the one after the ender blows away), fwd / back + Y = upper hook / sweep; held Y charges it (blows away from 30%); held blast = charged ki blast |
+| Plain hits never knock down | ✅ only launchers, sweeps, charged smashes / finishers, the full-string finisher, throws |
 | Teleport chase after a hit | ✅ offensive teleport (2/combo); left stick places every teleport around the opponent |
 | Vanish escape out of a combo | ours only (BT3 can't break mid-string) |
 | No hitstop, camera shake instead | ✗ we use 4/8f hitstop |
@@ -311,7 +331,7 @@ None are scheduled; pick consciously, since some pull against God Hand.
 
 1. *(Implemented.)* **Throws** that beat guard, broken by a timed guard
    press (10f). Gives the guard/vanish game its missing third option.
-2. **Rush branching:** mid-string finishers on a second button and a
+2. *(Implemented 2026-11-23.)* **Rush branching:** mid-string finishers on a second button and a
    *(implemented)* directional charged-smash set (up = launch, down = ground bounce, sides =
    sideways knock-away), with BT3's chase follow-ups.
 3. **Camera shake over hitstop** for rush strings: cut light hitstop to 0–2f

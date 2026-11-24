@@ -88,12 +88,24 @@ extends CombatEntity
 ##   &"revive_cancel"  {reviver_slot}
 ##   &"revived"        {reviver_slot}                 (-1 = revive_now)
 ##
-## Strikes: HEAVY reads the stick when it starts (forward = high, neutral =
-## mid, back = low; MoveData.height). Holding LIGHT/HEAVY turns the attack
-## into its `charge_move`, which can be released early or held to full; a
-## LIGHT charge (smash) released with the stick held swaps in a directional
-## smash (MoveData.smash_variants: forward = launch, back = ground bounce,
-## left/right = knock sideways).
+## Strikes (BT3 X / Y): LIGHT chains the rush string (CharacterDef.light_string,
+## jab .. ender). HEAVY mid-string is the finisher of that string position
+## (each step's `cancel_into`); HEAVY reads the stick when pressed (forward =
+## high, neutral = mid, back = low; MoveData.height), so forward = the upper
+## hook launcher and back = the sweep at any position, and from neutral too
+## (CharacterDef.heavy / heavy_high / heavy_low). Holding LIGHT/HEAVY turns
+## the attack into its `charge_move`, which can be released early or held to
+## full; a hold-gated move (MoveData.hold_gate: finishers, heavies, ki blast)
+## waits before its hit while the button is held, so a held Y charges instead
+## of hitting first. A LIGHT charge (smash) released with the stick held swaps
+## in a directional smash (MoveData.smash_variants: forward = launch, back =
+## ground bounce, left/right = knock sideways).
+##
+## Reactions (BT3): plain hits hitstun, MoveData.stagger_frames hits stagger
+## (mash-shortened), only `knockdown` moves knock down (charge strikes from
+## their charge_knockdown_ratio). Anti-loop by reaction (MoveData.loop_group).
+## A knocked-down fighter falls with knockdown_fall_gravity and every juggle
+## hit pops them up (God Hand floaty juggle), capped by juggle_max_relaunches.
 ##
 ## Guard (BT3 style, no guard meter): hold GUARD; the stick picks the pose
 ## (forward = high, neutral = mid, back = low; a change settles after
@@ -292,9 +304,10 @@ var _since_guard_press: int = NEVER
 var _guard_press_armed: bool = false
 ## The current move doesn't continue a string that connected (Hitbox.opens_string).
 var _move_opens_string: bool = true
-## Victim side of the anti-loop rule, for the current combo segment: melee
-## moves that hit, relaunches taken, and the last melee move activation seen.
-var _combo_moves_taken: Array[StringName] = []
+## Victim side of the anti-loop rule, for the current combo segment: special
+## reactions taken (MoveData.loop_group), relaunches taken, and the last melee
+## move activation seen.
+var _combo_reactions_taken: Array[StringName] = []
 var _combo_relaunches: int = 0
 ## Hits the current move can still absorb (MoveData.armor_hits).
 var _armor_left: int = 0
@@ -348,6 +361,9 @@ var _heavy_height: MoveData.Height = MoveData.Height.MID
 var _charging: bool = false
 var _charge: int = 0
 var _charge_btn: int = 0
+## Button that started the current move (MoveData.button, or HEAVY for a ki
+## blast fired with HEAVY): the one a hold gate / charge strike watches.
+var _move_btn: int = 0
 ## Ki charge release lag left (CHARGE_END, or GUARD entered from it).
 var _charge_lag: int = 0
 ## Frames until DASH works again after a dash.
@@ -481,6 +497,7 @@ func reset_for_round(xform: Transform3D) -> void:
 	_charging = false
 	_charge = 0
 	_charge_btn = 0
+	_move_btn = 0
 	_charge_lag = 0
 	_dash_cooldown = 0
 	_heavy_height = MoveData.Height.MID
@@ -899,6 +916,7 @@ func get_active_hitboxes() -> Array[Hitbox]:
 	hb.single_target = m.is_throw or m.single_target
 	hb.radial = m.radial
 	hb.opens_string = _move_opens_string and sub == 0
+	hb.stun_frames = m.stagger_frames
 	if m.is_charge_strike():
 		var t := tuning
 		var r := charge_ratio()
@@ -906,8 +924,10 @@ func get_active_hitboxes() -> Array[Hitbox]:
 		hb.guard_ki_mult = lerpf(1.0, m.charge_guard_mult, r)
 		if r >= t.charge_stun_ratio:
 			var k := clampf((r - t.charge_stun_ratio) / maxf(1.0 - t.charge_stun_ratio, 0.0001), 0.0, 1.0)
-			hb.stun_frames = roundi(lerpf(t.charge_stun_frames_min, t.charge_stun_frames_max, k))
+			hb.stun_frames = maxi(hb.stun_frames, roundi(lerpf(t.charge_stun_frames_min, t.charge_stun_frames_max, k)))
 		hb.breaks_guard = r >= t.charge_break_ratio
+		hb.knockdown_ok = r >= m.charge_knockdown_ratio
+	hb.loop_group = m.loop_group if hb.knockdown_ok or not m.knockdown else m.loop_group_weak
 	out.append(hb)
 	return out
 
@@ -1070,7 +1090,7 @@ func _try_actions(allow_guard: bool) -> bool:
 		if _try_ki_blast():
 			return true
 	if _consume(InputFrame.Btn.HEAVY):
-		if not _in_close_range() and _try_ki_blast():
+		if not _in_close_range() and _try_ki_blast(InputFrame.Btn.HEAVY):
 			return true
 		return _start_move_id(_heavy_for_stick())
 	if _consume(InputFrame.Btn.LIGHT):
@@ -1134,7 +1154,7 @@ func _try_air_action() -> bool:
 	if _consume(InputFrame.Btn.BLAST):
 		return _try_ki_blast()
 	if _consume(InputFrame.Btn.HEAVY):
-		if not _in_close_range() and _try_ki_blast():
+		if not _in_close_range() and _try_ki_blast(InputFrame.Btn.HEAVY):
 			return true
 		return _start_move_id(def.jump_heavy if def.jump_heavy != &"" else def.jump_attack)
 	if _consume(InputFrame.Btn.LIGHT):
@@ -1145,6 +1165,8 @@ func _try_air_action() -> bool:
 func _tick_attack() -> void:
 	var m := _move
 	if _charging and _tick_charge_hold(m):
+		return
+	if _tick_hold_gate(m):
 		return
 	var f := _state_frame
 	var track := m.startup - tuning.attack_track_lock_frames if m.track_frames < 0 else m.track_frames
@@ -1193,20 +1215,56 @@ func _dive_velocity(speed: float) -> Vector3:
 	return dir.normalized() * speed if dir.length_squared() > 0.0001 else _fwd() * speed
 
 
+## MoveData.hold_gate: on the frame the hit (or spawn) would come out, wait
+## while the starting button is still held, until it is released (the tapped
+## move goes on) or held for charge_hold_frames (it becomes the charge strike).
+## Returns true while the tick is consumed.
+func _tick_hold_gate(m: MoveData) -> bool:
+	if not m.hold_gate or m.charge_move == &"" or _move_btn == 0 or _state_frame != m.startup:
+		return false
+	if not _input.is_held(_move_btn):
+		return false
+	_state_frame = m.startup - 1
+	if _held[_bit(_move_btn)] >= tuning.charge_hold_frames:
+		if _try_charge_strike(m):
+			return true
+		_state_frame = m.startup  # can't charge (no ki): fire the tapped move
+		return false
+	_face_target(_attack_turn_step())
+	_set_ground_velocity(Vector3.ZERO)
+	_hang_if_airborne(m)
+	return true
+
+
+## A move with an air hang keeps hanging while it waits (hold gate / charge).
+func _hang_if_airborne(m: MoveData) -> void:
+	if is_airborne() and m.air_hang_frames != 0:
+		_vel.y = 0.0
+		_floating = true
+
+
 ## Holding the button that started `m` past charge_hold_frames (outside its
 ## active frames) turns it into its charge strike.
 func _try_charge_strike(m: MoveData) -> bool:
-	if m.charge_move == &"" or m.button == 0 or m.is_active_frame(_state_frame):
+	var btn := _move_btn
+	if m.charge_move == &"" or btn == 0 or m.is_active_frame(_state_frame):
 		return false
-	if _held[_bit(m.button)] < tuning.charge_hold_frames:
+	if m.spawn_kind != &"" and _spawned:
+		return false  # the shot is out: holding on doesn't fire another
+	if _held[_bit(btn)] < tuning.charge_hold_frames:
 		return false
 	var next := def.move(m.charge_move)
 	if next == null:
 		return false
+	if next.spawn_kind == &"ki_blast":
+		if ki < tuning.ki_blast_charge_extra_cost:
+			return false  # the plain blast fires (no not_enough_ki: it wasn't asked for)
+		_spend_ki(tuning.ki_blast_charge_extra_cost)
 	_start_move(next)
+	_move_btn = btn
 	_charging = true
-	_charge_btn = m.button
-	event.emit(&"charge_start", {"slot": slot, "button": m.button})
+	_charge_btn = btn
+	event.emit(&"charge_start", {"slot": slot, "button": btn})
 	return true
 
 
@@ -1217,6 +1275,7 @@ func _tick_charge_hold(m: MoveData) -> bool:
 		return false
 	_face_target(_attack_turn_step())
 	_set_ground_velocity(Vector3.ZERO)
+	_hang_if_airborne(m)
 	if _try_dodge():
 		return true
 	if _input.is_held(_charge_btn) and _charge < m.charge_max_frames:
@@ -1324,6 +1383,7 @@ func _start_move(m: MoveData) -> void:
 	_spawned = false
 	_charging = false
 	_charge = 0
+	_move_btn = m.button
 	_armor_left = m.armor_hits
 	_enter(State.ATTACK)
 	_damage_mult = mult
@@ -1809,7 +1869,11 @@ func _try_teleport() -> bool:
 	return true
 
 
+## Reeling from a hit: hitstun, a hit stagger (finishers, ender; not a guard
+## crash) or airborne in a knockdown.
 func _is_teleport_target() -> bool:
+	if state == State.GUARD_BREAK:
+		return not _guard_crashed
 	return state == State.HITSTUN or (state == State.KNOCKDOWN and _land_frame < 0)
 
 
@@ -2008,10 +2072,15 @@ func _try_special() -> bool:
 	return true
 
 
-func _try_ki_blast() -> bool:
+## `btn`: the button that fired it (HEAVY out of close range), which a held
+## charge then watches.
+func _try_ki_blast(btn: int = InputFrame.Btn.BLAST) -> bool:
 	if def.move(def.ki_blast) == null or not _spend_ki(tuning.ki_blast_cost):
 		return false
-	return _start_move_id(def.ki_blast)
+	if not _start_move_id(def.ki_blast):
+		return false
+	_move_btn = btn
+	return true
 
 
 func _spawn_from(m: MoveData) -> void:
@@ -2166,10 +2235,14 @@ func _take_hit(hb: Hitbox) -> void:
 		_enter_ko(kb)
 	elif loop:
 		_push_out(hb)
-	elif m.knockdown or was_juggle:
+	elif (m.knockdown and hb.knockdown_ok) or was_juggle:
 		_enter(State.KNOCKDOWN)
 		_land_frame = -1
 		_vel = kb
+		if was_juggle and kb.y >= 0.0 and not m.ground_bounce:
+			# God Hand juggle: every hit keeps them up and close (slams still slam).
+			_vel = Vector3(kb.x * tuning.juggle_knockback_mult, maxf(kb.y, tuning.juggle_pop_velocity),
+				kb.z * tuning.juggle_knockback_mult)
 		_bounce_pending = m.ground_bounce
 		if _vel.y > 0.0:
 			global_position.y = maxf(global_position.y, 0.001)
@@ -2200,8 +2273,10 @@ func _has_victim_in_combo(except: Fighter) -> bool:
 	return false
 
 
-## Anti-loop bookkeeping for a clean hit: true if it repeats a melee move of
-## the current combo segment or relaunches past juggle_max_relaunches.
+## Anti-loop bookkeeping for a clean hit (BT3: by reaction, not by move):
+## true if a melee hit repeats a special reaction (Hitbox.loop_group) of the
+## current combo segment, or relaunches past juggle_max_relaunches. Plain
+## hits (no loop_group) never loop: strings don't fail, loops do.
 func _is_loop_hit(hb: Hitbox, was_juggle: bool) -> bool:
 	if was_juggle:
 		_combo_relaunches += 1
@@ -2209,10 +2284,11 @@ func _is_loop_hit(hb: Hitbox, was_juggle: bool) -> bool:
 	var activation := hb.hit_id >> 8
 	if hb.is_melee and hb.attacker != null and activation != _combo_last_melee:
 		_combo_last_melee = activation
-		if hb.move.id in _combo_moves_taken:
-			loop = true
-		else:
-			_combo_moves_taken.append(hb.move.id)
+		if hb.loop_group != &"":
+			if hb.loop_group in _combo_reactions_taken:
+				loop = true
+			else:
+				_combo_reactions_taken.append(hb.loop_group)
 	return loop
 
 
@@ -2227,7 +2303,7 @@ func _push_out(hb: Hitbox) -> void:
 
 
 func _clear_combo_segment() -> void:
-	_combo_moves_taken.clear()
+	_combo_reactions_taken.clear()
 	_combo_relaunches = 0
 	_combo_last_melee = -1
 
@@ -2414,7 +2490,8 @@ func _apply_motion() -> void:
 	var dt := 1.0 / Tuning.match_rules.tick_rate
 	var was_air := is_airborne()
 	if was_air and not _floating:
-		_vel.y -= tuning.gravity * dt
+		var falling_down := state == State.KNOCKDOWN and _vel.y < 0.0
+		_vel.y -= (tuning.knockdown_fall_gravity if falling_down else tuning.gravity) * dt
 	elif not _driven:
 		var h := Vector2(_vel.x, _vel.z)
 		h = h.move_toward(Vector2.ZERO, tuning.ground_friction * dt)
@@ -2670,9 +2747,9 @@ func save_state() -> Dictionary:
 		"buffer": _buffer.duplicate(), "dodge_buf_dir": _dodge_buf_dir,
 		"dodge_buf_frames": _dodge_buf_frames, "input": _input.to_array(),
 		"held": _held.duplicate(), "charging": _charging, "charge": _charge,
-		"charge_btn": _charge_btn, "heavy_height": _heavy_height,
+		"charge_btn": _charge_btn, "move_btn": _move_btn, "heavy_height": _heavy_height,
 		"since_guard_press": _since_guard_press, "guard_press_armed": _guard_press_armed,
-		"move_opens_string": _move_opens_string, "combo_moves_taken": _combo_moves_taken.duplicate(),
+		"move_opens_string": _move_opens_string, "combo_reactions": _combo_reactions_taken.duplicate(),
 		"combo_relaunches": _combo_relaunches, "combo_last_melee": _combo_last_melee, "armor_left": _armor_left,
 		"combo_hits_taken": _combo_hits_taken,
 		"dodge_kind": _dodge_kind, "dodge_chain": _dodge_chain, "duck_variant": _duck_variant, "dodge_queued_btn": _dodge_queued_btn,
@@ -2743,11 +2820,12 @@ func load_state(s: Dictionary) -> void:
 	_charging = s["charging"]
 	_charge = s["charge"]
 	_charge_btn = s["charge_btn"]
+	_move_btn = s["move_btn"]
 	_heavy_height = s["heavy_height"]
 	_since_guard_press = s["since_guard_press"]
 	_guard_press_armed = s["guard_press_armed"]
 	_move_opens_string = s["move_opens_string"]
-	_combo_moves_taken = (s["combo_moves_taken"] as Array[StringName]).duplicate()
+	_combo_reactions_taken = (s["combo_reactions"] as Array[StringName]).duplicate()
 	_combo_relaunches = s["combo_relaunches"]
 	_armor_left = s["armor_left"]
 	_combo_last_melee = s["combo_last_melee"]

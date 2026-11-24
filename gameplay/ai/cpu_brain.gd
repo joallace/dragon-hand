@@ -86,7 +86,7 @@ const GUARD_RESULT_RANK: Array[int] = [2, 1, 3, 4, 0]  # PLAIN, KI_GUARD, PUSH_O
 ## Variables saved for rollback (see save_state).
 const SAVED: Array[StringName] = [
 	&"_clock", &"_plan", &"_dodge_at", &"_dodge_dir", &"_walk", &"_walk_until",
-	&"_next_think", &"_opp_slot", &"_opp_state", &"_opp_serial", &"_opp_known_at", &"_opp_seen_state",
+	&"_next_think", &"_opp_slot", &"_opp_state", &"_opp_serial", &"_opp_known_at", &"_opp_seen_state", &"_opp_duck", &"_opp_seen_duck",
 	&"_threat_serial", &"_my_serial", &"_my_state", &"_my_frame", &"_reflex_done", &"_rise_done",
 	&"_string_left", &"_chase", &"_followup", &"_counter_until", &"_contact_serial",
 	&"_contact_blocked", &"_punish_key", &"_last_held", &"_last_move", &"_mash_next",
@@ -124,6 +124,9 @@ var _opp_state: int = S.IDLE
 var _opp_serial: int = -1
 var _opp_known_at: int = 0
 var _opp_seen_state: int = S.IDLE
+## The opponent's current / perceived state is a duck (forward dodge).
+var _opp_duck: bool = false
+var _opp_seen_duck: bool = false
 ## Opponent move serial already answered defensively.
 var _threat_serial: int = -1
 ## Own move serial whose follow-up was already decided.
@@ -286,9 +289,12 @@ func _perceive() -> void:
 			_opp_attack_end = _clock
 		_opp_state = st
 		_opp_serial = serial
+		_opp_duck = st == S.DODGE and opp.dodge_kind() == Fighter.DodgeKind.DODGE \
+			and opp.dodge_direction() == InputFrame.Dodge.FORWARD
 		_opp_known_at = _clock + _reaction()
 	if _clock >= _opp_known_at:
 		_opp_seen_state = _opp_state
+		_opp_seen_duck = _opp_duck
 		if _opp_state == S.ATTACK and _habit_serial != _opp_serial:
 			_habit_serial = _opp_serial
 			_note_opener()
@@ -725,8 +731,12 @@ func _follow_up() -> void:
 
 
 ## Launcher (forward) when going for a teleport chase, else any height.
+## Against a duck it has seen: low (the sweep hits a duck) or mid, never the
+## launcher (God Hand's low answer to ducking).
 func _finisher_stick() -> float:
 	var t := me.tuning
+	if _opp_seen_duck:
+		return -1.0 if _roll(cfg.duck_low_chance) else [0.0, -1.0][rng.randi_range(0, 1)]
 	if me.ki >= t.teleport_cost_bars * t.ki_bar_size and _roll(cfg.teleport_chase_chance):
 		_chase = true
 		return 1.0

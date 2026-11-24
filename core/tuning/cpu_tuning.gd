@@ -114,6 +114,11 @@ extends Resource
 @export var mixup_chance: Vector2 = Vector2(0.1, 0.6)
 ## Chance to teleport after a landed finisher and keep the combo going.
 @export var teleport_chase_chance: Vector2 = Vector2(0.0, 0.8)
+## Mid-string HEAVY against a target seen ducking: chance to go low (back +
+## HEAVY, the sweep) on purpose; otherwise mid or low, never the high
+## launcher that whiffs over a duck. God Hand's enemies pick their low attack
+## ~56% of the time against a ducking Gene (the top level's value).
+@export var duck_low_chance: Vector2 = Vector2(0.2, 0.56)
 ## Chance to spend ki on a super when one is affordable and makes sense.
 @export var special_chance: Vector2 = Vector2(0.1, 0.75)
 ## Close range vs an opponent seen guarding: chance to throw (beats guard).

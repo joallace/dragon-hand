@@ -549,7 +549,9 @@ facing at point blank). Their lesson: the cones exist to keep attacks
 | Tension (ki) from taking damage, scaled by damage | ✗ flat +3 |
 | Taunts | ✅ TAUNT (RT): 50f, +1 ki bar when finished, ×1.25 damage taken meanwhile |
 | Roulette moves with opponent slow-mo | partial (ultimate freeze; no slow-mo) |
-| Floaty asymmetric launch gravity | ✗ (one gravity, 24 m/s²) |
+| Floaty asymmetric launch gravity | ✅ since 2026-11-23: knocked-down fighters fall at 14.4 m/s² (0.6 of our 24, GH's ratio); juggle hits pop them to ≥4.5 m/s with 0.35 of the horizontal push, cap 4 juggle hits (GH's consecutive-hit cap) |
+| Upper hook juggle starter | ✅ forward + Y (neutral or mid-string) launches; X follows up in the air |
+| Enemies answer a ducking Gene with their low attack (~56%) | ✅ CPU: mid-string HEAVY vs a duck it has seen goes low (sweep) at `cpu.duck_low_chance` (0.2 → 0.56 by level), else mid; never the launcher |
 | Stun gauge (200, decays) → dizzy 5 s + beatdown mash | partial (staggers, no gauge, no mash) |
 | Mash meter for escapes | ✗ |
 | Guts (1 HP) rule | ✗ |
@@ -582,7 +584,7 @@ None are scheduled; pick consciously, since some pull against Tenkaichi.
    player is grabbed, a 10 s lunge cooldown. Could replace or sit under
    the token system: tokens limit *how many* attack, God Hand's rules decide
    *who and from where*.
-5. **Floaty launches:** lower falling gravity than rising gravity for
+5. *(Implemented 2026-11-23, fall side only.)* **Floaty launches:** lower falling gravity than rising gravity for
    knocked-down fighters (GH ≈ 0.6 ratio), so juggles have hang time.
 6. **Opponent slow-mo instead of freezes** for supers/ultimate: run the
    victim at 10% for the move's duration while the attacker stays at full

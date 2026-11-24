@@ -11,7 +11,7 @@ var _events: Array = []  # [slot, kind, data]
 func _ready() -> void:
 	var tests: Array[Callable] = [
 		_test_fights, _test_levels_ordered, _test_defense_scales, _test_perfect_dodge,
-		_test_vanish_battle_response, _test_knockdown_options, _test_getup_attack_choice, _test_guard_pose, _test_throw_break,
+		_test_vanish_battle_response, _test_knockdown_options, _test_getup_attack_choice, _test_guard_pose, _test_duck_low_mixup, _test_throw_break,
 		_test_throws_turtle, _test_determinism, _test_save_load, _test_full_match,
 	]
 	for t in tests:
@@ -294,6 +294,42 @@ func _low_guards(lvl: int) -> Array[int]:
 	_summary("low kicks vs guarding lvl%d" % lvl, d)
 	var blocked := _count(&"hit", 1, func(data: Dictionary) -> bool: return data["blocked"])
 	return [_count(&"push_off", 1), blocked]
+
+
+## God Hand: enemies answer a ducking Gene with a low attack (~56%). The
+## CPU's mid-string finisher stick goes low (sweep) against a duck it has
+## seen, and never high (the launcher whiffs over a duck).
+func _test_duck_low_mixup() -> void:
+	var d := _new_match([-1, Tuning.cpu.level_count() - 1], 3, 1.4)
+	var brain := (d.sources[1] as CpuInput).brain
+	_src_duck(d)
+	var low := 0
+	var high := 0
+	for i in 200:
+		var y := brain._finisher_stick()
+		low += 1 if y < 0.0 else 0
+		high += 1 if y > 0.0 else 0
+	var want := brain._p(Tuning.cpu.duck_low_chance)
+	_check(brain._opp_seen_duck, "the CPU has seen the duck")
+	_check(high == 0 and absf(low / 200.0 - (want + (1.0 - want) / 2.0)) < 0.12,
+		"vs a duck: low %d / 200 (want ~%.0f%%), high %d" % [low, (want + (1.0 - want) / 2.0) * 100.0, high])
+	# Standing target: no low bias.
+	d = _new_match([-1, Tuning.cpu.level_count() - 1], 3, 1.4)
+	brain = (d.sources[1] as CpuInput).brain
+	d.step()
+	low = 0
+	for i in 300:
+		low += 1 if brain._finisher_stick() < 0.0 else 0
+	_check(not brain._opp_seen_duck and low < 140, "vs a standing target: low %d / 300" % low)
+
+
+## Slot 0 ducks (chained) long enough for the CPU's reaction delay to see it.
+func _src_duck(d: MatchDirector) -> void:
+	var s := d.sources[0] as ScriptedInput
+	for i in range(0, 100, 9):
+		s.flick(i, InputFrame.Dodge.FORWARD)
+	for i in 60:
+		d.step()
 
 
 func _test_guard_pose() -> void:

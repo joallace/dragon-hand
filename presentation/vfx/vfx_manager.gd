@@ -279,7 +279,19 @@ func afterimage(f: Fighter, at: Vector3) -> void:
 	var n := 0
 	for node in f.find_children("*", "MeshInstance3D", true, false):
 		var src := node as MeshInstance3D
-		if src == null or not src.is_visible_in_tree() or src.mesh == null:
+		if src == null or not src.is_visible_in_tree() or src.mesh == null \
+				or src.has_meta(FighterVisual.NO_AFTERIMAGE):
+			continue
+		var skel := src.get_parent() as Skeleton3D
+		if skel != null and src.skin != null:
+			# Skinned body: a frozen copy of its skeleton (current pose) + mesh.
+			var copy := skel.duplicate() as Skeleton3D
+			(copy.get_node(^"Body") as MeshInstance3D).material_override = mat
+			ghost.add_child(copy)
+			copy.global_transform = Transform3D(skel.global_basis, skel.global_position + offset)
+			n += 1
+			if n >= v.afterimage_max_meshes:
+				break
 			continue
 		var mi := MeshInstance3D.new()
 		mi.mesh = src.mesh

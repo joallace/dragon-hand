@@ -1,7 +1,8 @@
 class_name VideoSettings
 extends RefCounted
 ## Per-user video settings, not tuning: window mode and size, 3D render
-## scale + upscaler, vsync, FPS cap, motion smoothing, shadows, UI scale.
+## scale + upscaler, vsync, FPS cap, motion smoothing, shadows, UI scale,
+## pixel look (3D drawn at 1/pixel_size, scaled up unfiltered).
 ## Stored in `user://video.cfg`; the Settings autoload owns one instance
 ## (`Settings.video`) and applies it. Defaults and option lists come from
 ## Tuning.video. Every setter validates, so a hand-edited or stale file can
@@ -29,6 +30,7 @@ var max_fps: int
 var motion_smoothing: bool
 var shadow_quality: int
 var ui_scale: float
+var pixel_size: int
 
 
 func _init() -> void:
@@ -53,6 +55,7 @@ func reset_defaults() -> void:
 	motion_smoothing = t.default_motion_smoothing
 	set_shadow_quality(t.default_shadow_quality)
 	set_ui_scale(t.default_ui_scale)
+	set_pixel_size(t.default_pixel_size)
 
 
 ## Re-read `path` (missing file or keys = defaults).
@@ -73,6 +76,7 @@ func reload() -> void:
 	motion_smoothing = ms if ms is bool else motion_smoothing
 	set_shadow_quality(_int(cf.get_value(_SECTION, "shadow_quality", shadow_quality), shadow_quality))
 	set_ui_scale(_float(cf.get_value(_SECTION, "ui_scale", ui_scale), ui_scale))
+	set_pixel_size(_int(cf.get_value(_SECTION, "pixel_size", pixel_size), pixel_size))
 
 
 func save() -> Error:
@@ -86,6 +90,7 @@ func save() -> Error:
 	cf.set_value(_SECTION, "motion_smoothing", motion_smoothing)
 	cf.set_value(_SECTION, "shadow_quality", shadow_quality)
 	cf.set_value(_SECTION, "ui_scale", ui_scale)
+	cf.set_value(_SECTION, "pixel_size", pixel_size)
 	return cf.save(path)
 
 
@@ -95,6 +100,7 @@ func to_dict() -> Dictionary:
 		"window_mode": window_mode, "window_size": window_size, "render_scale": render_scale,
 		"upscaler": upscaler, "vsync": vsync, "max_fps": max_fps,
 		"motion_smoothing": motion_smoothing, "shadow_quality": shadow_quality, "ui_scale": ui_scale,
+		"pixel_size": pixel_size,
 	}
 
 
@@ -112,6 +118,7 @@ func from_dict(d: Dictionary) -> void:
 	motion_smoothing = ms if ms is bool else motion_smoothing
 	set_shadow_quality(_int(d.get("shadow_quality"), shadow_quality))
 	set_ui_scale(_float(d.get("ui_scale"), ui_scale))
+	set_pixel_size(_int(d.get("pixel_size"), pixel_size))
 
 
 # --- validating setters --------------------------------------------------------
@@ -152,6 +159,11 @@ func set_shadow_quality(q: int) -> void:
 ## Snaps to the nearest Tuning.video.ui_scale_steps entry.
 func set_ui_scale(v: float) -> void:
 	ui_scale = _nearest(Tuning.video.ui_scale_steps, v)
+
+
+## Must be one of Tuning.video.pixel_size_options (else the default).
+func set_pixel_size(n: int) -> void:
+	pixel_size = n if n in Tuning.video.pixel_size_options else Tuning.video.default_pixel_size
 
 
 # --- derived ---------------------------------------------------------------------

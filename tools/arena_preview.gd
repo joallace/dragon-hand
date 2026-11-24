@@ -4,6 +4,7 @@ extends Node3D
 ## (no --headless). Add `--rendering-method gl_compatibility` to see what the
 ## web build's renderer draws.
 ##   godot res://tools/arena_preview.tscn --resolution 1280x720 -- arena=beach_bar radius=18 out=/some/dir
+## `pixel=<n>` previews Settings > Graphics > Pixel look at n (not saved).
 
 const SETTLE_FRAMES := 12
 const MATCH_SHOTS := 3
@@ -24,6 +25,7 @@ func _ready() -> void:
 			"radius": r = kv[1].to_float()
 			"out": out = kv[1]
 			"match": in_match = kv[1] == "1"
+			"pixel": Settings.video.set_pixel_size(int(kv[1]))  # not saved
 	if in_match:
 		_shoot_match(id, out)
 		return

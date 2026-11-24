@@ -97,7 +97,8 @@ func _test_states_resolve() -> void:
 	_check(FighterVisual.POSES.has(hold) and FighterVisual.POSES.has(toss), "throw hold/toss poses defined")
 
 
-## Every move's pose (and the new moves' windups) is defined.
+## Every move's pose (a static pose or a MoveTracks track; and the new
+## moves' windups) is defined.
 func _test_move_poses() -> void:
 	for file in DirAccess.get_files_at(MOVES_DIR):
 		if file.get_extension() != "tres":
@@ -105,7 +106,8 @@ func _test_move_poses() -> void:
 		var m := load(MOVES_DIR + file) as MoveData
 		if m == null or m.pose == &"":
 			continue
-		_check(FighterVisual.POSES.has(m.pose), "move %s pose %s defined" % [m.id, m.pose])
+		_check(FighterVisual.POSES.has(m.pose) or MoveTracks.has_track(m.pose),
+			"move %s pose %s defined (pose or track)" % [m.id, m.pose])
 	for id in NEEDS_WINDUP:
 		_check(FighterVisual.POSES.has(id), "pose %s defined" % id)
 		_check(FighterVisual.POSES.has(StringName(String(id) + "_windup")), "pose %s_windup defined" % id)

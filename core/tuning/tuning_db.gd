@@ -26,6 +26,7 @@ const REGISTRY := {
 	"net": preload("res://core/tuning/net_tuning.gd"),
 	"video": preload("res://core/tuning/video_tuning.gd"),
 	"music": preload("res://core/tuning/music_tuning.gd"),
+	"anim": preload("res://core/tuning/anim_tuning.gd"),
 }
 
 var input: InputTuning
@@ -45,6 +46,7 @@ var coop: CoopTuning
 var net: NetTuning
 var video: VideoTuning
 var music: MusicTuning
+var anim: AnimTuning
 
 
 func _init() -> void:

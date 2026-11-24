@@ -9,16 +9,28 @@ extends SmoothedVisual
 ## flashes. Never touches sim state. Follows the fighter with motion
 ## smoothing (SmoothedVisual).
 ##
+## Animation: every joint (and the root offset) is a damped spring
+## (PoseSprings, feel in Tuning.anim) chasing a target pose, so changes
+## carry momentum, overshoot and settle instead of easing to a dead stop.
+## Targets: a keyframed track on the move's own timeline for attacks that
+## have one (MoveTracks), else the named POSES; idle breathing / weight
+## shift are added to the target, walk swing and head follow-through on top.
+## Hits taken kick the springs (hit reactions).
+##
 ## Rotation convention: limbs hang along -Y; +X rotation swings a limb
-## forward (toward -Z = toward the opponent). Angles in degrees.
+## forward (toward -Z = toward the opponent); the torso and head point up,
+## so +X tilts them BACK; torso +Y turns the chest left. Angles in degrees.
 
 const JOINTS: Array[StringName] = [
 	&"torso", &"head", &"sh_l", &"el_l", &"sh_r", &"el_r",
 	&"hip_l", &"kn_l", &"hip_r", &"kn_r", &"spin",
 ]
-## Pose speeds (1/s) for the exponential lerp toward the target pose.
-const BLEND_SPEED := 16.0
-const BLEND_SPEED_FAST := 40.0
+## Spring channel of the body offset (POSES' "root").
+const ROOT := &"root"
+## States lying on / rising off the floor: no spring overshoot through it.
+const GROUNDED_STATES: Array[StringName] = [&"knockdown", &"ko", &"downed", &"out", &"wakeup", &"revive"]
+## States that breathe and shift their weight (Tuning.anim idle).
+const IDLE_STATES: Array[StringName] = [&"idle", &"walk", &"guard"]
 const FLASH_TIME := 0.12
 const WALK_CYCLE_HZ := 2.2
 ## Charge strike glow: emission grows (and whitens) with the charge.
@@ -34,18 +46,13 @@ const NO_AFTERIMAGE := &"no_afterimage"
 ## Missing joints fall back to &"idle".
 const POSES := {
 	&"idle": {
-		&"torso": Vector3(5, -10, 0), &"head": Vector3(-5, 10, 0),
+		&"torso": Vector3(-6, -12, 0), &"head": Vector3(4, 12, 0),
 		&"sh_l": Vector3(45, 0, -10), &"el_l": Vector3(105, 0, 0),
 		&"sh_r": Vector3(35, 0, 10), &"el_r": Vector3(115, 0, 0),
 		&"hip_l": Vector3(15, 0, -5), &"kn_l": Vector3(-20, 0, 0),
 		&"hip_r": Vector3(-12, 0, 5), &"kn_r": Vector3(-15, 0, 0),
 		&"spin": Vector3.ZERO, &"root": Vector3(0, -0.04, 0),
 	},
-	&"jab": {&"torso": Vector3(5, 25, 0), &"sh_l": Vector3(90, 0, 0), &"el_l": Vector3(5, 0, 0)},
-	&"jab2": {&"torso": Vector3(5, -30, 0), &"sh_r": Vector3(90, 0, 0), &"el_r": Vector3(5, 0, 0)},
-	&"hook": {&"torso": Vector3(5, -50, 0), &"sh_r": Vector3(80, 0, 75), &"el_r": Vector3(85, 0, 0)},
-	&"kick": {&"torso": Vector3(-15, 0, 0), &"hip_r": Vector3(100, 0, 0), &"kn_r": Vector3(-5, 0, 0),
-		&"hip_l": Vector3(-5, 0, 0), &"kn_l": Vector3(-10, 0, 0)},
 	&"kick_high": {&"torso": Vector3(-30, -10, 0), &"head": Vector3(15, 0, 0), &"hip_r": Vector3(150, 0, 0),
 		&"kn_r": Vector3(-5, 0, 0), &"hip_l": Vector3(-10, 0, 0), &"kn_l": Vector3(-10, 0, 0),
 		&"root": Vector3(0, 0.05, 0)},
@@ -65,9 +72,6 @@ const POSES := {
 	&"charge_kick_windup": {&"torso": Vector3(5, 45, 0), &"hip_r": Vector3(85, 0, 0), &"kn_r": Vector3(-140, 0, 0),
 		&"kn_l": Vector3(-35, 0, 0), &"sh_l": Vector3(40, 0, -30), &"sh_r": Vector3(-30, 0, 30),
 		&"root": Vector3(0, -0.1, 0)},
-	&"heavy": {&"torso": Vector3(20, -35, 0), &"sh_r": Vector3(95, 0, 0), &"el_r": Vector3(0, 0, 0),
-		&"hip_l": Vector3(35, 0, 0), &"kn_l": Vector3(-35, 0, 0), &"hip_r": Vector3(-30, 0, 0)},
-	&"heavy_windup": {&"torso": Vector3(-5, 40, 0), &"sh_r": Vector3(-20, 0, 20), &"el_r": Vector3(120, 0, 0)},
 	&"finisher": {&"torso": Vector3(-20, -20, 0), &"sh_r": Vector3(165, 0, 0), &"el_r": Vector3(25, 0, 0),
 		&"root": Vector3(0, 0.12, 0)},
 	&"finisher_windup": {&"torso": Vector3(30, 20, 0), &"sh_r": Vector3(0, 0, 10), &"el_r": Vector3(130, 0, 0),
@@ -270,8 +274,18 @@ const THROWN_SWAY_DEG := 8.0
 
 var _fighter: Fighter
 var _joints: Dictionary = {}  # StringName -> Node3D
-var _current: Dictionary = {}  # StringName -> Vector3 (deg)
-var _root_offset: Vector3 = Vector3.ZERO
+## Joint angles (deg) and the root offset (m), sprung toward the target.
+var _springs := PoseSprings.new()
+## The current pose comes from a MoveTracks track (stiffer springs).
+var _tracked := false
+## Track clock: the attack's state frame at SmoothedVisual's blend point
+## (f - 1 + fraction, so limbs stay in step with the drawn body); never
+## runs backwards within a move, so it holds on frozen frames (hitstop,
+## charge holds) instead of looping.
+var _anim_frame := 0.0
+var _anim_serial := -1
+## Desyncs idle breathing between fighters (seconds).
+var _idle_phase := 0.0
 var _body: Node3D
 ## Glowing material: the model's toon material or the primitives' body colour.
 var _mat: Material
@@ -307,16 +321,24 @@ func _process(delta: float) -> void:
 		return
 	_time += delta
 	_body.visible = not _fighter.is_vanished()
-	var pose := _target_pose()
-	var fast := _fighter.attack_phase() == 1 or _fighter.current_state_name() == &"dodge"
-	var k := 1.0 - exp(-(BLEND_SPEED_FAST if fast else BLEND_SPEED) * delta)
+	var a := Tuning.anim
+	var pose := _with_idle_motion(_target_pose())
+	var st := _fighter.current_state_name()
+	var hz := a.spring_hz
+	var zeta := a.spring_damping
+	if _tracked:
+		hz = a.track_spring_hz
+		zeta = a.track_spring_damping
+	elif st in GROUNDED_STATES or _fighter.current_pose() == &"duck":
+		zeta = a.grounded_spring_damping
+	elif _fighter.attack_phase() == 1 or st == &"dodge":
+		hz = a.strike_spring_hz
+		zeta = a.strike_spring_damping
+	_springs.step(pose, POSES[&"idle"], delta, hz, zeta, a.max_substep, a.max_substeps)
 	for j in JOINTS:
-		var target: Vector3 = pose.get(j, POSES[&"idle"][j])
-		_current[j] = (_current[j] as Vector3).lerp(target, k)
-		(_joints[j] as Node3D).rotation_degrees = _current[j]
-	var root_target: Vector3 = pose.get(&"root", POSES[&"idle"][&"root"])
-	_root_offset = _root_offset.lerp(root_target, k)
-	_body.position = _root_offset * _body.scale.y
+		(_joints[j] as Node3D).rotation_degrees = _springs.value(j)
+	_body.position = _springs.value(ROOT) * _body.scale.y
+	_apply_head_lag()
 	_apply_procedural()
 	if _skeleton != null:
 		FighterModel.sync_pose(_skeleton, _rig)
@@ -329,6 +351,11 @@ func _process(delta: float) -> void:
 
 func _target_pose() -> Dictionary:
 	var f := _fighter
+	var m0 := f.current_move()
+	_tracked = m0 != null and MoveTracks.has_track(m0.pose)
+	if _tracked:
+		return _track_pose(m0)
+	_anim_serial = -1
 	var id := f.current_pose()
 	if f.attack_phase() == 0:
 		var windup := StringName(String(id) + "_windup")
@@ -343,6 +370,48 @@ func _target_pose() -> Dictionary:
 			return POSES[&"idle"]
 	var pose_id := pose_id_for(id, f.current_state_name(), f.state_frame(), f.tuning, f.duck_variant())
 	return POSES.get(pose_id, POSES[&"idle"])
+
+
+## Target of a tracked move: its track sampled at the smoothed frame.
+func _track_pose(m: MoveData) -> Dictionary:
+	var f := float(_fighter.state_frame())
+	var at := f - 1.0 + Engine.get_physics_interpolation_fraction() if SmoothedVisual.enabled else f
+	var serial := _fighter.current_move_serial()
+	if serial != _anim_serial:
+		_anim_serial = serial
+		_anim_frame = at
+	# Clamped to the current tick so a frame moved back (rollback) is followed.
+	_anim_frame = clampf(maxf(_anim_frame, at), f - 1.0, f)
+	return MoveTracks.sample(m.pose, MoveTracks.timeline_u(m, _anim_frame), POSES[&"idle"])
+
+
+## Idle life added to the target: breathing (chest, shoulders, a small bob)
+## and a slow weight shift with the head kept level.
+func _with_idle_motion(pose: Dictionary) -> Dictionary:
+	if _fighter.current_state_name() not in IDLE_STATES:
+		return pose
+	var a := Tuning.anim
+	var t := _time + _idle_phase
+	var b := sin(t * TAU * a.breath_hz)
+	var w := sin(t * TAU * a.weight_shift_hz)
+	var out := pose.duplicate()
+	var idle: Dictionary = POSES[&"idle"]
+	out[&"torso"] = (pose.get(&"torso", idle[&"torso"]) as Vector3) + Vector3(b * a.breath_deg, 0, w * a.weight_shift_deg)
+	out[&"head"] = (pose.get(&"head", idle[&"head"]) as Vector3) - Vector3(b * a.breath_deg, 0, w * a.weight_shift_deg)
+	out[&"sh_l"] = (pose.get(&"sh_l", idle[&"sh_l"]) as Vector3) - Vector3(0, 0, b * a.breath_deg)
+	out[&"sh_r"] = (pose.get(&"sh_r", idle[&"sh_r"]) as Vector3) + Vector3(0, 0, b * a.breath_deg)
+	out[ROOT] = (pose.get(ROOT, idle[ROOT]) as Vector3) + Vector3(0, b * a.breath_bob, 0)
+	return out
+
+
+## Follow-through: the head trails the torso's turn (counter-rotates by the
+## torso's sprung angular velocity), then catches up.
+func _apply_head_lag() -> void:
+	var a := Tuning.anim
+	var lag := _springs.velocity(&"torso") * a.head_lag
+	var m := a.head_lag_max_deg
+	var head: Node3D = _joints[&"head"]
+	head.rotation_degrees -= Vector3(clampf(lag.x, -m, m), clampf(lag.y, -m, m), clampf(lag.z, -m, m))
 
 
 ## Maps a non-attack current_pose() to a POSES key (states sharing a name
@@ -407,11 +476,19 @@ func _apply_procedural() -> void:
 	var f := _fighter
 	match f.current_state_name():
 		&"walk":
-			var s := sin(_time * TAU * WALK_CYCLE_HZ) * 25.0
+			var a := Tuning.anim
+			var c := sin(_time * TAU * WALK_CYCLE_HZ)
+			var s := c * 25.0
 			_add_rot(&"hip_l", s)
 			_add_rot(&"hip_r", -s)
 			_add_rot(&"kn_l", -maxf(-s, 0.0))
 			_add_rot(&"kn_r", -maxf(s, 0.0))
+			# Arms swing against the legs, the chest counter-twists, the body
+			# dips at each footfall (twice per stride).
+			_add_rot(&"sh_l", -c * a.walk_arm_swing_deg)
+			_add_rot(&"sh_r", c * a.walk_arm_swing_deg)
+			(_joints[&"torso"] as Node3D).rotation_degrees.y += c * a.walk_torso_twist_deg
+			_body.position.y -= absf(c) * a.walk_bob * _body.scale.y
 		&"dodge":
 			if f.dodge_direction() == InputFrame.Dodge.BACK:
 				var p := clampf(f.state_frame() / float(maxi(f.tuning.backflip_move_frames, 1)), 0.0, 1.0)
@@ -491,10 +568,30 @@ func _update_aura() -> void:
 func _on_event(kind: StringName, data: Dictionary) -> void:
 	match kind:
 		&"hit":
-			if data.get("slot", -1) == _fighter.slot and not data.get("blocked", false):
+			if data.get("slot", -1) != _fighter.slot:
+				return
+			var blocked: bool = data.get("blocked", false)
+			if not blocked:
 				_flash_left = FLASH_TIME
+			_hit_reaction(data.get("position", _fighter.global_position), data.get("heavy", false), blocked)
 		&"teleport", &"vanish", &"reappear":
 			_spawn_flash(data.get("position", _fighter.global_position))
+
+
+## Hit taken: kick the springs so the body snaps away from the blow and
+## settles into the hitstun pose (a blocked hit just rocks the guard).
+func _hit_reaction(at: Vector3, heavy: bool, blocked: bool) -> void:
+	# A rollback resim re-emits the hit: kick once (springs accumulate).
+	if _fighter.director != null and _fighter.director.resimulating:
+		return
+	var a := Tuning.anim
+	var k := (a.hit_heavy_scale if heavy else 1.0) * (a.hit_blocked_scale if blocked else 1.0)
+	# A blow on the right (+x) drives that shoulder back: chest turns right (-Y).
+	var side := signf((_fighter.global_transform.affine_inverse() * at).x)
+	_springs.kick(&"torso", Vector3(a.hit_torso_impulse, -side * a.hit_twist_impulse, 0) * k)
+	_springs.kick(&"head", Vector3(a.hit_head_impulse, 0, 0) * k)
+	_springs.kick(&"sh_l", Vector3(-a.hit_arm_impulse, 0, -a.hit_arm_impulse) * k)
+	_springs.kick(&"sh_r", Vector3(-a.hit_arm_impulse, 0, a.hit_arm_impulse) * k)
 
 
 ## Expanding sphere flash at a world position (vanish/reappear).
@@ -562,7 +659,9 @@ func _build() -> void:
 	add_child(_aura)
 
 	for j in JOINTS:
-		_current[j] = POSES[&"idle"][j]
+		_springs.reset(j, POSES[&"idle"][j])
+	_springs.reset(ROOT, POSES[&"idle"][ROOT])
+	_idle_phase = randf() / maxf(Tuning.anim.breath_hz, 0.01)
 
 
 ## Joint nodes (no meshes): spin pivots around the hips so backflips and

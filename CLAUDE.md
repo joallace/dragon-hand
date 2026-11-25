@@ -142,8 +142,6 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     (`user://audio.cfg`: volume per bus; buses in `default_bus_layout.tres`).
     `apply_video()` -> window/renderer + `video_applied`; `ViewLayout` pulls
     `configure_viewport()`. Window bits are skipped headless (`apply_display`).
-    `UserDataMigration` (run first in `Settings._ready`): one-time copy of
-    the pre-rename "God Hand Tenkaichi" user folder into "Dragon Hand"'s.
   - `platform/PlatformCaps`: what the platform can do (window control, quit,
     UPnP, FSR, `net_backend()`); web = browser owns the window, no online
     yet (`Net.online_available()` gates every online menu entry). Read by

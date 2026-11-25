@@ -1098,8 +1098,8 @@ func _build_card(i: int, compact: bool) -> Dictionary:
 	var u := UiTheme.tuning()
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := (UiTheme.get_theme().get_stylebox("panel", "PanelContainer") as StyleBoxFlat).duplicate() as StyleBoxFlat
-	sb.set_border_width_all(u.join_panel_border)
+	var sb := (UiTheme.get_theme().get_stylebox("panel", "PanelContainer") as LacquerBox).duplicate() as LacquerBox
+	sb.border_width = u.join_panel_border
 	if compact:
 		sb.set_content_margin_all(u.join_compact_panel_margin)
 	panel.add_theme_stylebox_override("panel", sb)
@@ -1108,6 +1108,8 @@ func _build_card(i: int, compact: bool) -> Dictionary:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(col)
 	var header := _fit_label("", &"HeaderLabel", u.join_compact_header_font if compact else 0)
+	# Names in the condensed face: long online names fit a compact card.
+	header.add_theme_font_override("font", UiTheme.button_font())
 	var device := _fit_label("", &"HintLabel")
 	var seat := _fit_label("", &"", u.join_row_font)
 	var character := _fit_label("", &"", u.join_compact_character_font if compact else u.join_character_font)
@@ -1141,7 +1143,7 @@ func _build_options() -> void:
 	_options.add_child(dim)
 	var panel := PanelContainer.new()
 	# Opaque, so the cards behind don't read through the rows.
-	var box := (UiTheme.get_theme().get_stylebox("panel", "PanelBox") as StyleBoxFlat).duplicate() as StyleBoxFlat
+	var box := (UiTheme.get_theme().get_stylebox("panel", "PanelBox") as LacquerBox).duplicate() as LacquerBox
 	box.bg_color.a = 1.0
 	panel.add_theme_stylebox_override("panel", box)
 	panel.anchor_left = 0.5
@@ -1233,7 +1235,7 @@ func _refresh_card(i: int) -> void:
 	var empty := s.state == SlotState.EMPTY and not is_ally
 	var joined_human := s.type == SlotType.HUMAN and s.state != SlotState.EMPTY
 	var color: Color = ui["color"]
-	(ui["style"] as StyleBoxFlat).border_color = color
+	(ui["style"] as LacquerBox).border_color = color
 	(ui["panel"] as Control).modulate.a = u.join_empty_card_alpha if empty else 1.0
 
 	var header: Label = ui["header"]

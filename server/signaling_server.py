@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WebRTC signaling server for God Hand Tenkaichi (protocol v1).
+"""WebRTC signaling server for Dragon Hand (protocol v1).
 
 Brokers WebRTC connections between a room's host and its guests and keeps
 the room directory. It never carries game packets and holds no game logic.

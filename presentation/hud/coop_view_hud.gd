@@ -21,7 +21,7 @@ var director: MatchDirector
 var fighter: Fighter
 var camera: FighterCamera
 
-var _font: SystemFont
+var _font: Font
 var _partners: Array[Dictionary] = []  # {fighter, name, health, ki, status}
 var _partner_slots: Array[int] = []
 var _banner: Label
@@ -44,9 +44,7 @@ func setup(p_director: MatchDirector, hub: MatchEventHub, p_fighter: Fighter, p_
 	fighter = p_fighter
 	camera = p_camera
 	var t := Tuning.hud
-	_font = SystemFont.new()
-	_font.font_names = t.font_names
-	_font.font_weight = t.font_weight
+	_font = UiTheme.display_font()
 
 	_banner = _label(t.banner_font_size, t.banner_color)
 	_banner.name = "Banner"
@@ -65,7 +63,8 @@ func _label(font_size: int, color: Color) -> Label:
 	var t := Tuning.hud
 	var l := Label.new()
 	var ls := LabelSettings.new()
-	ls.font = _font
+	# Small names / states in the body font, banners in the display face.
+	ls.font = UiTheme.button_font() if font_size <= t.coop_small_font_size else _font
 	ls.font_size = font_size
 	ls.font_color = color
 	ls.outline_size = t.outline_size / 2

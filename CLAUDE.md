@@ -1,6 +1,7 @@
-# God Hand Tenkaichi
+# Dragon Hand
 
-3D Godot 4.7 fighting game: God Hand (right-stick dodges) x Budokai Tenkaichi
+3D Godot 4.7 fighting game (formerly "God Hand Tenkaichi"; the repo folder
+keeps that name): God Hand (right-stick dodges) x Budokai Tenkaichi
 (ki charging, specials, teleport/vanish), ground-only — fighters never fly.
 Typed GDScript. Godot binary: `/home/joallace/opt/Godot_v4.7.2-stable_linux.x86_64`.
 
@@ -141,6 +142,8 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
     (`user://audio.cfg`: volume per bus; buses in `default_bus_layout.tres`).
     `apply_video()` -> window/renderer + `video_applied`; `ViewLayout` pulls
     `configure_viewport()`. Window bits are skipped headless (`apply_display`).
+    `UserDataMigration` (run first in `Settings._ready`): one-time copy of
+    the pre-rename "God Hand Tenkaichi" user folder into "Dragon Hand"'s.
   - `platform/PlatformCaps`: what the platform can do (window control, quit,
     UPnP, FSR, `net_backend()`); web = browser owns the window, no online
     yet (`Net.online_available()` gates every online menu entry). Read by
@@ -224,6 +227,11 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   overlay with the Online page locked), controls rebinding (`ControlsScreen`,
   embedded as the Controls tab), results (online: rematch votes, lobby,
   save replay). `ui/`: `OptionSelector`, `NumberStepper`, `ConfirmPrompt`.
+  Skin "Jade Lacquer" (lacquer black, jade focus, gold frames, ember danger):
+  `UiTheme` from `Tuning.ui` with `LacquerBox` styleboxes (pointed buttons,
+  framed cards), `AnimatedBackground` scale shader, `DragonEmblem` (also
+  `icon.svg`); fonts Dela Gothic One (Latin subset) + Saira Semi Condensed
+  (OFL, `assets/fonts/`), via `UiTheme.display_font()` etc., HUD included.
   Button legends: never write button names ("A", "Esc") in UI text; use a
   `PromptLabel` template (`{accept}`, `{back}`, `{@LIGHT}`... tokens in
   `ui/input_prompts.gd`, the `Prompts` autoload: shared legends follow the
@@ -343,8 +351,8 @@ compares confirmed hashes (docs/web_online.md "Cross-play end-to-end check").
 excludes `tests/ tools/ docs/ *.md`) writing to `builds/` (gitignored). Needs
 the 4.7.2 export templates (editor: Editor → Manage Export Templates →
 Download, or install the 4.7.2 `.tpz` from godotengine.org), then
-`mkdir -p builds/linux && godot --headless --export-release "Linux" builds/linux/god_hand_tenkaichi.x86_64`
-(or `"Windows Desktop" builds/windows/god_hand_tenkaichi.exe`).
+`mkdir -p builds/linux && godot --headless --export-release "Linux" builds/linux/dragon_hand.x86_64`
+(or `"Windows Desktop" builds/windows/dragon_hand.exe`).
 
 "Web" (offline only: no online/UPnP/Quit/window rows, see PlatformCaps)
 exports single-threaded (`web_nothreads_*` templates, no COOP/COEP headers

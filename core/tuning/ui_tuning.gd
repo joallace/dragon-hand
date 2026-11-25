@@ -4,34 +4,61 @@ extends Resource
 ## menu screens in scenes/menus/. Change colors/sizes/timeouts here.
 
 @export_group("Palette")
-@export var color_orange: Color = Color(1.0, 0.55, 0.08)
-@export var color_orange_light: Color = Color(1.0, 0.78, 0.25)
-@export var color_blue: Color = Color(0.10, 0.32, 0.85)
-@export var color_blue_dark: Color = Color(0.04, 0.09, 0.28)
-@export var color_panel: Color = Color(0.03, 0.06, 0.18, 0.88)
-@export var color_text: Color = Color(1.0, 0.98, 0.92)
-@export var color_text_dim: Color = Color(0.70, 0.75, 0.90)
-@export var color_outline: Color = Color(0.05, 0.02, 0.0)
-@export var color_focus: Color = Color(1.0, 0.92, 0.2)
-@export var color_disabled: Color = Color(0.35, 0.38, 0.48)
-@export var color_ready: Color = Color(0.35, 1.0, 0.4)
+## Jade Lacquer: black lacquer ground, jade selection, gold frames, ember alarms.
+@export var color_lacquer: Color = Color("0b1412")
+@export var color_panel: Color = Color(0.078, 0.137, 0.122, 0.94)
+## Idle button fill (a step above the panel).
+@export var color_panel_raised: Color = Color("1a2e28")
+@export var color_jade: Color = Color("2fbf8f")
+@export var color_jade_dark: Color = Color("1d6e55")
+@export var color_gold: Color = Color("e9b949")
+@export var color_gold_light: Color = Color("f5d88a")
+@export var color_ember: Color = Color("e0644b")
+@export var color_text: Color = Color("ede6d6")
+@export var color_text_dim: Color = Color("9fb3aa")
+## Text on a jade (focused) fill.
+@export var color_text_on_jade: Color = Color("0b1412")
+@export var color_outline: Color = Color("050a09")
+## Cursor / selected text on dark panels.
+@export var color_focus: Color = Color("f5d88a")
+@export var color_disabled: Color = Color("4a5c55")
+@export var color_ready: Color = Color("4fe0a8")
+
+@export_group("Fonts")
+## Titles, names, timer, banners (Dela Gothic One, OFL, Latin subset).
+@export var font_display_path: String = "res://assets/fonts/dela_gothic_one/DelaGothicOne-Regular.ttf"
+## Buttons, rows, body (Saira Semi Condensed, OFL).
+@export var font_body_path: String = "res://assets/fonts/saira_semi_condensed/SairaSemiCondensed-SemiBold.ttf"
+@export var font_bold_path: String = "res://assets/fonts/saira_semi_condensed/SairaSemiCondensed-Bold.ttf"
+## Extra letter spacing (px) of button and header text.
+@export var font_button_spacing: int = 3
+@export var font_title_spacing: int = 6
+## Trims the display face's tall (CJK-sized) line box on titles (px, <= 0).
+@export var font_title_trim_top: int = -10
+@export var font_title_trim_bottom: int = -6
 
 @export_group("Sizes")
-@export var font_title: int = 64
-@export var font_header: int = 38
-@export var font_button: int = 28
+@export var font_title: int = 56
+@export var font_header: int = 34
+@export var font_button: int = 26
 @export var font_body: int = 22
 @export var font_hint: int = 18
-@export var outline_title: int = 16
-@export var outline_text: int = 8
-@export var font_embolden: float = 0.6
-@export var button_min_size: Vector2 = Vector2(460, 52)
-@export var corner_radius: int = 6
-@export var border_width: int = 4
-@export var focus_border_width: int = 6
-## Horizontal skew of button/panel boxes (fighting-game slant).
-@export var box_skew: float = 0.18
-@export var list_separation: int = 10
+## Title depth: a jade then a lacquer drop shadow (px down).
+@export var title_shadow_offset: int = 4
+@export var outline_text: int = 4
+@export var button_min_size: Vector2 = Vector2(420, 48)
+@export var corner_radius: int = 3
+@export var border_width: int = 2
+@export var focus_border_width: int = 2
+## Depth (px) of the pointed ends of buttons.
+@export var button_point: float = 14.0
+## Glow around the focused button.
+@export var focus_glow_size: float = 12.0
+@export var focus_glow_alpha: float = 0.45
+## Panels: thin gold line this far inside the border.
+@export var panel_inner_line_inset: float = 6.0
+@export var panel_inner_line_alpha: float = 0.35
+@export var list_separation: int = 8
 
 @export_group("Button prompts")
 ## Glyph size relative to the text around it (Promptfont glyphs are 1 em).
@@ -57,8 +84,10 @@ extends Resource
 ## Scale punch on button press.
 @export var press_punch_scale: float = 0.92
 @export var press_punch_time: float = 0.12
-@export var title_pulse_speed: float = 1.6
 @export var background_speed: float = 0.25
+## Backdrop dragon scales across the screen height, and their rim brightness.
+@export var background_scale_count: float = 18.0
+@export var background_rim_alpha: float = 0.22
 
 @export_group("Controls screen")
 ## Seconds before an unanswered "Press a button..." prompt cancels.
@@ -69,7 +98,12 @@ extends Resource
 
 @export_group("Layout")
 ## Vertical gap between the main menu's title, subtitle, buttons and hint.
-@export var main_menu_separation: int = 10
+@export var main_menu_separation: int = 8
+## Main menu emblem side (px) and the extra gap between tagline and buttons.
+@export var main_menu_emblem_size: float = 124.0
+@export var main_menu_title_gap: float = 4.0
+## Tagline rules: length and thickness of the gold lines either side.
+@export var ruled_line_size: Vector2 = Vector2(56, 2)
 ## How-to-play overlay: space kept free around the panel (x: sides, y: top/bottom).
 @export var how_to_margin: Vector2 = Vector2(48, 20)
 ## How-to-play grid gaps (x: between columns, y: between rows).
@@ -112,7 +146,7 @@ extends Resource
 @export var join_row_separation: int = 2
 @export var join_options_arrow_width: float = 56.0
 ## Border width of the P1/P2-coloured player panels.
-@export var join_panel_border: int = 6
+@export var join_panel_border: int = 3
 ## More than two cards: they share the row with these smaller fonts and a
 ## thinner inner padding.
 @export var join_compact_header_font: int = 24

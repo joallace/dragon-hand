@@ -27,6 +27,8 @@ var apply_display := DisplayServer.get_name() != "headless"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# First autoload to read user://: bring the pre-rename files over first.
+	UserDataMigration.run()
 	video = VideoSettings.load_from()
 	audio = AudioSettings.load_from()
 	apply_video()

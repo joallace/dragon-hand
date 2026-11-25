@@ -63,10 +63,15 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", u.results_coop_separation if is_coop(res) else u.results_separation)
 
 	_headline = MenuHelpers.title(headline_text(res))
+	# Text-wide, so the pulse's scale stays inside the screen.
+	_headline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if is_coop(res):
 		_headline.add_theme_color_override("font_color", u.color_ready if coop_cleared(res) else u.color_text_dim)
 	elif winner >= 0 and cfg != null:
 		_headline.add_theme_color_override("font_color", cfg.color_of(winner))
+	if is_coop(res) or (winner >= 0 and cfg != null):
+		# A coloured headline sits on a lacquer drop, not the title's jade.
+		_headline.add_theme_color_override("font_shadow_color", u.color_outline)
 	col.add_child(_headline)
 
 	if is_coop(res):

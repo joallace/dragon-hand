@@ -97,10 +97,10 @@ func _ready() -> void:
 	_grid.add_theme_constant_override("h_separation", u.how_to_grid_separation.x)
 	_grid.add_theme_constant_override("v_separation", u.how_to_grid_separation.y)
 	var action_head := MenuHelpers.label("Action")
-	action_head.add_theme_color_override("font_color", u.color_orange)
+	action_head.add_theme_color_override("font_color", u.color_gold)
 	_grid.add_child(action_head)
 	var device_head := MenuHelpers.prompt("Gamepad", &"PromptText", HORIZONTAL_ALIGNMENT_LEFT, "Keyboard (P1)")
-	device_head.set_color(u.color_orange)
+	device_head.set_color(u.color_gold)
 	_grid.add_child(device_head)
 	for r in ROWS:
 		_grid.add_child(MenuHelpers.label(r[0]))
@@ -110,7 +110,7 @@ func _ready() -> void:
 	_content.add_child(_grid)
 	if Net.online_available():
 		var online := MenuHelpers.label("Online")
-		online.add_theme_color_override("font_color", u.color_orange)
+		online.add_theme_color_override("font_color", u.color_gold)
 		_content.add_child(online)
 		for line in online_lines():
 			var l := MenuHelpers.prompt(line, &"HintPrompt", HORIZONTAL_ALIGNMENT_LEFT)

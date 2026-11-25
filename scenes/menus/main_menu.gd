@@ -4,12 +4,15 @@ extends Control
 ## (Quit is absent on web, PlatformCaps). A web invite link's room code
 ## (Net.boot_join_code) opens the join screen joining it.
 
+const TITLE := "DRAGON HAND"
+const TAGLINE := "FORGE THE HAND  ·  WAKE THE DRAGON"
+
 var _title: Label
+var _emblem: DragonEmblem
 var _list: VBoxContainer
 var _how_to: HowToPlayPanel
 ## Net.pending_message shown once ("Host left the session", ...).
 var _message: Label
-var _t := 0.0
 
 
 func _ready() -> void:
@@ -18,13 +21,18 @@ func _ready() -> void:
 	MenuHelpers.setup_screen(self)
 	add_child(AnimatedBackground.new())
 
+	var u := UiTheme.tuning()
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", UiTheme.tuning().main_menu_separation)
-	_title = MenuHelpers.title("GOD HAND TENKAICHI")
+	col.add_theme_constant_override("separation", u.main_menu_separation)
+	_emblem = DragonEmblem.new()
+	_emblem.custom_minimum_size = Vector2.ONE * u.main_menu_emblem_size
+	_emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(_emblem)
+	_title = MenuHelpers.title(TITLE)
 	col.add_child(_title)
-	var sub := MenuHelpers.label("ULTIMATE STREET-FIGHTING BUDOKAI", &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	col.add_child(sub)
+	col.add_child(MenuHelpers.ruled_label(TAGLINE))
+	col.add_child(MenuHelpers.spacer(u.main_menu_title_gap))
 
 	var buttons: Array = [MenuHelpers.button("Play", _on_play)]
 	if Net.online_available():
@@ -37,7 +45,7 @@ func _ready() -> void:
 	_list.name = "Buttons"
 	col.add_child(_list)
 	_message = MenuHelpers.label(Net.pending_message, &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	_message.add_theme_color_override("font_color", UiTheme.tuning().color_orange_light)
+	_message.add_theme_color_override("font_color", u.color_ember)
 	_message.visible = not Net.pending_message.is_empty()
 	Net.pending_message = ""
 	col.add_child(_message)
@@ -49,13 +57,6 @@ func _ready() -> void:
 		JoinOnlineScreen.pending_code = Net.boot_join_code
 		Net.boot_join_code = ""
 		_on_join_online.call_deferred()
-
-
-func _process(delta: float) -> void:
-	_t += delta
-	if _title != null and _title.size.x > 0.0:
-		_title.pivot_offset = _title.size * 0.5
-		_title.scale = Vector2.ONE * (1.0 + 0.03 * sin(_t * UiTheme.tuning().title_pulse_speed))
 
 
 func _unhandled_input(event: InputEvent) -> void:

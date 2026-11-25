@@ -4,15 +4,14 @@ extends Resource
 ## Sizes are in canvas pixels of the base viewport (stretch mode scales them).
 
 @export_group("Fonts")
-@export var font_names: PackedStringArray = PackedStringArray(["Impact", "Anton", "Arial Black", "DejaVu Sans", "sans-serif"])
-@export var font_weight: int = 900
+## Every HUD label uses the menus' display font (UiTheme.display_font()).
 @export var name_font_size: int = 22
 @export var timer_font_size: int = 40
 @export var combo_font_size: int = 40
 ## Per-player callouts (GUARD CRASH / THROW BREAK / COUNTER) under the combo.
 @export var callout_font_size: int = 30
 @export var announce_font_size: int = 96
-@export var outline_size: int = 8
+@export var outline_size: int = 5
 
 @export_group("Layout")
 @export var top_margin: float = 14.0
@@ -27,6 +26,11 @@ extends Resource
 ## Slant of the bar ends (px) for a dynamic look.
 @export var bar_skew: float = 10.0
 @export var pip_size: float = 12.0
+## Round pip slant (StyleBoxFlat skew).
+@export var pip_skew: float = 0.45
+## Round timer: lacquer disc with a gold ring behind the seconds.
+@export var timer_disc_radius: float = 34.0
+@export var timer_disc_ring_width: float = 3.0
 @export var divider_width: float = 4.0
 ## Versus with 3-4 fighters: teammates (or the 3rd / 4th FFA fighter) stack
 ## in rows on their side. Stacked rows are compact: row pitch, name font,
@@ -39,28 +43,32 @@ extends Resource
 @export var stack_callout_font_size: int = 24
 
 @export_group("Colors")
-@export var bar_bg_color: Color = Color(0.05, 0.05, 0.08, 0.85)
-@export var bar_border_color: Color = Color(1, 1, 1, 0.9)
-@export var health_high_color: Color = Color(1.0, 0.85, 0.15)
-@export var health_low_color: Color = Color(1.0, 0.2, 0.1)
-@export var health_trail_color: Color = Color(0.9, 0.1, 0.1)
-@export var ki_full_color: Color = Color(0.35, 0.95, 1.0)
-@export var ki_partial_color: Color = Color(0.15, 0.45, 0.7)
-@export var ki_empty_color: Color = Color(0.05, 0.1, 0.15, 0.85)
-@export var ki_denied_color: Color = Color(1.0, 0.15, 0.15)
-@export var pip_empty_color: Color = Color(0.2, 0.2, 0.2, 0.8)
-@export var pip_won_color: Color = Color(1.0, 0.9, 0.2)
-@export var text_color: Color = Color(1, 1, 1)
-@export var outline_color: Color = Color(0.05, 0.02, 0.0)
-@export var announce_color: Color = Color(1.0, 0.92, 0.3)
-@export var ko_color: Color = Color(1.0, 0.25, 0.15)
+## Jade Lacquer (Tuning.ui): lacquer ground, jade health, gold frames and ki,
+## ember for danger.
+@export var bar_bg_color: Color = Color(0.043, 0.078, 0.071, 0.9)
+@export var bar_border_color: Color = Color(0.914, 0.725, 0.286)
+@export var health_high_color: Color = Color(0.247, 0.831, 0.62)
+## Health blends low -> mid -> high (through gold, not a muddy mix).
+@export var health_mid_color: Color = Color(0.914, 0.725, 0.286)
+@export var health_low_color: Color = Color(0.878, 0.392, 0.294)
+@export var health_trail_color: Color = Color(0.929, 0.902, 0.839, 0.85)
+@export var ki_full_color: Color = Color(0.914, 0.725, 0.286)
+@export var ki_partial_color: Color = Color(0.54, 0.416, 0.133)
+@export var ki_empty_color: Color = Color(0.043, 0.078, 0.071, 0.85)
+@export var ki_denied_color: Color = Color(0.878, 0.392, 0.294)
+@export var pip_empty_color: Color = Color(0.043, 0.078, 0.071, 0.85)
+@export var pip_won_color: Color = Color(0.914, 0.725, 0.286)
+@export var text_color: Color = Color(0.929, 0.902, 0.839)
+@export var outline_color: Color = Color(0.02, 0.039, 0.035)
+@export var announce_color: Color = Color(0.961, 0.847, 0.541)
+@export var ko_color: Color = Color(0.878, 0.392, 0.294)
 @export var divider_color: Color = Color(0, 0, 0)
 ## Split screen with 3 views: the empty 4th cell of the 2x2 grid.
-@export var split_filler_color: Color = Color(0.03, 0.03, 0.05)
-@export var pause_dim_color: Color = Color(0, 0, 0, 0.6)
-@export var guard_crash_color: Color = Color(1.0, 0.45, 0.1)
+@export var split_filler_color: Color = Color(0.043, 0.078, 0.071)
+@export var pause_dim_color: Color = Color(0.02, 0.039, 0.035, 0.75)
+@export var guard_crash_color: Color = Color(0.878, 0.392, 0.294)
 @export var throw_break_color: Color = Color(0.85, 0.95, 1.0)
-@export var counter_color: Color = Color(1.0, 0.95, 0.4)
+@export var counter_color: Color = Color(0.961, 0.847, 0.541)
 
 @export_group("Timings (seconds)")
 @export var health_trail_delay: float = 0.5
@@ -114,20 +122,20 @@ extends Resource
 @export var enemy_pip_height: float = 6.0
 @export var enemy_pip_ki_height: float = 3.0
 @export var enemy_pip_ki_gap: float = 1.0
-@export var enemy_pip_bg_color: Color = Color(0.05, 0.05, 0.08, 0.8)
-@export var enemy_pip_color: Color = Color(1.0, 0.3, 0.2)
+@export var enemy_pip_bg_color: Color = Color(0.043, 0.078, 0.071, 0.85)
+@export var enemy_pip_color: Color = Color(0.878, 0.392, 0.294)
 ## The pip of this view's current target.
-@export var enemy_pip_target_color: Color = Color(1.0, 0.85, 0.2)
+@export var enemy_pip_target_color: Color = Color(0.914, 0.725, 0.286)
 ## Screen-edge arrows for off-screen enemies.
 @export var edge_arrow_size: float = 16.0
 @export var edge_arrow_inset: float = 28.0
-@export var edge_arrow_color: Color = Color(1.0, 0.35, 0.25, 0.9)
+@export var edge_arrow_color: Color = Color(0.878, 0.392, 0.294, 0.9)
 ## Revive ring over a downed teammate (m above the feet, px).
 @export var revive_marker_height: float = 1.2
 @export var revive_ring_radius: float = 26.0
 @export var revive_ring_width: float = 5.0
 @export var revive_ring_bg_color: Color = Color(0.0, 0.0, 0.0, 0.55)
-@export var revive_ring_color: Color = Color(0.4, 1.0, 0.5)
+@export var revive_ring_color: Color = Color(0.31, 0.878, 0.659)
 @export var revive_arc_points: int = 32
 @export var downed_color: Color = Color(1.0, 0.55, 0.2)
 @export var out_color: Color = Color(0.55, 0.55, 0.6)
@@ -136,7 +144,7 @@ extends Resource
 ## Vertical position as a fraction of the view height.
 @export_range(0.0, 1.0) var banner_y_ratio: float = 0.3
 @export var banner_hold: float = 1.2
-@export var banner_color: Color = Color(1.0, 0.9, 0.3)
+@export var banner_color: Color = Color(0.961, 0.847, 0.541)
 @export var enemies_left_font_size: int = 24
 
 @export_group("Co-op texts")
@@ -164,7 +172,7 @@ extends Resource
 @export var text_pause_tag: String = "⏸ %s"
 ## "Waiting for <name>…" while the sim is stalled on a peer.
 @export var waiting_font_size: int = 32
-@export var waiting_color: Color = Color(1.0, 0.92, 0.3)
+@export var waiting_color: Color = Color(0.961, 0.847, 0.541)
 ## Vertical position of the waiting banner (fraction of the screen height);
 ## notices ("<name> disconnected") go right under it.
 @export_range(0.0, 1.0) var waiting_y_ratio: float = 0.22

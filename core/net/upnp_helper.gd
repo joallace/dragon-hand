@@ -17,7 +17,7 @@ signal finished(ok: bool, external_ip: String, error: String)
 enum Status { IDLE, WORKING, MAPPED, FAILED }
 
 ## Shown in the router's port-mapping table.
-const MAPPING_DESC := "God Hand Tenkaichi"
+const MAPPING_DESC := "Dragon Hand"
 const PROTOCOL := "UDP"
 ## Milliseconds to wait for gateway replies, and the multicast TTL.
 const DISCOVER_TIMEOUT_MS := 2000

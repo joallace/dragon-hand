@@ -18,6 +18,37 @@ static func title(text: String, variation: StringName = &"TitleLabel") -> Label:
 	return l
 
 
+## A gold, letter-spaced line between two short gold rules (taglines,
+## section titles).
+static func ruled_label(text: String) -> HBoxContainer:
+	var u := UiTheme.tuning()
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	var l := label(text, &"HintLabel", HORIZONTAL_ALIGNMENT_CENTER)
+	l.add_theme_color_override("font_color", u.color_gold)
+	l.add_theme_font_override("font", UiTheme.button_font())
+	for i in 3:
+		if i == 1:
+			row.add_child(l)
+			continue
+		var line := ColorRect.new()
+		line.color = u.color_gold
+		line.custom_minimum_size = u.ruled_line_size
+		line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(line)
+	return row
+
+
+## Empty fixed-height gap in a VBox.
+static func spacer(height: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size.y = height
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
 static func label(text: String, variation: StringName = &"", align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
 	l.text = text

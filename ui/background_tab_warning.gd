@@ -32,7 +32,7 @@ func _ready() -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.offset_top = u.background_tab_warning_margin
 	var l := MenuHelpers.label(TEXT, &"HeaderLabel", HORIZONTAL_ALIGNMENT_CENTER)
-	l.add_theme_color_override("font_color", u.color_orange_light)
+	l.add_theme_color_override("font_color", u.color_gold_light)
 	panel.add_child(l)
 	root.add_child(panel)
 	panel.visible = false

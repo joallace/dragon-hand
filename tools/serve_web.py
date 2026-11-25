@@ -97,7 +97,7 @@ def make_cert(cert: Path, key: Path, ips: list[str]) -> None:
     subprocess.run([
         "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
         "-keyout", str(key), "-out", str(cert), "-days", str(CERT_DAYS),
-        "-subj", "/CN=God Hand Tenkaichi dev server",
+        "-subj", "/CN=Dragon Hand dev server",
         "-addext", f"subjectAltName={san}",
     ], check=True, capture_output=True)
     print(f"Made a self-signed certificate for {san}", flush=True)

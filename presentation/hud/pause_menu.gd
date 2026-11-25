@@ -78,12 +78,6 @@ func _build() -> void:
 	title.text = "PAUSED"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.theme_type_variation = &"TitleLabel"
-	var ls := LabelSettings.new()
-	ls.font_size = 72
-	ls.font_color = Tuning.hud.announce_color
-	ls.outline_size = 12
-	ls.outline_color = Tuning.hud.outline_color
-	title.label_settings = ls
 	box.add_child(title)
 
 	_subtitle = Label.new()

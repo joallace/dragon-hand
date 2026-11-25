@@ -39,6 +39,7 @@ var director: MatchDirector
 var root: Control
 var announcer: Label
 var timer_label: Label
+var timer_disc: HudTimerDisc
 ## Co-op only: enemies left in the run.
 var enemies_label: Label
 ## Co-op Waves only: current wave.
@@ -54,7 +55,7 @@ var notice_label: Label
 var _announce_tween: Tween
 var _notice_tween: Tween
 var _paused_peers: Array[int] = []
-var _font: SystemFont
+var _font: Font
 var _shown_seconds := -2
 var _shown_enemies := -1
 
@@ -66,9 +67,7 @@ func _init() -> void:
 
 func setup(p_director: MatchDirector, hub: MatchEventHub) -> void:
 	director = p_director
-	_font = SystemFont.new()
-	_font.font_names = Tuning.hud.font_names
-	_font.font_weight = Tuning.hud.font_weight
+	_font = UiTheme.display_font()
 
 	root = Control.new()
 	root.name = "Root"
@@ -77,6 +76,9 @@ func setup(p_director: MatchDirector, hub: MatchEventHub) -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.resized.connect(_layout)
 
+	timer_disc = HudTimerDisc.new()
+	timer_disc.name = "TimerDisc"
+	root.add_child(timer_disc)
 	timer_label = _label(Tuning.hud.timer_font_size, Tuning.hud.text_color)
 	timer_label.name = "Timer"
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -132,11 +134,13 @@ func _build_coop() -> void:
 		root.add_child(wave_label)
 
 
-func _label(font_size: int, color: Color) -> Label:
+## `small`: names and counts, in the body font (the display face clogs at
+## small sizes under an outline).
+func _label(font_size: int, color: Color, small := false) -> Label:
 	var t := Tuning.hud
 	var l := Label.new()
 	var ls := LabelSettings.new()
-	ls.font = _font
+	ls.font = UiTheme.button_font() if small else _font
 	ls.font_size = font_size
 	ls.font_color = color
 	ls.outline_size = t.outline_size
@@ -209,7 +213,7 @@ func _build_panel(f: Fighter, right_side: bool, row: int = 0, compact: bool = fa
 	var pcolor := f.tint()
 	var p := {"fighter": f, "right": right_side, "row": row, "compact": compact}
 
-	var name_label := _label(t.stack_name_font_size if compact else t.name_font_size, pcolor)
+	var name_label := _label(t.stack_name_font_size if compact else t.name_font_size, pcolor, true)
 	name_label.name = "Name%d" % (f.slot + 1)
 	var char_name := ""
 	var tag := "P%d" % (f.slot + 1)
@@ -241,7 +245,7 @@ func _build_panel(f: Fighter, right_side: bool, row: int = 0, compact: bool = fa
 	root.add_child(kg)
 	p["ki"] = kg
 
-	var ki_count := _label(int((t.stack_name_font_size if compact else t.name_font_size) * 1.1), t.ki_full_color)
+	var ki_count := _label(int((t.stack_name_font_size if compact else t.name_font_size) * 1.1), t.ki_full_color, true)
 	ki_count.name = "KiCount%d" % (f.slot + 1)
 	ki_count.text = str(kg.full_bars())
 	ki_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -302,9 +306,10 @@ func _pip_style(won: bool) -> StyleBoxFlat:
 	var t := Tuning.hud
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = t.pip_won_color if won else t.pip_empty_color
-	sb.set_corner_radius_all(int(t.pip_size))
 	sb.set_border_width_all(2)
-	sb.border_color = t.outline_color
+	sb.border_color = t.bar_border_color
+	# Slanted chip, like the bars (containers reset a child's rotation).
+	sb.skew = Vector2(t.pip_skew, 0.0)
 	return sb
 
 
@@ -325,6 +330,8 @@ func _layout() -> void:
 
 	timer_label.position = Vector2(w * 0.5 - t.center_gap * 0.5, t.top_margin)
 	timer_label.size = Vector2(t.center_gap, t.timer_font_size + 16.0)
+	timer_disc.position = timer_label.position
+	timer_disc.size = timer_label.size
 	announcer.size = Vector2(w, t.announce_font_size * 1.6)
 	announcer.position = Vector2(0, h * 0.36 - announcer.size.y * 0.5)
 	announcer.pivot_offset = announcer.size * 0.5
@@ -555,6 +562,7 @@ func _on_confirmed_event(_tick: int, kind: StringName, data: Dictionary) -> void
 func _on_timer_changed(seconds_left: int) -> void:
 	var t := Tuning.hud
 	timer_label.visible = seconds_left >= 0 or not _coop()
+	timer_disc.visible = timer_label.visible
 	if seconds_left < 0:
 		timer_label.text = t.text_infinite
 		timer_label.label_settings.font_color = t.text_color

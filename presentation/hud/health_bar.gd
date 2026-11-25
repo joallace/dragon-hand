@@ -52,10 +52,12 @@ func _draw() -> void:
 	if trail > 0.0:
 		_poly(slanted(0, w * trail, h, s), t.health_trail_color)
 	if ratio > 0.0:
-		var c := t.health_low_color.lerp(t.health_high_color, clampf(ratio * 1.6 - 0.3, 0.0, 1.0))
+		var k := clampf(ratio * 1.6 - 0.3, 0.0, 1.0)
+		var c := t.health_low_color.lerp(t.health_mid_color, k * 2.0) if k < 0.5 \
+				else t.health_mid_color.lerp(t.health_high_color, k * 2.0 - 1.0)
 		_poly(slanted(0, w * ratio, h, s), c)
 		# glossy highlight
-		_poly(slanted(0, maxf(w * ratio - s * 0.6, 0.0), h * 0.35, s * 0.35), Color(1, 1, 1, 0.28))
+		_poly(slanted(0, maxf(w * ratio - s * 0.6, 0.0), h * 0.35, s * 0.35), Color(1, 1, 1, 0.18))
 	var border := slanted(0, w, h, s)
 	if border.size() >= 3:
 		border.append(border[0])

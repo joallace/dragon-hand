@@ -241,7 +241,7 @@ func _make_row(name_text: String, value_text: String, focusable: bool) -> Contro
 		row = PanelContainer.new()
 		row.custom_minimum_size = Vector2(0, 46)
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(u.color_blue_dark, 0.5)
+		sb.bg_color = Color(u.color_panel_raised, 0.5)
 		sb.set_corner_radius_all(u.corner_radius)
 		row.add_theme_stylebox_override("panel", sb)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -257,7 +257,7 @@ func _make_row(name_text: String, value_text: String, focusable: bool) -> Contro
 	var value_label := MenuHelpers.prompt(value_text, &"PromptText", HORIZONTAL_ALIGNMENT_RIGHT)
 	value_label.kind = kind
 	value_label.slot = slot
-	value_label.set_color(u.color_orange_light if focusable else u.color_text_dim)
+	value_label.set_color(u.color_gold_light if focusable else u.color_text_dim)
 	if not focusable:
 		name_label.add_theme_color_override("font_color", u.color_text_dim)
 	hb.add_child(name_label)

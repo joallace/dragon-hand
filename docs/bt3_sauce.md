@@ -97,6 +97,13 @@ Two details matter more than they look:
   (20000 of 100000) on every attack [D], charged only when the guard result
   is "ki guard". Ours prices a ki guard at 4–5% of a bar, so guarding is
   never a real decision.
+  *Measured (2026-11-25, "Measured in the port"): a smash into a ki-guard
+  pose cost about half a bar (9440–11040; 18400 for a full down smash),
+  growing with the charge; the Z-counter worked on a smash and never on a
+  jab. Ours today ([frame_data.md](frame_data.md)): 15% of a bar for an
+  uncharged smash, 25–35% for finishers, more as the charge grows, and a
+  full charge crashes any guard (75 frames open), which BT3 never did in
+  these runs.*
 
 ## 3. Commitment: long recoveries, cancelled only by success
 
@@ -111,6 +118,11 @@ Goku's frame data [D] (60 Hz; hit window = when the hit volumes are live):
 | Rush 5 (ender) | 18–30 | follow-ups from 40% **only if it hit** | **110** | |
 | Charged smash release | 12–28 | ~16–26 | **~100–112** | |
 | Smash wind-up before the charge loop | – | – | 16–32 | |
+
+*Measured: wind-up ~16 frames, then 42 frames of charge to full (cold).
+After a plain-guarded full smash the attacker was idle again ~42 frames
+after the hit, shorter than the ~100 above suggests; not resolved (the
+whiff case was not run).*
 
 Across the roster the median jab is 26 frames long with its first hit on
 **frame 12** (fastest 2, slowest 38) [D]. BT3's jabs are less than half as
@@ -136,6 +148,12 @@ out four times faster after seven or eight landed hits. Pressure snowballs,
 routes change during a fight, and the defender feels the walls closing in
 without any number on screen. We have nothing like it: our tenth exchange
 plays exactly like our first.
+
+*Measured: the effect is real but small and short. A neutral smash charged
+in 0.70 s cold, 0.53 s 0.7 s after a 4-hit string, 0.63 s 1.2 s after it,
+0.50 s right after 8 hits: 1.3–1.4×, not 4×. Either the gauge decays fast
+or the rate does not blend linearly; worth copying as a nudge, not as the
+snowball described above.*
 
 ## 5. No coin flips
 
@@ -280,14 +298,64 @@ Caveats: one matchup, one distance, ground only; the fight's start moves
 by a few frames between runs, so every test lets P1 arrive first and
 times its presses from there.
 
+### Second pass (2026-11-25): smashes, guard poses, Z-counter, momentum
+
+`bt3_script.py --probe` runs the port under gdb and adds what the hash
+line lacks, read from the port's own accessors: ki and blast stock, the
+current action id, the stun timer and the smash charge (0..1). 70 runs,
+same matchup (Goku Early mirror), P2 always on the pad. Frames below are
+**60 Hz** (one fight pad frame is two). Ki: 20000 = one bar; both start
+with 40000.
+
+Smash = hold rush (□); the stick picks it: neutral (action 75), up (71),
+down (72), side (73). It winds up ~16 frames, then charges 0 → full in
+**0.70 s** (42 frames) cold, and hits ~8 frames after release. Full charge:
+1290 damage (3.2% of health; 58% charge: 1040), attacker +3900 ki.
+
+**Into each guard pose** (P2 holds guard from before the press; P = plain,
+no ki; K n = ki guard costing n; U = unblockable, full damage; O =
+push-off: the attacker recoils ~80 frames, the defender gains half a
+blast stock and pays nothing):
+
+| Smash | mid guard | stick-up guard | stick-down guard |
+|---|---|---|---|
+| neutral, 58% | P | K 9440 | K 9440 |
+| neutral, full | P | K 11040 | K 11040 |
+| side, 58% | P | K 9440 | K 9440 |
+| side, full | K 11040 | **U** | **U** |
+| up, 58% | P | **U** | P |
+| up, full | K 10960 | **U** | O |
+| down, 58% | P | P | **U** |
+| down, full | K 18400 | O | **U** (+500 floor crash) |
+
+§2's table holds, with two corrections: a ki guard costs **about half a
+bar** (9440–11040; 18400 for a full down smash in mid guard), not a full
+bar, and it grows with the charge; and the pose an up / down smash goes
+through is the one on its own side (an up smash breaks the stick-up
+guard).
+
+| Test | Result |
+|---|---|
+| P2 jabs into P1's smash (full or 58%), five timings | a jab that lands first hits P1 (300) but P1 stays in the smash and it still lands in full; a later jab never connects. A smash under way shrugs off rush hits: it is not a trade. |
+| Z-counter (guard press) against a full smash | pressed 2–8 frames before the hit: P2 vanishes (action 34), **0 damage, 0 ki**. 12 frames before: hit. |
+| Z-counter against a jab, six timings | never vanishes: 2–4 frames before the hit it is a plain guard (0 damage), otherwise the jab lands. |
+| Momentum: charge time after rush hits | cold 0.70 s (twice); 0.7 s after a 4-hit string 0.53 s; 1.2 s after it 0.63 s; right after 8 hits 0.50 s. **1.3–1.4× faster** and fading within about a second, not the 4× §4 expected. Smash damage unchanged. |
+| Blow-away, full smashes on an idle P2 | neutral flies ~225 units in 0.9 s into a stage object (+500, bounces back); side flies ~240, crashes into the floor at the end (+500) and slides on to ~455; down crashes into the floor at once (+500) and slides ~230; up launches ~240 units high and lands without a crash. 58% neutral: a shorter flight, ~195 units, no crash. With no input the victim lies ~3 s and stands 4.5–7.4 s after the hit. |
+
+Caveats as above, plus: actions are raw ids (named here from what they
+do); "stick up" is the pad's up, which also walks toward the opponent; a
+fighter idle for ~1.5 s plays an idle animation (action 67, ~1.6 s) that
+swallows new presses, so scripts make P2 guard briefly first.
+
 ## Not verified
 
 - World scale. Speeds are comparable to each other, not to our metres.
 - Which animation event bit is the "next input" point: taken to be bit 3
   (it sits between the hit window opening and closing on every attack).
 - Finisher and follow-up tables (in the common data file, not read).
-- Everything in §2 to §5 about smashes, guard poses, priorities, momentum
-  and the Z-counter is from data and code, **not yet played**. §1 shows
-  what that is worth: the same script tool can test each of them (charge a
-  smash into each guard pose, trade a jab with a smash, Z-counter a jab
-  and a smash, time a charge before and after a long string).
+- Ring edge: no blow-away reached one in these runs (the stage object on
+  the neutral line is not the edge: the side smash went farther freely).
+- Dash smash priority, two strings meeting (mutual guard), the paid
+  teleport counter and vanish behind: not scripted yet.
+- Recovery of a guarded or whiffed smash in frames (only seen roughly:
+  P1 idle ~42 frames after a plain-guarded full smash).

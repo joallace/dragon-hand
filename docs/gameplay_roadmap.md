@@ -12,8 +12,9 @@ victim can guard out of). You approved it. Then I played scripted fights in
 the BT3 port and the claim turned out to be false. This version replaces
 that plan.
 
-Status: proposal, nothing implemented. I still have not played our game;
-its numbers are read from code and tuning files.
+Status: proposal. Stage 0 done except God Hand (2026-11-25); stages 1–5
+not started. I still have not played our game; its numbers are read from
+code and tuning files.
 
 ## Phase 0 result: the hitstun claim was wrong
 
@@ -65,19 +66,42 @@ Every item is tested in the reference first when a script can do it, then
 implemented, then **played by you**. Sim rules as always: determinism lint,
 rollback test, save/load round trip.
 
-**Stage 0. Finish ground truth.**
+**Stage 0. Finish ground truth.** *(BT3 and the frame-data sheet done
+2026-11-25; God Hand blocked on a save state, see below.)*
 - BT3 by script: a charged smash into each guard pose (plain / ki guard /
   unblockable / push-off and the ki actually paid); a jab against a smash
   (priority); Z-counter attempts against a jab and against a smash; smash
   charge time before and after a long string (momentum); what a blow-away
   into the floor and the ring edge does.
+  **Done** (70 runs, `bt3_script.py --probe`; table in
+  [bt3_sauce.md](bt3_sauce.md) "Second pass"):
+  - Guard poses: as the data said, except a ki guard costs **about half a
+    bar** (more for a full charge), not a full bar.
+  - Jab vs smash: not a trade. A jab that lands first hurts the smasher,
+    but the smash keeps going and lands in full.
+  - Z-counter: works against a smash (2–8 frames before the hit, free),
+    **never against a jab** (the same press is a plain guard).
+  - Momentum: real but small, 1.3–1.4× faster charge after 4–8 hits,
+    fading within about a second.
+  - Blow-away: floor crashes and a stage-object crash each add 500 (1.25%
+    of health); no run reached the ring edge.
 - A frame-data sheet tool for our moves (startup, active, recovery,
   advantage on hit and on guard, damage %, push), to compare on paper.
+  **Done:** `tools/frame_data_sheet.tscn`, output in
+  [frame_data.md](frame_data.md), formula checked against the sim by
+  `tests/frame_data_test`.
 - God Hand: the third pass (2026-11-23, God Hand: Rearmed + the retail
   ELF) answered the dodges and the crowd rules from code
   ([god_hand_reference.md](god_hand_reference.md)). Still open: hitstop
   length (two runtime words) and per-move cancel windows (motion data);
   Rearmed's test mode could measure both like `bt3_script.py` does.
+  **Blocked on you:** the test mode logs exactly what we need (its CSV row
+  per frame has `hitstop`, `pl_motion`, `pl_mframe`, `pl_hp`, enemy
+  state), but it starts from a save state taken in a fight, and there is
+  none yet. Play Rearmed once (Wine, your ISO is in
+  `~/.config/PCSX2/roms/`) to any early fight with a single thug and press
+  **F5**; the script format (`Test=` in GHR.ini) is not in the public repo,
+  so it will be read from the binary after that.
 
 **Stage 1. Numbers pass on the current fighter** (one branch, one playtest).
 - Damage scale: about 0.75% per jab, ~5% per full string; round timer and
@@ -89,6 +113,14 @@ rollback test, save/load round trip.
 - Whichever of these stage 0 confirms: priority trades, mid-string
   auto-guard, Z-counter on smashes and finishers instead of jabs, ki guard
   at a real price.
+  *Stage 0 confirmed:* Z-counter on smashes only (not jabs); ki guard at
+  about half a bar, scaled by charge (ours: 15% uncharged, rising with
+  the charge, and a full charge crashes any guard, which BT3's full
+  smashes never did: they were plain, ki, push-off or unblockable by
+  pose); a smash under way not interrupted
+  by rush hits (closer to armor against lights than to a priority trade);
+  momentum only as a small, short charge-speed bonus. Not tested yet:
+  mid-string auto-guard (two strings meeting) and dash smash priority.
 - **Gate:** does it feel better? Which complaint is still there?
 
 **Stage 2. Reactions and states.** Reaction table (heavy stagger, bounce,
@@ -240,8 +272,11 @@ per hit taken, both-hit trades. The 2-bar vanish escape from hitstun is
   questions there: hitstop length, whether counter hits stagger harder,
   per-move cancel frames. Which dodge beats which attack is now answered
   in code.
-- BT3 rules listed in stage 0.
-- Our game was not run.
+- BT3: the rules in stage 0 are done (2026-11-25); still unscripted are
+  two strings meeting, dash smash priority, the paid teleport counter, a
+  whiffed smash's recovery and a blow-away into the ring edge.
+- Our game was not run (the frame-data sheet reads data; its advantage
+  formula is checked against the headless sim only).
 
 ## Appendix: shape of a rebuilt fighter core (only if stage 2 calls for it)
 

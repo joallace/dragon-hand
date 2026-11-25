@@ -276,6 +276,13 @@ character pairing, sides swapped. `godot --headless res://tools/matchup_sim.tscn
 get below ~10 points of noise (compare the mirror matches), and the CPU
 doesn't play to a character's strengths, so low levels undersell Sprite.
 
+`tools/frame_data_sheet.tscn`: frame data on paper for every move (startup,
+active, recovery, advantage on hit / guard / push-off, damage % of health,
+push, guard results, cancels), from MoveData + each character's tuning:
+`godot --headless res://tools/frame_data_sheet.tscn -- [char=brawler
+format=md|csv out=<file>]`; `tests/frame_data_test` holds the advantage
+formula to the sim.
+
 `tools/coop_sim.tscn`: headless CPU-only co-op batches (offscreen rule off vs
 on; clear rate, hits from outside the view cone, token leaks). Run with
 `godot --headless res://tools/coop_sim.tscn -- runs=12 enemies=4
@@ -380,7 +387,8 @@ for steering toward each; `docs/reference_mechanics.md` compares them with
 ours. `docs/bt3_sauce.md` / `docs/god_hand_sauce.md` explain why they feel
 good (BT3 per-move tables read from your own disc data with
 `tools/reference/bt3_data.py`; `tools/reference/bt3_script.py` plays a
-scripted two-pad fight in the BT3 port headless and prints health per frame:
+scripted two-pad fight in the BT3 port headless and prints health per frame,
+`--probe` adds ki, action id, stun and smash charge through gdb:
 test a BT3 rule there before copying it, code reading alone was wrong once);
 `docs/gameplay_roadmap.md` is the staged plan that follows (proposal). Describe mechanics in our own words; never copy decomp code.
 

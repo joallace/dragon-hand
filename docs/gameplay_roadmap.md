@@ -98,10 +98,11 @@ rollback test, save/load round trip.
   **Blocked on you:** the test mode logs exactly what we need (its CSV row
   per frame has `hitstop`, `pl_motion`, `pl_mframe`, `pl_hp`, enemy
   state), but it starts from a save state taken in a fight, and there is
-  none yet. Play Rearmed once (Wine, your ISO is in
-  `~/.config/PCSX2/roms/`) to any early fight with a single thug and press
-  **F5**; the script format (`Test=` in GHR.ini) is not in the public repo,
-  so it will be read from the binary after that.
+  none yet. Play Rearmed once to the first fight (two thugs; Hard is fine)
+  and press **F5** (writes `states/quick.state`). Since v0.6.9.6 there is a
+  native Linux AppImage (`~/Downloads/God Hand Rearmed/`, no Wine) with
+  `--headless` and `--test <script>`; the script format is not in the
+  public repo, so it will be worked out from the binary then.
 
 **Stage 1. Numbers pass on the current fighter** (one branch, one playtest).
 - Damage scale: about 0.75% per jab, ~5% per full string; round timer and

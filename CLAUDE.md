@@ -227,8 +227,10 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   save replay). `ui/`: `OptionSelector`, `NumberStepper`, `ConfirmPrompt`.
   Skin "Jade Lacquer" (lacquer black, jade focus, gold frames, ember danger):
   `UiTheme` from `Tuning.ui` with `LacquerBox` styleboxes (pointed buttons,
-  framed cards), `AnimatedBackground` scale shader, `DragonEmblem` (also
-  `icon.svg`); fonts Dela Gothic One (Latin subset) + Saira Semi Condensed
+  framed cards), `AnimatedBackground` scale shader, `DragonEmblem` ("Coiled
+  Fist": art in `assets/ui/dragon_emblem.svg`, "keep" import, recoloured
+  from the palette; `icon.svg` embeds the same `<g>`, then rerun
+  `tools/render_boot_splash.gd` for `assets/boot_splash.png`); fonts Dela Gothic One (Latin subset) + Saira Semi Condensed
   (OFL, `assets/fonts/`), via `UiTheme.display_font()` etc., HUD included.
   Button legends: never write button names ("A", "Esc") in UI text; use a
   `PromptLabel` template (`{accept}`, `{back}`, `{@LIGHT}`... tokens in

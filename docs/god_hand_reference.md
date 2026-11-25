@@ -454,9 +454,11 @@ facing at point blank). Their lesson: the cones exist to keep attacks
   no boot-ELF code writes them directly (a block copy can't be ruled out).
   Gene's update returns before its input layer while the counter runs, so
   pad edges during a hitstop are lost and the button buffers freeze. Rearmed treats the counter as live,
-  so they are probably filled at run time from disc data. **Length still
-  unknown:** read those two words from RAM in Rearmed (F8 RAM dump) or
-  PCSX2 during a fight.
+  so they are probably filled at run time from disc data.
+  **Measured (2026-11-25, [below](#measured-in-rearmed)): both words are
+  still 0 in RAM mid-fight**, and the counter never ran on any hit
+  (Gene's punches, his △ heavy, his × kick, or the thugs hitting him):
+  ordinary hits have **no hitstop**, as in BT3.
 - **Enemy launches** (vertical speed by hit type, m/s): 3.9, 1.17, 7.0, 5.46
   (3.9 on some), 2.73, 0.59, 1.95 — ×1.1 for heavy enemy types, ×0.7 for
   some others. **Gravity is asymmetric: ~11.7 m/s² rising, ~7.0 m/s²
@@ -514,16 +516,38 @@ facing at point blank). Their lesson: the cones exist to keep attacks
   charge marker): motion files on the disc. Readable with Rearmed's own
   tools (its F2 debug menu shows motions and hit volumes; `src/kamite/
   mot_edit.cpp` parses the format) or by frame-stepping a save state.
-- **Hitstop length**: two runtime words (see [Strikes](#strikes-combos-and-reactions)).
+  Measured so far: the first punch of the □ combo only
+  ([below](#measured-in-rearmed)); `tools/reference/ghr_script.py` does
+  the rest the same way.
+- ~~Hitstop length~~: measured, 0 on ordinary hits ([below](#measured-in-rearmed)).
+  Whether special hits (roulette, God Hand mode, guard breaks) set the two
+  words is untested.
 - **God Hand mode's damage / speed boost.**
 - **Which bone the duck leaves hittable** (sphere on bone 23 of Gene's
   skeleton; Rearmed calls the other three head and chest).
-- Rearmed's **test mode** (`GHR.ini` `[Run] Test=`; `src/kamite/test_mode.cpp`
-  in its repo) loads a save state, plays a recorded pad and writes
-  one CSV row per game frame with Gene's and every enemy's state, HP,
-  motion frame and the hitstop word. It is a Windows exe (runs under Wine
-  with your ISO), the God Hand counterpart of `tools/reference/bt3_script.py`.
-  Not tried yet.
+## Measured in Rearmed
+
+Rearmed's **test mode** loads a save state, plays a pad recording and
+writes one CSV row per 60 Hz frame with Gene's and every enemy's state,
+HP, motion and motion frame, and the hitstop counter.
+`tools/reference/ghr_script.py` drives it headless with the native Linux
+AppImage (v0.6.9.6; the script format is in its docstring, worked out from
+the port's error messages). All runs below start from one save state: the
+first fight (two thugs in front, four enemies in the room), **Hard** (level
+DIE all game), 60 FPS mode, default techniques. Frames are 60 Hz.
+
+| Test | Result |
+|---|---|
+| Gene's □ combo into the thugs | hits for 4–6; **no freeze**: Gene's and the thug's motion frames keep advancing through contact; Gene's animation slows from 0.75 to 0.5 motion frames per frame after the hit, the thug's reaction starts at once |
+| △ (slow heavy, lands for 24) | no freeze either |
+| × kick (10) | a single held frame on both sides |
+| Hitstop counter (`hitstop` column) | 0 on every frame of every run, including the thugs hitting Gene (100 → 9 in 10 s standing still on Hard) |
+| The two hitstop length words (`0x3BF190` / `0x3BF194`, read from the save state's RAM) | 0 and 0 mid-fight |
+| □ punch 1 → punch 2 (second press at different delays) | punch 1 lasts 34 frames on its own. A press 4 frames in is buffered and punch 2 starts at punch 1's frame 12; presses 12–24 frames in start punch 2 four frames after the press; from ~28 frames in it no longer chains (punch 1 finishes, then a new punch 1). The chain works **on a whiff**. |
+
+Caveats: one save state, one enemy type, Hard, only the first combo link
+timed; motion ids are raw addresses (Gene's punch 1 `DC2560`, punch 2
+`DB7E20`, punch 3 `DC35E0`, △ `DC62A0`, × `E14A20`).
 
 ## Where we stand
 

@@ -12,8 +12,7 @@ victim can guard out of). You approved it. Then I played scripted fights in
 the BT3 port and the claim turned out to be false. This version replaces
 that plan.
 
-Status: proposal. Stage 0 done except God Hand (2026-11-25); stages 1–5
-not started. I still have not played our game; its numbers are read from
+Status: proposal. Stage 0 done (2026-11-25); stages 1–5 not started. I still have not played our game; its numbers are read from
 code and tuning files.
 
 ## Phase 0 result: the hitstun claim was wrong
@@ -66,8 +65,7 @@ Every item is tested in the reference first when a script can do it, then
 implemented, then **played by you**. Sim rules as always: determinism lint,
 rollback test, save/load round trip.
 
-**Stage 0. Finish ground truth.** *(BT3 and the frame-data sheet done
-2026-11-25; God Hand blocked on a save state, see below.)*
+**Stage 0. Finish ground truth.** *(Done 2026-11-25.)*
 - BT3 by script: a charged smash into each guard pose (plain / ki guard /
   unblockable / push-off and the ki actually paid); a jab against a smash
   (priority); Z-counter attempts against a jab and against a smash; smash
@@ -95,14 +93,16 @@ rollback test, save/load round trip.
   ([god_hand_reference.md](god_hand_reference.md)). Still open: hitstop
   length (two runtime words) and per-move cancel windows (motion data);
   Rearmed's test mode could measure both like `bt3_script.py` does.
-  **Blocked on you:** the test mode logs exactly what we need (its CSV row
-  per frame has `hitstop`, `pl_motion`, `pl_mframe`, `pl_hp`, enemy
-  state), but it starts from a save state taken in a fight, and there is
-  none yet. Play Rearmed once to the first fight (two thugs; Hard is fine)
-  and press **F5** (writes `states/quick.state`). Since v0.6.9.6 there is a
-  native Linux AppImage (`~/Downloads/God Hand Rearmed/`, no Wine) with
-  `--headless` and `--test <script>`; the script format is not in the
-  public repo, so it will be worked out from the binary then.
+  **Done** (2026-11-25, `tools/reference/ghr_script.py` on the native
+  Linux AppImage from your F5 save in the first fight, Hard; table in
+  [god_hand_reference.md](god_hand_reference.md) "Measured in Rearmed"):
+  - Hitstop: **none** on ordinary hits (punches, △ heavy, × kick, hits
+    on Gene); both length words are 0 mid-fight. God Hand's weight comes
+    from the animation slowing after contact and instant reactions, not a
+    freeze. Special hits (roulette, God Hand mode) untested.
+  - Cancel window, □ punch 1 → 2: chains from punch 1's frame 12 to about
+    frame 24–28 of 34, earlier presses buffered, **also on a whiff**. The
+    other links can be timed the same way when stage 1 needs them.
 
 **Stage 1. Numbers pass on the current fighter** (one branch, one playtest).
 - Damage scale: about 0.75% per jab, ~5% per full string; round timer and
@@ -265,14 +265,12 @@ per hit taken, both-hit trades. The 2-bar vanish escape from hitstun is
 
 ## Not done
 
-- **God Hand played.** Still nothing was run. Since 2026-11-23 the
-  God Hand: Rearmed port is installed (`~/Downloads/God Hand Rearmed/`):
-  its test mode plays a recorded pad from a save state and writes a CSV
-  row per game frame (Gene's and the enemies' state, HP, motion frame,
-  hitstop). It is a Windows exe (Wine + your ISO), not tried yet. Open
-  questions there: hitstop length, whether counter hits stagger harder,
-  per-move cancel frames. Which dodge beats which attack is now answered
-  in code.
+- **God Hand:** scripted runs work since 2026-11-25
+  (`tools/reference/ghr_script.py`, one save state in the first fight).
+  Still open there: the other combo links' cancel windows, whether
+  counter hits stagger harder, and whether special hits (roulette, God
+  Hand mode) set a hitstop. Which dodge beats which attack is answered in
+  code.
 - BT3: the rules in stage 0 are done (2026-11-25); still unscripted are
   two strings meeting, dash smash priority, the paid teleport counter, a
   whiffed smash's recovery and a blow-away into the ring edge.

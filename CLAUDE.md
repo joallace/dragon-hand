@@ -389,7 +389,9 @@ good (BT3 per-move tables read from your own disc data with
 `tools/reference/bt3_data.py`; `tools/reference/bt3_script.py` plays a
 scripted two-pad fight in the BT3 port headless and prints health per frame,
 `--probe` adds ki, action id, stun and smash charge through gdb:
-test a BT3 rule there before copying it, code reading alone was wrong once);
+test a BT3 rule there before copying it, code reading alone was wrong once;
+`tools/reference/ghr_script.py` does the same for God Hand through
+Rearmed's headless test mode, from an F5 save state);
 `docs/gameplay_roadmap.md` is the staged plan that follows (proposal). Describe mechanics in our own words; never copy decomp code.
 
 ## Known gaps

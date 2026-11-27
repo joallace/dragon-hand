@@ -2,7 +2,7 @@
 
 Run headless (Blender 4.2+ / 5.x):
     blender --background --factory-startup --python tools/blender/build_fighter.py -- \
-        [char=brawler|bulk|sprite] [out=assets/models/fighter_<char>.glb] [preview=<dir>]
+        [char=brawler|bulk|titan|sprite] [out=assets/models/fighter_<char>.glb] [preview=<dir>]
 
 One body per `char` (BUILDERS), all on the same rig and palette slots; a
 character picks its file with CharacterDef.model_path (empty = the Brawler).
@@ -27,7 +27,8 @@ Proportions: chunky heroic (big chest, fists and boots, small head).
 The game scales every model by CharacterDef.body_scale, so a body made for
 a wide character (Bulk) is written narrower where it should not widen
 (head, fists, feet): see BULK_SCALE. A small one (Sprite) draws them
-a little larger: SPRITE_GROW.
+a little larger: SPRITE_GROW. A tall one (Titan) gets its head and
+fists shrunk on every axis: see TITAN_SCALE.
 """
 
 import math
@@ -431,9 +432,133 @@ def build_sprite():
     return parts
 
 
-BUILDERS = {"brawler": build_brawler, "bulk": build_bulk, "sprite": build_sprite}
+# --- Titan --------------------------------------------------------------------------
+# Tall, lean kickboxer: bare V-taper chest with abs, a single pauldron on the
+# left shoulder held by a strap across the chest, team-colour trunks with a
+# short front flap, gold armbands, wrapped forearms and fists, shin guards
+# over bare shins, wrapped bare feet. A small head (swept-back crest, braid,
+# goatee) on the tall body. Same pivots and floor line as the Brawler.
+
+# Titan's body_scale stretches the model 1.25 tall: the head and fists are
+# divided by it on every axis so they keep a normal size in game (the tall
+# body then reads as tall), feet only on x/z (the sole line must not move).
+TITAN_SCALE = body_scale_of("titan")
+TX, TY, TZ = (1.0 / k for k in TITAN_SCALE)
+
+
+def _t(v):
+    """A point or size undone by Titan's body_scale."""
+    return (v[0] * TX, v[1] * TY, v[2] * TZ)
+
+
+class TitanSmall:
+    """Draws into a Part with every coordinate undone by Titan's body_scale
+    (about the part's pivot)."""
+
+    def __init__(self, part):
+        self.part = part
+
+    def blob(self, center, radii, slot, **kw):
+        self.part.blob(_t(center), _t(radii), slot, **kw)
+
+    def box(self, center, size, slot, **kw):
+        self.part.box(_t(center), _t(size), slot, **kw)
+
+    def frustum(self, y0, y1, bottom, top, slot, offset=(0.0, 0.0, 0.0), **kw):
+        self.part.frustum(y0 * TY, y1 * TY, (bottom[0] * TX, bottom[1] * TZ), (top[0] * TX, top[1] * TZ),
+                          slot, _t(offset), **kw)
+
+    def prism(self, p0, p1, r0, r1, slot, **kw):
+        self.part.prism(_t(p0), _t(p1), r0 * TX, r1 * TX, slot, **kw)
+
+    def cone(self, base, tip, r, slot, **kw):
+        self.part.cone(_t(base), _t(tip), r * TX, slot, **kw)
+
+
+def build_titan():
+    parts = {name: Part(name) for name in JOINTS if name != "belly"}
+
+    p = parts["pelvis"]
+    p.frustum(-0.14, 0.05, (0.33, 0.23), (0.35, 0.24), PRIMARY)       # trunks
+    p.frustum(0.03, 0.11, (0.36, 0.25), (0.36, 0.25), TRIM)           # waistband
+    p.box((0.0, 0.07, -0.128), (0.07, 0.06, 0.02), GOLD)               # band knot
+    p.frustum(-0.18, 0.04, (0.15, 0.02), (0.13, 0.02), PRIMARY_DARK, (0.0, 0.0, -0.13))  # front flap
+    p.box((0.0, -0.15, -0.142), (0.15, 0.025, 0.012), TRIM)            # flap hem
+
+    t = parts["torso"]
+    t.prism((0, 0.06, 0), (0, 0.34, 0), 0.15, 0.19, SKIN, sides=8, squash=0.8)  # lean waist
+    for y in (0.12, 0.19, 0.26):  # abs, raised just off the waist's front
+        r = 0.15 + 0.04 * (y - 0.06) / 0.28
+        for side in (-1.0, 1.0):
+            t.box((0.045 * side, y, -0.8 * r + 0.004), (0.07, 0.055, 0.03), SKIN)
+
+    c = parts["chest"]  # from the chest pivot (CHEST above the waist)
+    c.frustum(0.0, 0.34, (0.36, 0.27), (0.60, 0.36), SKIN, (0.0, 0.0, 0.015))  # bare V chest
+    c.prism((0, 0.30, 0.0), (0, 0.43, 0.0), 0.08, 0.072, SKIN, sides=6)         # neck
+    for side in (-1.0, 1.0):
+        c.blob((0.085 * side, 0.22, -0.125), (0.115, 0.08, 0.05), SKIN, subdiv=2)  # pecs
+        c.blob((0.11 * side, 0.35, 0.03), (0.11, 0.06, 0.09), SKIN)               # traps
+    c.blob((-0.31, 0.32, 0.0), (0.16, 0.12, 0.16), PRIMARY_DARK)                 # pauldron
+    c.blob((-0.34, 0.25, 0.0), (0.15, 0.035, 0.155), GOLD)                       # pauldron rim
+    c.box((-0.36, 0.36, 0.0), (0.05, 0.05, 0.17), TRIM)                          # pauldron ridge
+    # Strap from under the pauldron across the chest to the right flank, and back.
+    for z0, z1 in ((-0.185, -0.135), (0.205, 0.16)):  # lying on the chest's front / back
+        c.prism((-0.22, 0.33, z0), (0.20, 0.02, z1), 0.035, 0.035, PRIMARY, sides=4,
+                smooth=False, squash=0.35)
+    c.box((0.20, 0.03, -0.135), (0.05, 0.05, 0.02), GOLD)                        # strap buckle
+
+    h = TitanSmall(parts["head"])
+    h.blob((0.0, 0.13, 0.0), (0.11, 0.125, 0.12), SKIN, subdiv=2)               # skull
+    h.frustum(-0.01, 0.11, (0.12, 0.14), (0.17, 0.18), SKIN, (0.0, 0.0, -0.02))   # square jaw
+    h.box((0.0, 0.135, -0.115), (0.16, 0.03, 0.03), HAIR)                       # heavy brow (eyes)
+    h.blob((0.0, -0.005, -0.10), (0.04, 0.045, 0.03), HAIR)                     # goatee
+    h.blob((0.0, 0.21, 0.02), (0.065, 0.08, 0.13), HAIR)                        # crest
+    for base, tip in (((0.0, 0.25, -0.06), (0.0, 0.31, 0.04)), ((0.0, 0.26, 0.03), (0.0, 0.28, 0.17)),
+                      ((0.0, 0.22, 0.09), (0.0, 0.19, 0.20))):
+        h.cone(base, tip, 0.05, HAIR)                                           # swept back
+    h.prism((0, 0.19, 0.13), (0, 0.15, 0.16), 0.042, 0.042, TRIM, sides=6)        # braid tie
+    for i, (y, z) in enumerate(((0.12, 0.17), (0.06, 0.19), (0.00, 0.20))):
+        h.blob((0.0, y, z), (0.036 - 0.004 * i, 0.04, 0.036 - 0.004 * i), HAIR)  # braid
+    h.blob((0.0, -0.05, 0.20), (0.022, 0.03, 0.022), GOLD)                       # braid bead
+    for side in (-1.0, 1.0):
+        h.blob((0.115 * side, 0.12, 0.0), (0.022, 0.04, 0.03), SKIN)              # ears
+
+    for side, sfx in ((-1.0, "_l"), (1.0, "_r")):
+        a = parts["sh" + sfx]
+        a.blob((0.02 * side, -0.04, 0.0), (0.10, 0.10, 0.10), SKIN)               # deltoid
+        a.prism((0.01 * side, -0.06, 0), (0, -0.30, 0), 0.085, 0.068, SKIN, sides=7)  # upper arm
+        a.prism((0, -0.13, 0), (0, -0.16, 0), 0.087, 0.084, GOLD, sides=7)          # armband
+        f = parts["el" + sfx]
+        f.prism((0, 0.0, 0), (0, -0.25, 0), 0.07, 0.085, TRIM, sides=7)            # wrapped forearm
+        for y in (-0.07, -0.15):
+            f.prism((0, y, 0), (0, y - 0.025, 0), 0.08, 0.083, PRIMARY_DARK, sides=7)  # wrap bands
+        w = TitanSmall(parts["wr" + sfx])  # from the wrist pivot
+        w.frustum(-0.20, -0.03, (0.19, 0.17), (0.22, 0.19), TRIM)                 # wrapped fist
+        w.box((0.0, -0.085, -0.095), (0.22, 0.07, 0.03), PRIMARY_DARK)            # knuckle pad
+        w.box((-0.115 * side, -0.09, -0.02), (0.05, 0.10, 0.08), TRIM)            # thumb
+        th = parts["hip" + sfx]
+        th.prism((0, 0.04, 0), (0, -0.20, 0), 0.125, 0.115, PRIMARY, sides=7)       # trunk leg
+        th.prism((0, -0.18, 0), (0, -0.21, 0), 0.118, 0.117, TRIM, sides=7)         # trunk hem
+        th.prism((0, -0.17, 0), (0, -0.44, 0), 0.105, 0.08, SKIN, sides=7)          # long thigh
+        sh = parts["kn" + sfx]
+        sh.blob((0.0, -0.01, -0.02), (0.075, 0.07, 0.07), SKIN)                   # knee
+        sh.prism((0, 0.0, 0), (0, -0.40, 0), 0.078, 0.06, SKIN, sides=7)            # shin / calf
+        sh.frustum(-0.36, -0.05, (0.11, 0.05), (0.13, 0.06), PRIMARY_DARK, (0.0, 0.0, -0.055))  # shin guard
+        sh.blob((0.0, -0.02, -0.065), (0.07, 0.065, 0.035), PRIMARY_DARK)         # knee pad
+        for y in (-0.12, -0.30):
+            sh.prism((0, y, 0), (0, y - 0.025, 0), 0.082, 0.072, TRIM, sides=7)     # guard straps
+        ft = parts["an" + sfx]  # from the ankle pivot
+        ft.prism((0, -0.01, 0), (0, 0.07, 0), 0.07, 0.066, TRIM, sides=7)           # ankle wrap
+        ft.frustum(-0.05, 0.05, (0.17 * TX, 0.28 * TZ), (0.13 * TX, 0.18 * TZ), SKIN,
+                   (0.0, 0.0, -0.05))                                            # bare foot
+        ft.box((0.0, -0.035, -0.06), (0.175 * TX, 0.02, 0.2 * TZ), TRIM)            # foot wrap
+        ft.box((0.0, -0.055, -0.05), (0.17 * TX, 0.035, 0.29 * TZ), SOLE)          # sole (floor at -0.0725)
+    return parts
+
+
+BUILDERS = {"brawler": build_brawler, "bulk": build_bulk, "sprite": build_sprite, "titan": build_titan}
 # body_scale applied to `preview=` renders only (the game applies its own).
-PREVIEW_SCALE = {"bulk": BULK_SCALE, "sprite": SPRITE_SCALE}
+PREVIEW_SCALE = {"bulk": BULK_SCALE, "sprite": SPRITE_SCALE, "titan": TITAN_SCALE}
 
 
 def make_materials():
@@ -484,17 +609,19 @@ def render_preview(out_dir, char):
     belly = bpy.data.objects.get("belly")
     if belly is not None:
         belly.hide_render = True  # unit sphere; the game scales it per character
+    tall = PREVIEW_SCALE.get(char, (1.0, 1.0, 1.0))[1]  # frame a tall body whole
+    cam_data.ortho_scale *= tall
     if char in PREVIEW_SCALE:  # scale about the floor, like the game's body node
         root = bpy.data.objects.new("preview_root", None)
         scene.collection.objects.link(root)
         bpy.data.objects["pelvis"].parent = root
         sx, sy, sz = PREVIEW_SCALE[char]
         root.scale = (sx, sz, sy)  # Godot (x, y, z) scale in Blender axes
-    target = gd((0.0, 1.0, 0.0))
+    target = gd((0.0, 1.0 * tall, 0.0))
     for label, yaw in (("front", 0.0), ("three_quarter", 35.0), ("side", 90.0), ("back", 180.0)):
         r = math.radians(yaw)
         # Godot forward is -z: the front view looks from -z toward +z.
-        pos = gd((5.0 * math.sin(r), 1.15, -5.0 * math.cos(r)))
+        pos = gd((5.0 * math.sin(r), 1.15 * tall, -5.0 * math.cos(r)))
         cam.location = pos
         direction = target - pos
         cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()

@@ -422,6 +422,7 @@ func _profiles() -> Array[Dictionary]:
 			# hardest, but every swing and step is slow and it's a big target.
 			"id": &"titan", "name": "Titan", "color": Color(0.55, 0.3, 0.75),
 			"body_scale": Vector3(1.12, 1.25, 1.12),
+			"model": "res://assets/models/fighter_titan.glb",
 			"damage": 1.3, "frames": 1.3, "reach": 1.22, "height": 1.1, "guard_ki": 1.15,
 			"stats": {
 				"max_health": 1050.0, "walk_speed": 4.8, "dash_speed": 13.5, "jump_velocity": 6.8,

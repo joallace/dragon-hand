@@ -155,7 +155,7 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   outline shaders, palette slot in UV.x, blob shadow; primitives if the
   model is missing). Model: `tools/blender/build_fighter.py`, run with
   `~/opt/blender-5.3.0-linux-x64/blender --background --factory-startup
-  --python tools/blender/build_fighter.py -- [char=brawler|bulk
+  --python tools/blender/build_fighter.py -- [char=brawler|bulk|titan
   preview=<dir>]` (writes `assets/models/fighter_<char>.glb`; never
   hand-edit it), then `--import`. One body per character on the same rig
   (`CharacterDef.model_path`, set by the `model` key of a

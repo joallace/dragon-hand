@@ -7,12 +7,14 @@ extends RefCounted
 
 const DEFAULT: StringName = &"default"
 const BEACH_BAR: StringName = &"beach_bar"
+const GREAT_WALL: StringName = &"great_wall"
 
 ## Lobby order.
-const IDS: Array[StringName] = [DEFAULT, BEACH_BAR]
+const IDS: Array[StringName] = [DEFAULT, BEACH_BAR, GREAT_WALL]
 const NAMES: Dictionary = {
 	DEFAULT: "Stone Ring",
 	BEACH_BAR: "Beach Bar",
+	GREAT_WALL: "Great Wall",
 }
 
 

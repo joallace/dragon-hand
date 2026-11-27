@@ -72,6 +72,8 @@ static func create(id: StringName) -> Arena:
 	match id:
 		ArenaCatalog.BEACH_BAR:
 			return BeachArena.new()
+		ArenaCatalog.GREAT_WALL:
+			return GreatWallArena.new()
 	return Arena.new()
 
 

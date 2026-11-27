@@ -1,5 +1,5 @@
 class_name BeachArena
-extends Arena
+extends PropArena
 ## The sand behind a beach bar on the orla of João Pessoa, in the days tables
 ## were allowed on the sand. Visual only, like every Arena: the play area is
 ## the rope circle of `radius`, and everything else stands outside it, so the
@@ -7,22 +7,6 @@ extends Arena
 ## back of the bar, palms, the city. Looking at +Z: umbrellas, then the sea.
 ## Reads Tuning.arena_beach (data/tuning/arena_beach.tres). Repeated props are
 ## MultiMeshes of one PropMesh each; the only per-prop nodes are the wordmarks.
-
-const NOISE_GLSL := """
-float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-float noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-float fbm(vec2 p) {
-	return noise(p) * 0.55 + noise(p * 2.1 + 3.7) * 0.3 + noise(p * 4.3 + 9.1) * 0.15;
-}
-"""
 
 const BEACH_SHADER := """
 shader_type spatial;
@@ -189,11 +173,6 @@ const ROPE_RADIUS := 0.026
 ## How far inside the camera's far plane the last tower stands.
 const FAR_MARGIN := 40.0
 
-var _props: Node3D
-var _prop_mat: StandardMaterial3D
-var _rng := RandomNumberGenerator.new()
-
-
 func look() -> ArenaTuning:
 	return Tuning.arena_beach
 
@@ -305,11 +284,6 @@ func _build_ground() -> void:
 ## The play boundary: a rope on wooden stakes, in place of the energy wall.
 func _build_ring() -> void:
 	var b := Tuning.arena_beach
-	_prop_mat = PropMesh.material()
-	_props = Node3D.new()
-	_props.name = "Props"
-	add_child(_props)
-
 	var stake := PropMesh.new()
 	stake.rod(Vector3.ZERO, Vector3.UP * (b.rope_height + 0.12), 0.05, 0.04, 6, b.wood_color)
 	var stakes: Array = []
@@ -599,50 +573,6 @@ func _add_table_mark(pos: Vector3, yaw: float, brand_a: bool) -> void:
 	var pixel := 0.0042 if text.length() < 6 else 0.0024
 	var flat := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -PI * 0.5)
 	_add_text(text, Transform3D(flat, pos + Vector3.UP * (TABLE_HEIGHT + 0.022)), color, pixel, 64)
-
-
-func _add_text(text: String, xf: Transform3D, color: Color, pixel: float, size: int) -> void:
-	var l := Label3D.new()
-	l.text = text
-	l.transform = xf
-	l.pixel_size = pixel
-	l.font_size = size
-	l.outline_size = 0
-	l.modulate = color
-	l.shaded = true
-	l.double_sided = false
-	l.no_depth_test = false
-	l.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_props.add_child(l)
-
-
-func _add_static(node_name: String, mesh: ArrayMesh) -> void:
-	var mi := MeshInstance3D.new()
-	mi.name = node_name
-	mi.mesh = mesh
-	mi.material_override = _prop_mat
-	_props.add_child(mi)
-
-
-## items: [Transform3D, Color] pairs. `use_prop_material` = false keeps the
-## mesh's own one.
-func _batch(node_name: String, mesh: Mesh, items: Array, use_prop_material := true) -> void:
-	if items.is_empty():
-		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = mesh
-	mm.instance_count = items.size()
-	for i in items.size():
-		mm.set_instance_transform(i, items[i][0])
-		mm.set_instance_color(i, items[i][1])
-	var mi := MultiMeshInstance3D.new()
-	mi.name = node_name
-	mi.multimesh = mm
-	if use_prop_material:
-		mi.material_override = _prop_mat
-	_props.add_child(mi)
 
 
 # --- prop meshes (local origin on the ground) --------------------------------

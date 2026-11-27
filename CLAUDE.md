@@ -173,8 +173,11 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
 - `presentation/` — match scene, arena (`Arena.create(MatchConfig.arena_id)`,
   stages listed in `core/match/ArenaCatalog`, picked on the lobby's Stage row;
   visual only, the play area is always the arena_radius circle, so nothing
-  solid may stand inside it; `BeachArena` + `PropMesh`: repeated props are
-  MultiMeshes of one vertex-coloured mesh), split-screen `ViewLayout` (2 side by side, 3-4 in a 2x2 grid),
+  solid may stand inside it; `BeachArena`, `TimesSquareArena` (night, LED
+  screens = one MultiMesh, pattern in INSTANCE_CUSTOM; fictional brands from
+  tuning) on `PropArena` + `PropMesh`: repeated props are MultiMeshes of one
+  vertex-coloured mesh; `PropArena.placements` keeps their transforms for
+  tests, the headless renderer drops them), split-screen `ViewLayout` (2 side by side, 3-4 in a 2x2 grid),
   `FighterCamera`, HUD, VFX, pause menu. Observes signals only, through
   `MatchEventHub` (SPEC_ONLINE.md §9): the immediate stream (`fighter_event`,
   `fighter_state`, `director_event`; keyed by tick/sim_id/kind, muted during

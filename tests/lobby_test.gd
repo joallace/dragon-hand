@@ -42,8 +42,11 @@ func _test_model_stage() -> void:
 	check(m.build_config(1).arena_id == ArenaCatalog.DEFAULT, "the default stage is unchanged")
 	check(m.change_rule(LobbyModel.Row.STAGE, 1) and m.build_config(1).arena_id == ArenaCatalog.BEACH_BAR,
 			"Stage rule picks the beach bar for a versus config")
-	m.change_rule(LobbyModel.Row.STAGE, 1)
+	for i in ArenaCatalog.IDS.size() - 1:
+		m.change_rule(LobbyModel.Row.STAGE, 1)
 	check(m.stage_index == 0, "Stage rule wraps")
+	m.change_rule(LobbyModel.Row.STAGE, -1)
+	check(m.build_config(1).arena_id == ArenaCatalog.TIMES_SQUARE, "Stage rule wraps back to the last stage")
 	m.change_rule(LobbyModel.Row.STAGE, -1)
 	check(not m.rows_for(a).has(LobbyModel.Row.STAGE) and m.slots[a].state == LobbyModel.SlotState.JOINED,
 			"rules aren't on a player's own rows")

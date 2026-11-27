@@ -72,6 +72,8 @@ static func create(id: StringName) -> Arena:
 	match id:
 		ArenaCatalog.BEACH_BAR:
 			return BeachArena.new()
+		ArenaCatalog.TIMES_SQUARE:
+			return TimesSquareArena.new()
 	return Arena.new()
 
 

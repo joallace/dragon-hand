@@ -51,6 +51,7 @@ id = &"sprite"
 display_name = "Sprite"
 color = Color(0.9, 0.75, 0.2, 1)
 body_scale = Vector3(0.78, 0.8, 0.78)
+model_path = "res://assets/models/fighter_sprite.glb"
 moves = Array[ExtResource("1_guq5w")]([ExtResource("2_r1unj"), ExtResource("3_la3rd"), ExtResource("4_pgt2x"), ExtResource("5_yu8fs"), ExtResource("6_xu415"), ExtResource("7_e4jk6"), ExtResource("8_jwxn2"), ExtResource("9_m7x16"), ExtResource("10_85k61"), ExtResource("11_s7q1s"), ExtResource("12_kdu4v"), ExtResource("13_l31ci"), ExtResource("14_3iibi"), ExtResource("15_72u16"), ExtResource("16_l8eft"), ExtResource("17_h3fkn"), ExtResource("18_ucqen"), ExtResource("19_hcjtb"), ExtResource("20_dtqv4"), ExtResource("21_c4o7q"), ExtResource("22_apv8m"), ExtResource("23_1k573"), ExtResource("24_tpbya"), ExtResource("25_a7qkf"), ExtResource("26_mm8sb"), ExtResource("27_707qt"), ExtResource("28_edop6"), ExtResource("29_4aker"), ExtResource("30_myfcr"), ExtResource("31_o0wti"), ExtResource("32_a2vh7"), ExtResource("33_rxf2e"), ExtResource("34_jgjrq"), ExtResource("35_lrvsj"), ExtResource("36_fc7pw"), ExtResource("37_i7vbq"), ExtResource("38_04c50"), ExtResource("39_yovmx"), ExtResource("40_82oy2"), ExtResource("41_ydu72"), ExtResource("42_mjn16"), ExtResource("43_hy3a0")])
 light_string = Array[StringName]([&"sprite_jab1", &"sprite_jab2", &"sprite_hook", &"sprite_kick", &"sprite_ender"])
 heavy = &"sprite_kick_mid"

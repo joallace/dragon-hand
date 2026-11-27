@@ -453,6 +453,7 @@ func _profiles() -> Array[Dictionary]:
 			# but short reach, weak hits, little health and flies far when hit.
 			"id": &"sprite", "name": "Sprite", "color": Color(0.9, 0.75, 0.2),
 			"body_scale": Vector3(0.78, 0.8, 0.78),
+			"model": "res://assets/models/fighter_sprite.glb",
 			"damage": 0.84, "frames": 0.8, "reach": 0.9, "height": 0.92, "guard_ki": 0.85,
 			"stats": {
 				"max_health": 850.0, "walk_speed": 7.6, "dash_speed": 19.0, "jump_velocity": 8.6,

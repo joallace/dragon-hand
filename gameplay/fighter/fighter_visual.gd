@@ -235,6 +235,9 @@ const THROWN_SWAY_HZ := 3.0
 const THROWN_SWAY_DEG := 8.0
 
 var _fighter: Fighter
+## Look to build when there is no Fighter parent (tests and tools); set
+## before adding the visual to the tree. Ignored under a Fighter (its def).
+var preview_def: CharacterDef
 var _joints: Dictionary = {}  # StringName -> Node3D
 ## Joint angles (deg) and the root offset (m), sprung toward the target.
 var _springs := PoseSprings.new()
@@ -444,7 +447,8 @@ func snap_to_pose(pose: Dictionary) -> void:
 	var rest := rest_pose()
 	for j in JOINTS:
 		(_joints[j] as Node3D).rotation_degrees = full.get(j, rest[j])
-	_body.position = full.get(ROOT, rest[ROOT])
+	# Scaled like _process does, so a character's body_scale snaps true.
+	_body.position = (full.get(ROOT, rest[ROOT]) as Vector3) * _body.scale.y
 	if _skeleton != null:
 		FighterModel.sync_pose(_skeleton, _rig)
 
@@ -701,14 +705,18 @@ func _update_fx(delta: float) -> void:
 # --- construction -------------------------------------------------------------
 
 func _build() -> void:
-	var tint := _fighter.tint() if _fighter else Color.WHITE
+	var tint := Color.WHITE
+	if _fighter:
+		tint = _fighter.tint()
+	elif preview_def != null:
+		tint = preview_def.color
 	_body = Node3D.new()
 	_body.name = "Body"
 	add_child(_body)
 	# Spin pivots around the hips so backflips/knockdowns rotate the whole body.
 	_build_rig()
-	var d: CharacterDef = _fighter.def if _fighter else null
-	var path := Tuning.vfx.fighter_model_path
+	var d: CharacterDef = _fighter.def if _fighter else preview_def
+	var path := model_path_for(d)
 	if FighterModel.available(path):
 		_mat = FighterModel.make_material(tint)
 		var extra := {}
@@ -740,6 +748,13 @@ func _build() -> void:
 		_springs.reset(j, rest[j])
 	_springs.reset(ROOT, rest[ROOT])
 	_idle_phase = randf() / maxf(Tuning.anim.breath_hz, 0.01)
+
+
+## The body model a character wears: its own when it loads, else the shared one.
+static func model_path_for(d: CharacterDef) -> String:
+	if d != null and FighterModel.available(d.model_path):
+		return d.model_path
+	return Tuning.vfx.fighter_model_path
 
 
 ## Joint nodes (no meshes): spin pivots around the hips so backflips and

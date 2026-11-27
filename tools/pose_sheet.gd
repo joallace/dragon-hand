@@ -3,7 +3,8 @@ extends Node
 ## sample) so a track can be checked by eye while tuning it. The track's
 ## raw target poses, without the springs. Needs a real window (no --headless):
 ##   godot res://tools/pose_sheet.tscn --resolution 320x240 -- out=<dir> [only=jab] [view=side|front34]
-## `poses=guard,duck,...` instead draws those static poses in one strip.
+## `poses=guard,duck,...` instead draws those static poses in one strip;
+## `char=bulk` draws that character's body (model, colour, body_scale).
 ## Cells: u = 0 (load) .. 1 (contact, first active frame) .. 2 (recovery) .. 3.
 
 const US: Array[float] = [0.0, 0.5, 0.8, 1.0, 1.35, 2.0, 2.35, 2.7, 3.0]
@@ -30,7 +31,12 @@ func _ready() -> void:
 		args[kv[0]] = kv[1] if kv.size() > 1 else ""
 	var out: String = args.get("out", "user://pose_sheet")
 	DirAccess.make_dir_recursive_absolute(out)
-	_build_stage()
+	var char_id := StringName(args.get("char", ""))
+	if char_id != &"" and char_id not in CharacterRegistry.ids():
+		printerr("pose_sheet: unknown char=%s (have %s)" % [char_id, CharacterRegistry.ids()])
+		get_tree().quit(1)
+		return
+	_build_stage(char_id)
 	await get_tree().process_frame
 	for view: String in VIEWS:
 		if args.has("view") and args["view"] != view:
@@ -66,7 +72,7 @@ func _static_strip(names: PackedStringArray, view: String, out: String) -> void:
 	print("POSE_SHEET ", ProjectSettings.globalize_path(path))
 
 
-func _build_stage() -> void:
+func _build_stage(char_id: StringName) -> void:
 	_vp = SubViewport.new()
 	_vp.size = CELL
 	_vp.own_world_3d = true
@@ -94,6 +100,8 @@ func _build_stage() -> void:
 	_cam.fov = CAMERA_FOV
 	_vp.add_child(_cam)
 	_visual = FighterVisual.new()  # no Fighter parent: posed by hand below
+	if char_id != &"":
+		_visual.preview_def = CharacterRegistry.load_def(char_id)
 	_vp.add_child(_visual)
 
 

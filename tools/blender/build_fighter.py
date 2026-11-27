@@ -2,7 +2,10 @@
 
 Run headless (Blender 4.2+ / 5.x):
     blender --background --factory-startup --python tools/blender/build_fighter.py -- \
-        [out=assets/models/fighter_brawler.glb] [preview=<dir>]
+        [char=brawler|bulk] [out=assets/models/fighter_<char>.glb] [preview=<dir>]
+
+One body per `char` (BUILDERS), all on the same rig and palette slots; a
+character picks its file with CharacterDef.model_path (empty = the Brawler).
 
 One mesh object per FighterVisual joint, named after it (torso, head, sh_l,
 el_l, hip_l, kn_l, ...), its origin on the joint pivot and parented like the
@@ -21,10 +24,14 @@ converted to Blender's z-up on vertex creation; the glTF exporter's +Y up
 conversion turns them back exactly.
 
 Proportions: chunky heroic (big chest, fists and boots, small head).
+The game scales every model by CharacterDef.body_scale, so a body made for
+a wide character (Bulk) is written narrower where it should not widen
+(head, fists, feet): see BULK_SCALE.
 """
 
 import math
 import os
+import re
 import sys
 
 import bmesh
@@ -163,7 +170,7 @@ class Part:
 
 # --- the Brawler -------------------------------------------------------------------
 
-def build_parts():
+def build_brawler():
     parts = {name: Part(name) for name in JOINTS}
 
     p = parts["pelvis"]
@@ -224,6 +231,106 @@ def build_parts():
     return parts
 
 
+# --- Bulk ---------------------------------------------------------------------------
+# Fat bruiser: shaved head with a topknot, full beard, sleeveless open vest
+# over a bare chest and a gut that hangs over a wide sash, heavy arms in
+# wrist wraps, baggy pants wrapped from the shin down, flat heavy boots.
+# The gut is part of the waist, so there is no unit belly part. Same pivots
+# and floor line as the Brawler (soles at -0.0725 under the ankle), so poses
+# and floor checks hold.
+
+def body_scale_of(char):
+    """CharacterDef.body_scale from data/characters/<char>.tres (written by
+    tools/generate_moves.gd), so the model follows a retuned profile."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "characters",
+                        char + ".tres")
+    with open(path) as f:
+        m = re.search(r"^body_scale = Vector3\(([^)]*)\)", f.read(), re.M)
+    if m is None:
+        sys.exit("BUILD_FIGHTER no body_scale in %s" % path)
+    return tuple(float(v) for v in m.group(1).split(","))
+
+
+# Bulk's body_scale: parts that should keep a normal size are divided by it
+# (x, z) before export. Rerun this script after changing it.
+BULK_SCALE = body_scale_of("bulk")
+KX, KZ = 1.0 / BULK_SCALE[0], 1.0 / BULK_SCALE[2]
+
+
+def _n(w, d):
+    """(width, depth) undone by Bulk's body_scale."""
+    return (w * KX, d * KZ)
+
+
+def build_bulk():
+    parts = {name: Part(name) for name in JOINTS if name != "belly"}
+
+    p = parts["pelvis"]
+    p.frustum(-0.13, 0.05, (0.36, 0.25), (0.40, 0.26), CLOTH)        # hips
+    p.frustum(0.00, 0.12, (0.42, 0.28), (0.41, 0.27), PRIMARY_DARK)  # wide sash
+    p.blob((0.07, 0.05, -0.145), (0.05, 0.045, 0.03), GOLD)           # sash knot
+    p.frustum(-0.20, 0.03, (0.05, 0.015), (0.06, 0.015), PRIMARY_DARK, (0.05, 0.0, -0.15))  # sash tails
+    p.frustum(-0.16, 0.03, (0.045, 0.015), (0.05, 0.015), PRIMARY_DARK, (0.10, 0.0, -0.145))
+
+    t = parts["torso"]
+    t.prism((0, 0.04, 0.02), (0, 0.32, 0.02), 0.18, 0.20, SKIN, sides=8, squash=0.75)  # waist / back
+    t.blob((0.0, 0.17, -0.07), (0.215, 0.24, 0.20), SKIN, subdiv=2)                      # the gut
+    t.blob((0.0, 0.12, -0.262), (0.012, 0.016, 0.01), HAIR, smooth=False)              # navel
+    for side in (-1.0, 1.0):  # vest flaps falling open over the gut's sides
+        t.frustum(0.10, 0.33, (0.08, 0.30), (0.09, 0.32), PRIMARY, (0.19 * side, 0.0, 0.0))
+
+    c = parts["chest"]  # from the chest pivot (CHEST above the waist)
+    c.frustum(0.0, 0.36, (0.42, 0.30), (0.62, 0.38), PRIMARY, (0.0, 0.0, 0.02))   # vest
+    c.frustum(-0.02, 0.33, (0.24, 0.02), (0.22, 0.02), SKIN, (0.0, 0.0, -0.155))   # open front
+    for side in (-1.0, 1.0):
+        c.blob((0.095 * side, 0.20, -0.13), (0.11, 0.09, 0.07), SKIN, subdiv=2)    # pecs
+        c.frustum(-0.02, 0.33, (0.035, 0.02), (0.04, 0.02), PRIMARY_DARK,
+                  (0.135 * side, 0.0, -0.165))                                   # vest edge
+        c.blob((0.27 * side, 0.33, 0.0), (0.12, 0.09, 0.13), PRIMARY_DARK)         # vest shoulder
+        c.blob((0.12 * side, 0.37, 0.02), (0.10, 0.06, 0.09), SKIN)                # traps
+    c.prism((0, 0.30, 0.01), (0, 0.42, 0.01), 0.10, 0.09, SKIN, sides=7)          # thick neck
+
+    h = parts["head"]  # a bit over the Brawler's size once widened by body_scale
+    h.blob((0.0, 0.13, 0.0), (0.13 * KX, 0.14, 0.14 * KZ), SKIN, subdiv=2)        # shaved skull
+    h.frustum(-0.02, 0.11, _n(0.20, 0.19), _n(0.25, 0.23), SKIN, (0.0, 0.0, -0.015))  # heavy jaw
+    h.blob((0.0, 0.01, -0.07 * KZ), (0.135 * KX, 0.09, 0.10 * KZ), HAIR)          # full beard
+    h.blob((0.0, -0.06, -0.10 * KZ), (0.07 * KX, 0.06, 0.06 * KZ), HAIR)          # beard point
+    h.box((0.0, 0.085, -0.15 * KZ), (0.15 * KX, 0.025, 0.035 * KZ), HAIR)          # moustache
+    h.box((0.0, 0.15, -0.14 * KZ), (0.17 * KX, 0.03, 0.03 * KZ), HAIR)             # brow ridge
+    h.blob((0.0, 0.29, 0.05 * KZ), (0.04 * KX, 0.045, 0.04 * KZ), HAIR)           # topknot
+    h.prism((0, 0.255, 0.05 * KZ), (0, 0.27, 0.05 * KZ), 0.034 * KX, 0.034 * KX, TRIM, sides=6)  # knot tie
+    for side in (-1.0, 1.0):
+        h.blob((0.13 * KX * side, 0.12, 0.0), (0.025 * KX, 0.04, 0.03 * KZ), SKIN)  # ears
+
+    for side, sfx in ((-1.0, "_l"), (1.0, "_r")):
+        a = parts["sh" + sfx]
+        a.blob((0.02 * side, -0.04, 0.0), (0.10, 0.11, 0.10), SKIN)               # deltoid
+        a.prism((0.01 * side, -0.06, 0), (0, -0.30, 0), 0.088, 0.072, SKIN, sides=7)  # upper arm
+        f = parts["el" + sfx]
+        f.prism((0, 0.0, 0), (0, -0.20, 0), 0.072, 0.085, SKIN, sides=7)           # forearm
+        f.prism((0, -0.13, 0), (0, -0.25, 0), 0.092, 0.09, TRIM, sides=7)           # wrist wrap
+        w = parts["wr" + sfx]  # from the wrist pivot
+        w.frustum(-0.18, -0.03, _n(0.22, 0.21), _n(0.25, 0.23), PRIMARY_DARK)       # meaty fist
+        w.box((0.0, -0.08, -0.115 * KZ), (0.25 * KX, 0.06, 0.03 * KZ), TRIM)         # knuckle wrap
+        w.box((-0.13 * KX * side, -0.09, -0.02 * KZ), (0.06 * KX, 0.10, 0.09 * KZ), PRIMARY_DARK)  # thumb
+        th = parts["hip" + sfx]
+        th.prism((0, 0.04, 0), (0, -0.44, 0), 0.13, 0.105, CLOTH, sides=7)          # thick thigh
+        sh = parts["kn" + sfx]
+        sh.prism((0, 0.0, 0), (0, -0.22, 0), 0.105, 0.11, CLOTH, sides=7)           # baggy pant leg
+        sh.prism((0, -0.20, 0), (0, -0.41, 0), 0.085, 0.075, TRIM, sides=7)          # shin wraps
+        for y in (-0.25, -0.31, -0.37):
+            sh.prism((0, y, 0), (0, y - 0.02, 0), 0.089, 0.087, PRIMARY_DARK, sides=7)  # wrap bands
+        ft = parts["an" + sfx]  # from the ankle pivot
+        ft.frustum(-0.055, 0.06, _n(0.27, 0.38), _n(0.22, 0.28), PRIMARY, (0.0, 0.0, -0.035))  # flat boot
+        ft.box((0.0, -0.055, -0.035), (0.28 * KX, 0.035, 0.39 * KZ), SOLE)           # sole (floor at -0.0725)
+    return parts
+
+
+BUILDERS = {"brawler": build_brawler, "bulk": build_bulk}
+# body_scale applied to `preview=` renders only (the game applies its own).
+PREVIEW_SCALE = {"bulk": BULK_SCALE}
+
+
 def make_materials():
     mats = []
     for slot in range(PALETTE_SIZE):
@@ -242,7 +349,9 @@ def make_materials():
 def assemble(parts, mats):
     objs = {name: part.to_object(mats) for name, part in parts.items()}
     for name, (parent, pivot) in JOINTS.items():
-        ob = objs[name]
+        ob = objs.get(name)
+        if ob is None:  # optional part this body doesn't have (belly)
+            continue
         if parent is not None:
             ob.parent = objs[parent]
         ob.location = gd(pivot)
@@ -250,7 +359,7 @@ def assemble(parts, mats):
     return objs
 
 
-def render_preview(out_dir):
+def render_preview(out_dir, char):
     """Workbench turnaround (front, 3/4, side, back) for review."""
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_WORKBENCH"
@@ -270,6 +379,12 @@ def render_preview(out_dir):
     belly = bpy.data.objects.get("belly")
     if belly is not None:
         belly.hide_render = True  # unit sphere; the game scales it per character
+    if char in PREVIEW_SCALE:  # scale about the floor, like the game's body node
+        root = bpy.data.objects.new("preview_root", None)
+        scene.collection.objects.link(root)
+        bpy.data.objects["pelvis"].parent = root
+        sx, sy, sz = PREVIEW_SCALE[char]
+        root.scale = (sx, sz, sy)  # Godot (x, y, z) scale in Blender axes
     target = gd((0.0, 1.0, 0.0))
     for label, yaw in (("front", 0.0), ("three_quarter", 35.0), ("side", 90.0), ("back", 180.0)):
         r = math.radians(yaw)
@@ -278,24 +393,27 @@ def render_preview(out_dir):
         cam.location = pos
         direction = target - pos
         cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-        scene.render.filepath = os.path.join(out_dir, "fighter_%s.png" % label)
+        scene.render.filepath = os.path.join(out_dir, "%s_%s.png" % (char, label))
         bpy.ops.render.render(write_still=True)
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     args = dict(a.split("=", 1) for a in argv if "=" in a)
-    out = args.get("out", "assets/models/fighter_brawler.glb")
+    char = args.get("char", "brawler")
+    if char not in BUILDERS:
+        sys.exit("BUILD_FIGHTER unknown char=%s (have %s)" % (char, ", ".join(BUILDERS)))
+    out = args.get("out", "assets/models/fighter_%s.glb" % char)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mats = make_materials()
-    assemble(build_parts(), mats)
+    assemble(BUILDERS[char](), mats)
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=os.path.abspath(out), export_format="GLB", export_yup=True,
                               export_apply=False, export_texcoords=True, export_normals=True,
                               export_materials="EXPORT")
     print("BUILD_FIGHTER wrote", out)
     if "preview" in args:
-        render_preview(args["preview"])
+        render_preview(args["preview"], char)
         print("BUILD_FIGHTER preview in", args["preview"])
 
 

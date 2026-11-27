@@ -155,9 +155,13 @@ before autoloads exist. See `tests/README.md`. Always wrap Godot calls in
   outline shaders, palette slot in UV.x, blob shadow; primitives if the
   model is missing). Model: `tools/blender/build_fighter.py`, run with
   `~/opt/blender-5.3.0-linux-x64/blender --background --factory-startup
-  --python tools/blender/build_fighter.py -- [preview=<dir>]` (writes
-  `assets/models/fighter_brawler.glb`; never hand-edit it), then `--import`;
-  `visual_pose_test` checks the posed model against the floor.
+  --python tools/blender/build_fighter.py -- [char=brawler|bulk
+  preview=<dir>]` (writes `assets/models/fighter_<char>.glb`; never
+  hand-edit it), then `--import`. One body per character on the same rig
+  (`CharacterDef.model_path`, set by the `model` key of a
+  `generate_moves.gd` profile; empty or missing = the Brawler's), drawn
+  before `body_scale`. `visual_pose_test` checks the posed model against
+  the floor, `character_model_test` every character's.
   Fighter/projectile visuals are `SmoothedVisual`s (presentation/view):
   top_level, blended between the last two sim ticks (motion smoothing; the
   engine's physics interpolation stays off). Anything framing an entity on

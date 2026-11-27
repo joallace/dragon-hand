@@ -52,6 +52,7 @@ display_name = "Bulk"
 color = Color(0.3, 0.6, 0.35, 1)
 body_scale = Vector3(1.45, 1.02, 1.4)
 belly_radius = 0.3
+model_path = "res://assets/models/fighter_bulk.glb"
 moves = Array[ExtResource("1_h20kw")]([ExtResource("2_g4f5j"), ExtResource("3_wg7jv"), ExtResource("4_xanw3"), ExtResource("5_16nl1"), ExtResource("6_x8ag0"), ExtResource("7_xelqp"), ExtResource("8_dypgs"), ExtResource("9_p03sv"), ExtResource("10_o8nlb"), ExtResource("11_n20m5"), ExtResource("12_so28x"), ExtResource("13_th0kp"), ExtResource("14_u3jeo"), ExtResource("15_ukdeb"), ExtResource("16_i53hc"), ExtResource("17_jb7nf"), ExtResource("18_4vfsn"), ExtResource("19_1whxb"), ExtResource("20_3mwy3"), ExtResource("21_tlx3j"), ExtResource("22_17obv"), ExtResource("23_8x7s7"), ExtResource("24_sr41q"), ExtResource("25_ghqsp"), ExtResource("26_5p5en"), ExtResource("27_up6um"), ExtResource("28_bv1lq"), ExtResource("29_jps4d"), ExtResource("30_ip0mn"), ExtResource("31_qx1d7"), ExtResource("32_ppaw0"), ExtResource("33_mup4y"), ExtResource("34_cqeyj"), ExtResource("35_06m5f"), ExtResource("36_sh1j3"), ExtResource("37_yvy06"), ExtResource("38_7p2vq"), ExtResource("39_wtgiv"), ExtResource("40_hhsal"), ExtResource("41_y275h"), ExtResource("42_4nfbo"), ExtResource("43_em36w")])
 light_string = Array[StringName]([&"bulk_jab1", &"bulk_jab2", &"bulk_hook", &"bulk_kick", &"bulk_ender"])
 heavy = &"bulk_kick_mid"

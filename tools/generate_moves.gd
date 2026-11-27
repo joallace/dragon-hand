@@ -436,6 +436,7 @@ func _profiles() -> Array[Dictionary]:
 			# heavies beat the armor.
 			"id": &"bulk", "name": "Bulk", "color": Color(0.3, 0.6, 0.35),
 			"body_scale": Vector3(1.45, 1.02, 1.4), "belly_radius": 0.3,
+			"model": "res://assets/models/fighter_bulk.glb",
 			"damage": 1.0, "frames": 1.18, "reach": 1.05, "height": 1.0, "guard_ki": 1.1,
 			"armor_heavies": 1,
 			"stats": {
@@ -482,6 +483,7 @@ func _derive(base: Resource, p: Dictionary) -> Resource:
 	d.color = p["color"]
 	d.body_scale = p["body_scale"]
 	d.belly_radius = p.get("belly_radius", 0.0)
+	d.model_path = p.get("model", "")
 	d.moves = moves
 	# The get-up strike stays invulnerable through its scaled spin.
 	var getup: Resource = d.move(d.getup_attack)

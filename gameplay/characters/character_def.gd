@@ -9,8 +9,14 @@ extends Resource
 ## Placeholder body proportions (presentation only): (width, height, depth).
 ## The sim's hurtbox comes from stat_overrides (body_height, body_radius).
 @export var body_scale: Vector3 = Vector3.ONE
-## Belly radius (m, before body_scale); 0 = none.
+## Belly radius (m, before body_scale); 0 = none. Adds the model's unit
+## "belly" part (or a sphere on the primitive body); a dedicated model with
+## a gut of its own has no belly part, so this only shapes the fallback.
 @export var belly_radius: float = 0.0
+## Body model (presentation only; tools/blender/build_fighter.py char=<id>);
+## empty = the shared Tuning.vfx.fighter_model_path. Same rig and palette
+## slots for every model, scaled by body_scale like the default one.
+@export var model_path: String = ""
 ## Every move the character can perform (normals, specials, payloads).
 @export var moves: Array[MoveData] = []
 
